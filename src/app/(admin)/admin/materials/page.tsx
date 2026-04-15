@@ -3,9 +3,10 @@
 export const dynamic = "force-dynamic";
 
 import { useState, useEffect, useCallback } from "react";
-import { Plus, Pencil, Trash2, Eye, EyeOff, FileText, Upload, CheckCircle } from "lucide-react";
+import { Plus, Pencil, Trash2, Eye, EyeOff, FileText, Upload, CheckCircle, ExternalLink } from "lucide-react";
 import { UploadButton } from "@/lib/uploadthing-components";
 import { getFileType, formatFileSize, formatDate, fileTypeIcon } from "@/lib/utils";
+import { MaterialViewer } from "@/components/franchisee/MaterialViewer";
 
 interface Category {
   id: string;
@@ -53,6 +54,7 @@ export default function MaterialsPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [filterCategory, setFilterCategory] = useState("");
+  const [viewing, setViewing] = useState<Material | null>(null);
 
   const fetchData = useCallback(async () => {
     const [matRes, catRes] = await Promise.all([
@@ -254,6 +256,13 @@ export default function MaterialsPage() {
                 </div>
                 <div className="flex gap-1 flex-shrink-0">
                   <button
+                    onClick={() => setViewing(mat)}
+                    className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition"
+                    title="Abrir arquivo"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                  </button>
+                  <button
                     onClick={() => openEdit(mat)}
                     className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
                   >
@@ -344,6 +353,13 @@ export default function MaterialsPage() {
                   </td>
                   <td className="px-5 py-4 text-right">
                     <div className="flex items-center justify-end gap-1">
+                      <button
+                        onClick={() => setViewing(mat)}
+                        className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition"
+                        title="Abrir arquivo"
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                      </button>
                       <button
                         onClick={() => openEdit(mat)}
                         className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
@@ -618,6 +634,14 @@ export default function MaterialsPage() {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Viewer */}
+      {viewing && (
+        <MaterialViewer
+          material={viewing}
+          onClose={() => setViewing(null)}
+        />
       )}
     </div>
   );
