@@ -42,7 +42,7 @@ export async function GET(req: Request) {
 
     const materials = await db.material.findMany({
       where,
-      include: { category: true },
+      include: { category: true, createdBy: { select: { name: true } } },
       orderBy: { createdAt: "desc" },
     });
     return NextResponse.json(materials);
@@ -63,7 +63,9 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const data = materialSchema.parse(body);
-    const material = await db.material.create({ data });
+    const material = await db.material.create({
+      data: { ...data, createdById: session.user.id },
+    });
     return NextResponse.json(material, { status: 201 });
   } catch (e) {
     if (e instanceof z.ZodError) {
