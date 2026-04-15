@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { signOut } from "next-auth/react";
-import { BookOpen, LogOut, ChevronDown } from "lucide-react";
+import { BookOpen, LogOut, ChevronDown, UserCircle2 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 
 interface FranchiseeNavbarProps {
@@ -63,6 +63,14 @@ export function FranchiseeNavbar({ user }: FranchiseeNavbarProps) {
                 </p>
                 <p className="text-xs text-gray-500 truncate">{user.email}</p>
               </div>
+              <Link
+                href="/perfil"
+                onClick={() => setMenuOpen(false)}
+                className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50 transition"
+              >
+                <UserCircle2 className="h-4 w-4" />
+                Meu Perfil
+              </Link>
               <button
                 onClick={() => signOut({ callbackUrl: "/login" })}
                 className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50 hover:text-red-600 transition"

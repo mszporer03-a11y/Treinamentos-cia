@@ -10,6 +10,7 @@ import {
   Users,
   LogOut,
   BookOpen,
+  UserCircle2,
 } from "lucide-react";
 
 interface AdminSidebarProps {
@@ -29,6 +30,7 @@ const navItems = [
   { href: "/admin/categories", label: "Categorias", icon: FolderOpen },
   { href: "/admin/materials", label: "Materiais", icon: FileText },
   { href: "/admin/users", label: "Usuários", icon: Users },
+  { href: "/admin/perfil", label: "Meu Perfil", icon: UserCircle2 },
 ];
 
 export function AdminSidebar({ user }: AdminSidebarProps) {
