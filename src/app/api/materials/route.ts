@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 import { db } from "@/lib/db";
+import { sendPushToAll } from "@/lib/push";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -66,6 +67,18 @@ export async function POST(req: Request) {
     const material = await db.material.create({
       data: { ...data, createdById: session.user.id },
     });
+
+    if (data.published) {
+      await sendPushToAll(
+        {
+          title: "Novo material disponivel!",
+          body: data.title,
+          url: "/gallery",
+        },
+        "FRANCHISEE"
+      );
+    }
+
     return NextResponse.json(material, { status: 201 });
   } catch (e) {
     if (e instanceof z.ZodError) {

@@ -3,10 +3,11 @@
 export const dynamic = "force-dynamic";
 
 import { useState, useEffect, useCallback } from "react";
-import { Plus, Pencil, Trash2, Eye, EyeOff, FileText, Upload, CheckCircle, ExternalLink } from "lucide-react";
+import { Plus, Pencil, Trash2, Eye, EyeOff, FileText, Upload, CheckCircle, ExternalLink, Users } from "lucide-react";
 import { UploadButton } from "@/lib/uploadthing-components";
 import { getFileType, formatFileSize, formatDate, fileTypeIcon } from "@/lib/utils";
 import { MaterialViewer } from "@/components/franchisee/MaterialViewer";
+import { MaterialViewsModal } from "@/components/admin/MaterialViewsModal";
 
 interface Category {
   id: string;
@@ -55,6 +56,7 @@ export default function MaterialsPage() {
   const [error, setError] = useState("");
   const [filterCategory, setFilterCategory] = useState("");
   const [viewing, setViewing] = useState<Material | null>(null);
+  const [viewingViews, setViewingViews] = useState<Material | null>(null);
 
   const fetchData = useCallback(async () => {
     const [matRes, catRes] = await Promise.all([
@@ -263,6 +265,13 @@ export default function MaterialsPage() {
                     <ExternalLink className="h-4 w-4" />
                   </button>
                   <button
+                    onClick={() => setViewingViews(mat)}
+                    className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition"
+                    title="Ver visualizações"
+                  >
+                    <Users className="h-4 w-4" />
+                  </button>
+                  <button
                     onClick={() => openEdit(mat)}
                     className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
                   >
@@ -359,6 +368,13 @@ export default function MaterialsPage() {
                         title="Abrir arquivo"
                       >
                         <ExternalLink className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => setViewingViews(mat)}
+                        className="p-1.5 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition"
+                        title="Ver visualizações"
+                      >
+                        <Users className="h-4 w-4" />
                       </button>
                       <button
                         onClick={() => openEdit(mat)}
@@ -637,6 +653,14 @@ export default function MaterialsPage() {
       )}
 
       {/* Viewer */}
+      {viewingViews && (
+        <MaterialViewsModal
+          materialId={viewingViews.id}
+          materialTitle={viewingViews.title}
+          onClose={() => setViewingViews(null)}
+        />
+      )}
+
       {viewing && (
         <MaterialViewer
           material={viewing}

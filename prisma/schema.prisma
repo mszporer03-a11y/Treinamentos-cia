@@ -21,15 +21,20 @@ enum FileType {
 }
 
 model User {
-  id        String     @id @default(cuid())
-  name      String
-  email     String     @unique
-  password  String
-  role      Role       @default(FRANCHISEE)
-  active    Boolean    @default(true)
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-  materials Material[]
+  id                String             @id @default(cuid())
+  name              String
+  email             String             @unique
+  password          String
+  role              Role               @default(FRANCHISEE)
+  active            Boolean            @default(true)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  materials         Material[]
+  stores            UserStore[]
+  conversation      Conversation?      @relation("FranchiseeConversations")
+  sentMessages      Message[]          @relation("SentMessages")
+  materialViews     MaterialView[]
+  pushSubscriptions PushSubscription[]
 }
 
 model Category {
@@ -44,19 +49,90 @@ model Category {
 }
 
 model Material {
-  id          String   @id @default(cuid())
+  id          String         @id @default(cuid())
   title       String
   description String?
   fileUrl     String
   fileKey     String
-  fileType    FileType @default(OTHER)
+  fileType    FileType       @default(OTHER)
   mimeType    String?
   fileSize    Int?
-  published   Boolean  @default(true)
+  published   Boolean        @default(true)
   categoryId  String
-  category    Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  category    Category       @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   createdById String?
-  createdBy   User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdBy   User?          @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  views       MaterialView[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+}
+
+// ── Lojas ──────────────────────────────────────────────────────────────
+model Store {
+  id        String      @id @default(cuid())
+  name      String
+  code      String      @unique
+  city      String?
+  active    Boolean     @default(true)
+  users     UserStore[]
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+}
+
+model UserStore {
+  userId  String
+  storeId String
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  store   Store  @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@id([userId, storeId])
+}
+
+// ── Chat ───────────────────────────────────────────────────────────────
+model Conversation {
+  id           String    @id @default(cuid())
+  franchiseeId String    @unique
+  franchisee   User      @relation("FranchiseeConversations", fields: [franchiseeId], references: [id], onDelete: Cascade)
+  messages     Message[]
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model Message {
+  id               String       @id @default(cuid())
+  conversationId   String
+  conversation     Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId         String
+  sender           User         @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  content          String?
+  fileUrl          String?
+  fileKey          String?
+  fileType         String?
+  fileName         String?
+  readByAdmin      Boolean      @default(false)
+  readByFranchisee Boolean      @default(false)
+  createdAt        DateTime     @default(now())
+}
+
+// ── Visualizações de materiais ─────────────────────────────────────────
+model MaterialView {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  materialId String
+  material   Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  viewedAt   DateTime @default(now())
+
+  @@unique([userId, materialId])
+}
+
+// ── Push Notifications ─────────────────────────────────────────────────
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
 }

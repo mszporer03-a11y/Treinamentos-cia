@@ -189,7 +189,10 @@ export default function GalleryPage() {
             <FeedCard
               key={mat.id}
               material={mat}
-              onOpen={() => setViewing(mat)}
+              onOpen={() => {
+                setViewing(mat);
+                fetch(`/api/materials/${mat.id}/view`, { method: "POST" });
+              }}
             />
           ))}
         </div>

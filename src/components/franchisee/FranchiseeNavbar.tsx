@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { signOut } from "next-auth/react";
-import { BookOpen, LogOut, ChevronDown, UserCircle2 } from "lucide-react";
+import { BookOpen, LogOut, ChevronDown, UserCircle2, MessageSquare } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 
 interface FranchiseeNavbarProps {
@@ -40,8 +40,16 @@ export function FranchiseeNavbar({ user }: FranchiseeNavbarProps) {
           <span className="hidden sm:inline">Portal de Treinamentos</span>
         </Link>
 
-        {/* User Menu */}
-        <div className="relative" ref={ref}>
+        {/* Chat link */}
+        <Link
+          href="/chat"
+          className="flex items-center gap-1.5 px-3 py-2 rounded-xl hover:bg-gray-100 transition text-sm text-gray-600"
+        >
+          <MessageSquare className="h-4 w-4" />
+          <span className="hidden sm:inline text-sm font-medium">Chat</span>
+        </Link>
+
+        {/* User Menu */}        <div className="relative" ref={ref}>
           <button
             onClick={() => setMenuOpen(!menuOpen)}
             className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-gray-100 transition text-sm"

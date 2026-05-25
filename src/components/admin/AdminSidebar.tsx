@@ -11,6 +11,8 @@ import {
   LogOut,
   BookOpen,
   UserCircle2,
+  MessageSquare,
+  Store,
 } from "lucide-react";
 
 interface AdminSidebarProps {
@@ -30,6 +32,8 @@ const navItems = [
   { href: "/admin/categories", label: "Categorias", icon: FolderOpen },
   { href: "/admin/materials", label: "Materiais", icon: FileText },
   { href: "/admin/users", label: "Usuários", icon: Users },
+  { href: "/admin/stores", label: "Lojas", icon: Store },
+  { href: "/admin/chat", label: "Chat", icon: MessageSquare },
   { href: "/admin/perfil", label: "Meu Perfil", icon: UserCircle2 },
 ];
 
