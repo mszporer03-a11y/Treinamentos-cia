@@ -2,11 +2,10 @@
 
 export const dynamic = "force-dynamic";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { MessageSquare, Search } from "lucide-react";
 import { ChatWindow } from "@/components/chat/ChatWindow";
 import { useSession } from "next-auth/react";
-import { formatDate } from "@/lib/utils";
 
 interface StoreRef {
   store: { name: string; code: string };
@@ -42,21 +41,25 @@ export default function AdminChatPage() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
 
+  // Use a ref so fetchConversations can read latest `selected` without being
+  // re-created (and re-starting the polling interval) on every click.
+  const selectedRef = useRef<ConversationItem | null>(null);
+  selectedRef.current = selected;
+
   const fetchConversations = useCallback(async () => {
     const res = await fetch("/api/conversations");
     if (res.ok) {
       const data = await res.json();
       setConversations(data);
-      if (!loading) {
-        // update selected if present
-        if (selected) {
-          const updated = data.find((c: ConversationItem) => c.id === selected.id);
-          if (updated) setSelected(updated);
-        }
-      }
+      // Keep the selected conversation up-to-date without the closure trap
+      setSelected((prev) => {
+        if (!prev) return prev;
+        const updated = data.find((c: ConversationItem) => c.id === prev.id);
+        return updated ?? prev;
+      });
     }
     setLoading(false);
-  }, [loading, selected]);
+  }, []); // stable — no deps needed
 
   useEffect(() => {
     fetchConversations();

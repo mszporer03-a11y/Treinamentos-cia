@@ -9,9 +9,31 @@ import {
   Image as ImageIcon,
   Download,
   Loader2,
+  Tag,
 } from "lucide-react";
 import { useUploadThing } from "@/lib/uploadthing-components";
 import { formatDate } from "@/lib/utils";
+
+const MESSAGE_CATEGORIES = [
+  { value: "Solicitacoes", label: "Solicitações", color: "bg-blue-100 text-blue-700" },
+  { value: "Marketing", label: "Marketing", color: "bg-purple-100 text-purple-700" },
+  { value: "SenhasUsuarios", label: "Senhas e usuários", color: "bg-orange-100 text-orange-700" },
+  { value: "SuporteSistema", label: "Suporte Sistema", color: "bg-red-100 text-red-700" },
+] as const;
+
+type MessageCategoryValue = typeof MESSAGE_CATEGORIES[number]["value"];
+
+function categoryBadge(value: string | null | undefined) {
+  if (!value) return null;
+  const cat = MESSAGE_CATEGORIES.find((c) => c.value === value);
+  if (!cat) return null;
+  return (
+    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${cat.color}`}>
+      <Tag className="h-2.5 w-2.5" />
+      {cat.label}
+    </span>
+  );
+}
 
 interface Sender {
   id: string;
@@ -25,6 +47,7 @@ interface Message {
   fileUrl: string | null;
   fileType: string | null;
   fileName: string | null;
+  category: string | null;
   createdAt: string;
   sender: Sender;
 }
@@ -76,6 +99,8 @@ export function ChatWindow({
   const [messages, setMessages] = useState<Message[]>([]);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
+  const [category, setCategory] = useState<MessageCategoryValue | "">("");
+  const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [pendingFile, setPendingFile] = useState<{
     url: string;
     key: string;
@@ -135,11 +160,14 @@ export function ChatWindow({
         fileKey: pendingFile?.key ?? null,
         fileType: pendingFile?.type ?? null,
         fileName: pendingFile?.name ?? null,
+        category: category || null,
       }),
     });
 
     setText("");
     setPendingFile(null);
+    setCategory("");
+    setShowCategoryPicker(false);
     setSending(false);
     await fetchMessages();
   }
@@ -201,6 +229,11 @@ export function ChatWindow({
                 {!isMe && (
                   <span className="text-[10px] text-gray-400 px-1">{msg.sender.name}</span>
                 )}
+                {msg.category && (
+                  <div className={isMe ? "self-end pr-1" : "self-start pl-1"}>
+                    {categoryBadge(msg.category)}
+                  </div>
+                )}
                 <div
                   className={`px-3 py-2 rounded-2xl text-sm leading-relaxed ${
                     isMe
@@ -245,6 +278,44 @@ export function ChatWindow({
 
       {/* Input bar */}
       <div className="px-4 py-3 bg-white border-t border-gray-200 flex-shrink-0">
+        {/* Category picker (shows when open) */}
+        {showCategoryPicker && (
+          <div className="flex flex-wrap gap-1.5 mb-2">
+            <button
+              onClick={() => { setCategory(""); setShowCategoryPicker(false); }}
+              className={`px-2.5 py-1 rounded-full text-xs font-medium border transition ${
+                category === "" ? "bg-gray-200 border-gray-400 text-gray-800" : "bg-white border-gray-200 text-gray-500 hover:bg-gray-50"
+              }`}
+            >
+              Sem categoria
+            </button>
+            {MESSAGE_CATEGORIES.map((cat) => (
+              <button
+                key={cat.value}
+                onClick={() => { setCategory(cat.value); setShowCategoryPicker(false); }}
+                className={`px-2.5 py-1 rounded-full text-xs font-medium border transition ${
+                  category === cat.value ? cat.color + " border-transparent" : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
+                }`}
+              >
+                {cat.label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Selected category badge */}
+        {category && !showCategoryPicker && (
+          <div className="flex items-center gap-1.5 mb-2">
+            {categoryBadge(category)}
+            <button
+              onClick={() => setCategory("")}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </div>
+        )}
+
         <div className="flex items-end gap-2">
           <button
             type="button"
@@ -266,6 +337,20 @@ export function ChatWindow({
             className="hidden"
             onChange={handleFileSelect}
           />
+
+          {/* Category tag button */}
+          <button
+            type="button"
+            onClick={() => setShowCategoryPicker((v) => !v)}
+            className={`p-2 rounded-xl transition flex-shrink-0 ${
+              category
+                ? "text-blue-600 bg-blue-50"
+                : "text-gray-400 hover:text-blue-600 hover:bg-blue-50"
+            }`}
+            title="Categorizar mensagem"
+          >
+            <Tag className="h-5 w-5" />
+          </button>
 
           <textarea
             value={text}

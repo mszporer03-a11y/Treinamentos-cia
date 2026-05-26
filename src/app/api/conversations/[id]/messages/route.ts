@@ -59,7 +59,7 @@ export async function POST(
   }
 
   const body = await req.json();
-  const { content, fileUrl, fileKey, fileType, fileName } = body;
+  const { content, fileUrl, fileKey, fileType, fileName, category } = body;
 
   if (!content?.trim() && !fileUrl) {
     return NextResponse.json({ error: "Mensagem vazia" }, { status: 400 });
@@ -76,6 +76,7 @@ export async function POST(
       fileKey: fileKey || null,
       fileType: fileType || null,
       fileName: fileName || null,
+      category: category || null,
       readByAdmin: isAdmin,
       readByFranchisee: !isAdmin,
     },

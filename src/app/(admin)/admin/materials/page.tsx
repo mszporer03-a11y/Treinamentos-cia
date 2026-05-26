@@ -200,20 +200,43 @@ export default function MaterialsPage() {
         </button>
       </div>
 
-      {/* Filter */}
-      <div className="mb-5">
-        <select
-          value={filterCategory}
-          onChange={(e) => setFilterCategory(e.target.value)}
-          className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+      {/* Category filter cards */}
+      <div className="mb-5 flex flex-wrap gap-2">
+        <button
+          onClick={() => setFilterCategory("")}
+          className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-medium transition ${
+            filterCategory === ""
+              ? "bg-blue-600 text-white border-blue-600"
+              : "bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:text-blue-600"
+          }`}
         >
-          <option value="">Todas as categorias</option>
-          {categories.map((cat) => (
-            <option key={cat.id} value={cat.id}>
-              {cat.icon} {cat.name}
-            </option>
-          ))}
-        </select>
+          <span>🗂️</span>
+          <span>Todos</span>
+          <span className={`text-xs px-1.5 py-0.5 rounded-full ${filterCategory === "" ? "bg-blue-500 text-white" : "bg-gray-100 text-gray-500"}`}>
+            {materials.length}
+          </span>
+        </button>
+        {categories.map((cat) => {
+          const count = materials.filter((m) => m.categoryId === cat.id).length;
+          const active = filterCategory === cat.id;
+          return (
+            <button
+              key={cat.id}
+              onClick={() => setFilterCategory(active ? "" : cat.id)}
+              className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-medium transition ${
+                active
+                  ? "bg-blue-600 text-white border-blue-600"
+                  : "bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:text-blue-600"
+              }`}
+            >
+              <span>{cat.icon}</span>
+              <span>{cat.name}</span>
+              <span className={`text-xs px-1.5 py-0.5 rounded-full ${active ? "bg-blue-500 text-white" : "bg-gray-100 text-gray-500"}`}>
+                {count}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {loading ? (

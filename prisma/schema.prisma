@@ -109,6 +109,7 @@ model Message {
   fileKey          String?
   fileType         String?
   fileName         String?
+  category         String?      // Solicitacao | Marketing | SenhasUsuarios | SuporteSistema
   readByAdmin      Boolean      @default(false)
   readByFranchisee Boolean      @default(false)
   createdAt        DateTime     @default(now())
