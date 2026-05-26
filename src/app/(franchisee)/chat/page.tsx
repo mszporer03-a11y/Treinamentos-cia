@@ -11,12 +11,27 @@ import { usePushNotifications } from "@/hooks/usePushNotifications";
 export default function FranchiseeChatPage() {
   const { data: session } = useSession();
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const { permission, subscribe } = usePushNotifications();
 
   useEffect(() => {
     fetch("/api/conversations")
-      .then((r) => r.json())
-      .then((data) => setConversationId(data.id));
+      .then((r) => {
+        if (!r.ok) throw new Error(`Erro ao carregar conversa (${r.status})`);
+        return r.json();
+      })
+      .then((data) => {
+        if (data?.id) {
+          setConversationId(data.id);
+        } else {
+          setFetchError("Conversa não encontrada.");
+        }
+      })
+      .catch((err: unknown) => {
+        setFetchError(
+          err instanceof Error ? err.message : "Erro ao carregar conversa."
+        );
+      });
   }, []);
 
   return (
@@ -33,7 +48,11 @@ export default function FranchiseeChatPage() {
         )}
       </div>
 
-      {!conversationId ? (
+      {fetchError ? (
+        <div className="flex-1 flex items-center justify-center">
+          <p className="text-sm text-red-500">{fetchError}</p>
+        </div>
+      ) : !conversationId ? (
         <div className="flex-1 flex items-center justify-center">
           <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
         </div>
