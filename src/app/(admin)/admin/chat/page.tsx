@@ -8,7 +8,7 @@ import { ChatWindow } from "@/components/chat/ChatWindow";
 import { useSession } from "next-auth/react";
 
 interface StoreRef {
-  store: { name: string; code: string };
+  store: { id: string; name: string; code: string };
 }
 
 interface Franchisee {
@@ -27,11 +27,14 @@ interface LastMessage {
   readByAdmin: boolean;
 }
 
+interface PendingStore { id: string; name: string; code: string; }
+
 interface ConversationItem {
   id: string;
   franchisee: Franchisee;
   lastMessage: LastMessage | null;
   updatedAt: string;
+  pendingStores: PendingStore[];
 }
 
 export default function AdminChatPage() {
@@ -245,11 +248,15 @@ export default function AdminChatPage() {
                           </span>
                         )}
                       </div>
-                      {conv.franchisee.stores.length > 0 && (
-                        <p className="text-[10px] text-blue-600 mb-0.5">
+                      {conv.pendingStores && conv.pendingStores.length > 0 ? (
+                        <p className="text-[10px] text-emerald-600 mb-0.5 flex items-center gap-1 flex-wrap">
+                          🏪 {conv.pendingStores.map((s) => s.name).join(", ")}
+                        </p>
+                      ) : conv.franchisee.stores.length > 0 ? (
+                        <p className="text-[10px] text-gray-400 mb-0.5 truncate">
                           {conv.franchisee.stores.map((s) => s.store.name).join(", ")}
                         </p>
-                      )}
+                      ) : null}
                       <p className={`text-xs truncate ${unread ? "text-gray-800 font-medium" : "text-gray-500"}`}>
                         {getLastMessagePreview(conv.lastMessage)}
                       </p>
@@ -282,6 +289,11 @@ export default function AdminChatPage() {
               currentUserId={session?.user?.id ?? ""}
               currentUserRole="ADMIN"
               recipientName={selected.franchisee.name}
+              availableStores={selected.franchisee.stores.map((s) => ({
+                id: s.store.id,
+                name: s.store.name,
+                code: s.store.code,
+              }))}
             />
           </div>
         ) : (

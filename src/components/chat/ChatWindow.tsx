@@ -10,6 +10,7 @@ import {
   Download,
   Loader2,
   Tag,
+  Store,
 } from "lucide-react";
 import { useUploadThing } from "@/lib/uploadthing-components";
 import { formatDate } from "@/lib/utils";
@@ -41,6 +42,12 @@ interface Sender {
   role: string;
 }
 
+interface LinkedStore {
+  id: string;
+  name: string;
+  code: string;
+}
+
 interface Message {
   id: string;
   content: string | null;
@@ -50,6 +57,7 @@ interface Message {
   category: string | null;
   createdAt: string;
   sender: Sender;
+  linkedStores?: { store: LinkedStore }[];
 }
 
 interface ChatWindowProps {
@@ -58,6 +66,7 @@ interface ChatWindowProps {
   currentUserRole: "ADMIN" | "FRANCHISEE";
   recipientName?: string;
   pollInterval?: number;
+  availableStores?: LinkedStore[];
 }
 
 function FilePreview({ url, type, name }: { url: string; type: string | null; name: string | null }) {
@@ -95,12 +104,15 @@ export function ChatWindow({
   currentUserRole,
   recipientName = "Admin",
   pollInterval = 4000,
+  availableStores = [],
 }: ChatWindowProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [category, setCategory] = useState<MessageCategoryValue | "">("");
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
+  const [selectedStoreIds, setSelectedStoreIds] = useState<string[]>([]);
+  const [showStorePicker, setShowStorePicker] = useState(false);
   const [pendingFile, setPendingFile] = useState<{
     url: string;
     key: string;
@@ -161,13 +173,16 @@ export function ChatWindow({
         fileType: pendingFile?.type ?? null,
         fileName: pendingFile?.name ?? null,
         category: category || null,
+        linkedStoreIds: selectedStoreIds,
       }),
     });
 
     setText("");
     setPendingFile(null);
     setCategory("");
+    setSelectedStoreIds([]);
     setShowCategoryPicker(false);
+    setShowStorePicker(false);
     setSending(false);
     await fetchMessages();
   }
@@ -234,6 +249,16 @@ export function ChatWindow({
                     {categoryBadge(msg.category)}
                   </div>
                 )}
+                {msg.linkedStores && msg.linkedStores.length > 0 && (
+                  <div className={`flex flex-wrap gap-1 ${isMe ? "self-end pr-1" : "self-start pl-1"}`}>
+                    {msg.linkedStores.map(({ store }) => (
+                      <span key={store.id} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-100 text-emerald-700">
+                        <Store className="h-2.5 w-2.5" />
+                        {store.name}
+                      </span>
+                    ))}
+                  </div>
+                )}
                 <div
                   className={`px-3 py-2 rounded-2xl text-sm leading-relaxed ${
                     isMe
@@ -278,6 +303,50 @@ export function ChatWindow({
 
       {/* Input bar */}
       <div className="px-4 py-3 bg-white border-t border-gray-200 flex-shrink-0">
+        {/* Store picker (admin only) */}
+        {currentUserRole === "ADMIN" && availableStores.length > 0 && showStorePicker && (
+          <div className="flex flex-wrap gap-1.5 mb-2 p-2 bg-emerald-50 rounded-xl border border-emerald-100">
+            <p className="w-full text-[10px] text-emerald-700 font-semibold mb-1">Vincular à loja:</p>
+            {availableStores.map((store) => {
+              const selected = selectedStoreIds.includes(store.id);
+              return (
+                <button
+                  key={store.id}
+                  onClick={() => setSelectedStoreIds((prev) =>
+                    selected ? prev.filter((id) => id !== store.id) : [...prev, store.id]
+                  )}
+                  className={`px-2.5 py-1 rounded-full text-xs font-medium border transition ${
+                    selected
+                      ? "bg-emerald-600 text-white border-emerald-600"
+                      : "bg-white border-emerald-200 text-emerald-700 hover:bg-emerald-100"
+                  }`}
+                >
+                  {store.name}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Selected stores badges */}
+        {currentUserRole === "ADMIN" && selectedStoreIds.length > 0 && !showStorePicker && (
+          <div className="flex flex-wrap items-center gap-1.5 mb-2">
+            {selectedStoreIds.map((id) => {
+              const store = availableStores.find((s) => s.id === id);
+              if (!store) return null;
+              return (
+                <span key={id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
+                  <Store className="h-3 w-3" />
+                  {store.name}
+                  <button onClick={() => setSelectedStoreIds((prev) => prev.filter((i) => i !== id))}>
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              );
+            })}
+          </div>
+        )}
+
         {/* Category picker (shows when open) */}
         {showCategoryPicker && (
           <div className="flex flex-wrap gap-1.5 mb-2">
@@ -351,6 +420,22 @@ export function ChatWindow({
           >
             <Tag className="h-5 w-5" />
           </button>
+
+          {/* Link to store button (admin only) */}
+          {currentUserRole === "ADMIN" && availableStores.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowStorePicker((v) => !v)}
+              className={`p-2 rounded-xl transition flex-shrink-0 ${
+                selectedStoreIds.length > 0
+                  ? "text-emerald-600 bg-emerald-50"
+                  : "text-gray-400 hover:text-emerald-600 hover:bg-emerald-50"
+              }`}
+              title="Vincular à loja"
+            >
+              <Store className="h-5 w-5" />
+            </button>
+          )}
 
           <textarea
             value={text}

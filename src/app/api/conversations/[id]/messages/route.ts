@@ -23,7 +23,10 @@ export async function GET(
 
   const messages = await db.message.findMany({
     where: { conversationId: params.id },
-    include: { sender: { select: { id: true, name: true, role: true } } },
+    include: {
+      sender: { select: { id: true, name: true, role: true } },
+      linkedStores: { include: { store: { select: { id: true, name: true, code: true } } } },
+    },
     orderBy: { createdAt: "asc" },
   });
 
@@ -59,13 +62,14 @@ export async function POST(
   }
 
   const body = await req.json();
-  const { content, fileUrl, fileKey, fileType, fileName, category } = body;
+  const { content, fileUrl, fileKey, fileType, fileName, category, linkedStoreIds } = body;
 
   if (!content?.trim() && !fileUrl) {
     return NextResponse.json({ error: "Mensagem vazia" }, { status: 400 });
   }
 
   const isAdmin = session.user.role === "ADMIN";
+  const storeIds: string[] = Array.isArray(linkedStoreIds) ? linkedStoreIds : [];
 
   const message = await db.message.create({
     data: {
@@ -79,8 +83,14 @@ export async function POST(
       category: category || null,
       readByAdmin: isAdmin,
       readByFranchisee: !isAdmin,
+      linkedStores: storeIds.length > 0
+        ? { create: storeIds.map((storeId) => ({ storeId })) }
+        : undefined,
     },
-    include: { sender: { select: { id: true, name: true, role: true } } },
+    include: {
+      sender: { select: { id: true, name: true, role: true } },
+      linkedStores: { include: { store: { select: { id: true, name: true, code: true } } } },
+    },
   });
 
   // Atualizar updatedAt da conversa

@@ -13,7 +13,6 @@ import {
   UserCircle2,
   MessageSquare,
   Store,
-  PackageSearch,
   Megaphone,
   AlertTriangle,
   BarChart2,
@@ -21,6 +20,7 @@ import {
   MapPin,
   ClipboardCheck,
   CheckSquare,
+  ClipboardList,
 } from "lucide-react";
 
 interface AdminSidebarProps {
@@ -39,7 +39,7 @@ const sections = [
     ],
   },
   {
-    label: "ConteÃºdo",
+    label: "Conteúdo",
     items: [
       { href: "/admin/materials", label: "Materiais", icon: FileText },
       { href: "/admin/categories", label: "Categorias", icon: FolderOpen },
@@ -47,11 +47,10 @@ const sections = [
     ],
   },
   {
-    label: "OperaÃ§Ãµes",
+    label: "Operações",
     items: [
-      { href: "/admin/supply-requests", label: "Pedidos de Insumos", icon: PackageSearch },
-      { href: "/admin/alerts", label: "NÃ£o Conformidades", icon: AlertTriangle },
-      { href: "/admin/kilo-price", label: "PreÃ§o do Quilo", icon: DollarSign },
+      { href: "/admin/alerts", label: "Não Conformidades", icon: AlertTriangle },
+      { href: "/admin/kilo-price", label: "Preço do Quilo", icon: DollarSign },
     ],
   },
   {
@@ -67,12 +66,13 @@ const sections = [
     items: [
       { href: "/admin/surveys", label: "Pesquisas", icon: BarChart2 },
       { href: "/admin/documents", label: "Documentos", icon: ClipboardCheck },
+      { href: "/admin/checklists", label: "Checklists", icon: ClipboardList },
     ],
   },
   {
-    label: "UsuÃ¡rios",
+    label: "Usuários",
     items: [
-      { href: "/admin/users", label: "UsuÃ¡rios", icon: Users },
+      { href: "/admin/users", label: "Usuários", icon: Users },
       { href: "/admin/perfil", label: "Meu Perfil", icon: UserCircle2 },
     ],
   },

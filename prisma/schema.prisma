@@ -101,6 +101,7 @@ model User {
   surveyResponses   SurveyResponse[]
   documents         FranchiseeDocument[]
   tutorialSeen      AppTutorialSeen?
+  checklistResponses ChecklistResponse[]
 }
 
 model Category {
@@ -150,6 +151,8 @@ model Store {
   schedules      WorkSchedule[]
   kiloPrices     KiloPrice[]
   onboarding     StoreOnboarding?
+  messageLinks   MessageStore[]
+  checklistResponses ChecklistResponse[]
   createdAt      DateTime             @default(now())
   updatedAt      DateTime             @updatedAt
 }
@@ -174,20 +177,30 @@ model Conversation {
 }
 
 model Message {
-  id               String       @id @default(cuid())
+  id               String         @id @default(cuid())
   conversationId   String
-  conversation     Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  conversation     Conversation   @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   senderId         String
-  sender           User         @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  sender           User           @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
   content          String?
   fileUrl          String?
   fileKey          String?
   fileType         String?
   fileName         String?
   category         String?
-  readByAdmin      Boolean      @default(false)
-  readByFranchisee Boolean      @default(false)
-  createdAt        DateTime     @default(now())
+  readByAdmin      Boolean        @default(false)
+  readByFranchisee Boolean        @default(false)
+  linkedStores     MessageStore[]
+  createdAt        DateTime       @default(now())
+}
+
+model MessageStore {
+  messageId String
+  storeId   String
+  message   Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  store     Store   @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@id([messageId, storeId])
 }
 
 // ── Visualizações de materiais ──────────────────────────────────────────
@@ -423,5 +436,61 @@ model AppTutorialSeen {
   userId String   @unique
   user   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   seenAt DateTime @default(now())
+}
+
+// ── Checklists ──────────────────────────────────────────────────────────
+model ChecklistTemplate {
+  id          String             @id @default(cuid())
+  name        String
+  description String?
+  active      Boolean            @default(true)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  sections    ChecklistSection[]
+  responses   ChecklistResponse[]
+}
+
+model ChecklistSection {
+  id         String            @id @default(cuid())
+  templateId String
+  template   ChecklistTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  name       String
+  order      Int               @default(0)
+  items      ChecklistItem[]
+}
+
+model ChecklistItem {
+  id            String                   @id @default(cuid())
+  sectionId     String
+  section       ChecklistSection         @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  text          String
+  order         Int                      @default(0)
+  responseItems ChecklistResponseItem[]
+}
+
+model ChecklistResponse {
+  id          String                   @id @default(cuid())
+  templateId  String
+  template    ChecklistTemplate        @relation(fields: [templateId], references: [id])
+  storeId     String
+  store       Store                    @relation(fields: [storeId], references: [id])
+  responderId String
+  responder   User                     @relation(fields: [responderId], references: [id])
+  notes       String?
+  completedAt DateTime?
+  createdAt   DateTime                 @default(now())
+  items       ChecklistResponseItem[]
+}
+
+model ChecklistResponseItem {
+  id         String            @id @default(cuid())
+  responseId String
+  response   ChecklistResponse @relation(fields: [responseId], references: [id], onDelete: Cascade)
+  itemId     String
+  item       ChecklistItem     @relation(fields: [itemId], references: [id])
+  checked    Boolean           @default(false)
+  notes      String?
+
+  @@unique([responseId, itemId])
 }
 

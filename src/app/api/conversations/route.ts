@@ -19,7 +19,7 @@ export async function GET() {
             id: true,
             name: true,
             email: true,
-            stores: { include: { store: { select: { name: true, code: true } } } },
+            stores: { include: { store: { select: { id: true, name: true, code: true } } } },
           },
         },
         messages: {
@@ -38,12 +38,38 @@ export async function GET() {
       orderBy: { updatedAt: "desc" },
     });
 
+    // Find stores linked to unread admin messages, grouped by conversation
+    const convIds = conversations.map((c) => c.id);
+    const unreadMessages = await db.message.findMany({
+      where: {
+        conversationId: { in: convIds },
+        readByFranchisee: false,
+        sender: { role: "ADMIN" },
+        linkedStores: { some: {} },
+      },
+      select: {
+        conversationId: true,
+        linkedStores: { include: { store: { select: { id: true, name: true, code: true } } } },
+      },
+    });
+
+    // Group stores by conversation, deduplicate
+    const pendingStoresByConv = new Map<string, { id: string; name: string; code: string }[]>();
+    for (const msg of unreadMessages) {
+      const existing = pendingStoresByConv.get(msg.conversationId) ?? [];
+      for (const ms of msg.linkedStores) {
+        if (!existing.find((s) => s.id === ms.store.id)) existing.push(ms.store);
+      }
+      pendingStoresByConv.set(msg.conversationId, existing);
+    }
+
     return NextResponse.json(
       conversations.map((c) => ({
         id: c.id,
         franchisee: c.franchisee,
         lastMessage: c.messages[0] ?? null,
-        unreadCount: 0, // calculated below separately if needed
+        unreadCount: 0,
+        pendingStores: pendingStoresByConv.get(c.id) ?? [],
         updatedAt: c.updatedAt,
       }))
     );

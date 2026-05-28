@@ -1,5 +1,5 @@
 ﻿import { db } from "@/lib/db";
-import { Users, FolderOpen, FileText, Eye, Store, PackageSearch, AlertTriangle, BarChart2, Plus, Map, ClipboardList } from "lucide-react";
+import { Users, FolderOpen, FileText, Eye, Store, AlertTriangle, BarChart2, Plus, Map, ClipboardList } from "lucide-react";
 import { AdminFeed } from "@/components/admin/AdminFeed";
 import Link from "next/link";
 
@@ -8,14 +8,13 @@ export const dynamic = "force-dynamic";
 async function getDashboardData() {
   const [
     totalUsers, activeStores, totalCategories, totalMaterials, publishedMaterials,
-    pendingSupply, openAlerts, activeSurveys, recentMaterials,
+    openAlerts, activeSurveys, recentMaterials,
   ] = await Promise.all([
     db.user.count({ where: { role: "FRANCHISEE", active: true } }),
     db.store.count({ where: { active: true } }),
     db.category.count(),
     db.material.count(),
     db.material.count({ where: { published: true } }),
-    db.supplyRequest.count({ where: { status: "PENDING" } }),
     db.nonComplianceAlert.count({ where: { status: { not: "RESOLVED" } } }),
     db.survey.count({ where: { active: true } }),
     db.material.findMany({
@@ -25,7 +24,7 @@ async function getDashboardData() {
     }),
   ]);
 
-  return { totalUsers, activeStores, totalCategories, totalMaterials, publishedMaterials, pendingSupply, openAlerts, activeSurveys, recentMaterials };
+  return { totalUsers, activeStores, totalCategories, totalMaterials, publishedMaterials, openAlerts, activeSurveys, recentMaterials };
 }
 
 export default async function AdminDashboardPage() {
@@ -39,7 +38,6 @@ export default async function AdminDashboardPage() {
   ];
 
   const alerts = [
-    { label: "Pedidos aguardando", value: data.pendingSupply,  icon: PackageSearch, color: "text-orange-600 bg-orange-50 border-orange-100", href: "/admin/supply-requests", urgent: data.pendingSupply > 0 },
     { label: "Alertas abertos",    value: data.openAlerts,     icon: AlertTriangle, color: "text-red-600 bg-red-50 border-red-100",           href: "/admin/alerts",          urgent: data.openAlerts > 0 },
     { label: "Pesquisas ativas",   value: data.activeSurveys,  icon: BarChart2,     color: "text-violet-600 bg-violet-50 border-violet-100",  href: "/admin/surveys",         urgent: false },
     { label: "Categorias",         value: data.totalCategories,icon: FolderOpen,    color: "text-gray-600 bg-gray-50 border-gray-100",        href: "/admin/categories",      urgent: false },
@@ -47,7 +45,6 @@ export default async function AdminDashboardPage() {
 
   const shortcuts = [
     { href: "/admin/materials?new=1",   icon: Plus,         label: "Publicar Material",    color: "bg-purple-600 hover:bg-purple-700" },
-    { href: "/admin/supply-requests",   icon: PackageSearch,label: "Ver Pedidos",           color: "bg-orange-500 hover:bg-orange-600" },
     { href: "/admin/map",               icon: Map,          label: "Mapa de Lojas",         color: "bg-emerald-600 hover:bg-emerald-700" },
     { href: "/admin/onboarding",        icon: ClipboardList,label: "Onboarding",            color: "bg-blue-600 hover:bg-blue-700" },
   ];

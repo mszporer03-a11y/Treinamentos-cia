@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { MaterialViewer } from "@/components/franchisee/MaterialViewer";
-import { Play, FileText, Image as ImageIcon, File, PackageSearch, GraduationCap, TrendingUp, MessageSquare, BarChart2 } from "lucide-react";
+import { Play, FileText, Image as ImageIcon, File, GraduationCap, TrendingUp, MessageSquare, BarChart2, ClipboardList } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -112,12 +112,12 @@ function FeedCard({ material, onOpen }: { material: Material; onOpen: () => void
 }
 
 const QUICK_ACCESS = [
-  { href: "/supply-requests", icon: PackageSearch, label: "Pedido de Insumos",  desc: "Solicite insumos e materiais",         color: "bg-orange-50 text-orange-600 border-orange-100" },
-  { href: "/employees",       icon: GraduationCap, label: "Treinamentos",       desc: "Gerencie a equipe e cursos",          color: "bg-violet-50 text-violet-600 border-violet-100" },
-  { href: "/surveys",         icon: BarChart2,     label: "Pesquisas",          desc: "Responda pesquisas da rede",          color: "bg-purple-50 text-purple-600 border-purple-100" },
-  { href: "/documents",       icon: FileText,      label: "Documentos",         desc: "Contratos e alvarás",                 color: "bg-teal-50 text-teal-600 border-teal-100" },
-  { href: "/kilo-price",      icon: TrendingUp,    label: "Preço do Quilo",     desc: "Veja e confirme o preço",             color: "bg-green-50 text-green-600 border-green-100" },
-  { href: "/chat",            icon: MessageSquare, label: "Chat",               desc: "Fale com o suporte",                  color: "bg-gray-50 text-gray-600 border-gray-200" },
+  { href: "/employees",    icon: GraduationCap, label: "Treinamentos",    desc: "Gerencie a equipe e cursos",     color: "bg-violet-50 text-violet-600 border-violet-100" },
+  { href: "/surveys",     icon: BarChart2,     label: "Pesquisas",      desc: "Responda pesquisas da rede",     color: "bg-purple-50 text-purple-600 border-purple-100" },
+  { href: "/documents",   icon: FileText,      label: "Documentos",     desc: "Contratos e alvarás",            color: "bg-teal-50 text-teal-600 border-teal-100" },
+  { href: "/kilo-price",  icon: TrendingUp,    label: "Preço do Quilo", desc: "Veja e confirme o preço",        color: "bg-green-50 text-green-600 border-green-100" },
+  { href: "/checklists",  icon: ClipboardList, label: "Checklists",     desc: "Visualize e preencha checklists",color: "bg-orange-50 text-orange-600 border-orange-100" },
+  { href: "/chat",        icon: MessageSquare, label: "Chat",           desc: "Fale com o suporte",             color: "bg-gray-50 text-gray-600 border-gray-200" },
 ];
 
 export default function GalleryPage() {
