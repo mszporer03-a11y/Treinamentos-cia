@@ -20,21 +20,87 @@ enum FileType {
   OTHER
 }
 
+// ── Novos enums ─────────────────────────────────────────────────────────
+enum SupplyStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  DELIVERED
+}
+
+enum SupplyCategory {
+  INSUMOS
+  UNIFORMES
+  TALHERES
+  DESCARTAVEIS
+  OUTROS
+}
+
+enum EmployeeRole {
+  CHURRASQUEIRO
+  AUXILIAR_CHURRASCO
+  CAIXA
+  GERENTE_OPERACIONAL
+  ASG
+  OUTRO
+}
+
+enum ShiftType {
+  MANHA
+  TARDE
+  NOITE
+  INTEGRAL
+  FOLGA
+}
+
+enum AlertSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum AlertStatus {
+  OPEN
+  ACKNOWLEDGED
+  RESOLVED
+}
+
+enum DocCategory {
+  CONTRATO
+  ADITIVO
+  PROCURACAO
+  ALVARA
+  CERTIFICADO
+  OUTRO
+}
+
+enum OnboardingPhase {
+  OBRAS
+  EQUIPAMENTOS
+  TREINAMENTO
+  APROVACAO
+}
+
 model User {
-  id                String             @id @default(cuid())
+  id                String               @id @default(cuid())
   name              String
-  email             String             @unique
+  email             String               @unique
   password          String
-  role              Role               @default(FRANCHISEE)
-  active            Boolean            @default(true)
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
+  role              Role                 @default(FRANCHISEE)
+  active            Boolean              @default(true)
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
   materials         Material[]
   stores            UserStore[]
-  conversation      Conversation?      @relation("FranchiseeConversations")
-  sentMessages      Message[]          @relation("SentMessages")
+  conversation      Conversation?        @relation("FranchiseeConversations")
+  sentMessages      Message[]            @relation("SentMessages")
   materialViews     MaterialView[]
   pushSubscriptions PushSubscription[]
+  supplyRequests    SupplyRequest[]
+  surveyResponses   SurveyResponse[]
+  documents         FranchiseeDocument[]
+  tutorialSeen      AppTutorialSeen?
 }
 
 model Category {
@@ -49,34 +115,43 @@ model Category {
 }
 
 model Material {
-  id          String         @id @default(cuid())
-  title       String
-  description String?
-  fileUrl     String
-  fileKey     String
-  fileType    FileType       @default(OTHER)
-  mimeType    String?
-  fileSize    Int?
-  published   Boolean        @default(true)
-  categoryId  String
-  category    Category       @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  createdById String?
-  createdBy   User?          @relation(fields: [createdById], references: [id], onDelete: SetNull)
-  views       MaterialView[]
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  id                String             @id @default(cuid())
+  title             String
+  description       String?
+  fileUrl           String
+  fileKey           String
+  fileType          FileType           @default(OTHER)
+  mimeType          String?
+  fileSize          Int?
+  published         Boolean            @default(true)
+  categoryId        String
+  category          Category           @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  createdById       String?
+  createdBy         User?              @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  views             MaterialView[]
+  employeeTrainings EmployeeTraining[]
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
 }
 
-// ── Lojas ──────────────────────────────────────────────────────────────
+// ── Lojas ───────────────────────────────────────────────────────────────
 model Store {
-  id        String      @id @default(cuid())
-  name      String
-  code      String      @unique
-  city      String?
-  active    Boolean     @default(true)
-  users     UserStore[]
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
+  id             String               @id @default(cuid())
+  name           String
+  code           String               @unique
+  city           String?
+  lat            Float?
+  lng            Float?
+  active         Boolean              @default(true)
+  users          UserStore[]
+  employees      Employee[]
+  supplyRequests SupplyRequest[]
+  alerts         NonComplianceAlert[]
+  schedules      WorkSchedule[]
+  kiloPrices     KiloPrice[]
+  onboarding     StoreOnboarding?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
 }
 
 model UserStore {
@@ -88,7 +163,7 @@ model UserStore {
   @@id([userId, storeId])
 }
 
-// ── Chat ───────────────────────────────────────────────────────────────
+// ── Chat ────────────────────────────────────────────────────────────────
 model Conversation {
   id           String    @id @default(cuid())
   franchiseeId String    @unique
@@ -109,13 +184,13 @@ model Message {
   fileKey          String?
   fileType         String?
   fileName         String?
-  category         String?      // Solicitacao | Marketing | SenhasUsuarios | SuporteSistema
+  category         String?
   readByAdmin      Boolean      @default(false)
   readByFranchisee Boolean      @default(false)
   createdAt        DateTime     @default(now())
 }
 
-// ── Visualizações de materiais ─────────────────────────────────────────
+// ── Visualizações de materiais ──────────────────────────────────────────
 model MaterialView {
   id         String   @id @default(cuid())
   userId     String
@@ -127,7 +202,7 @@ model MaterialView {
   @@unique([userId, materialId])
 }
 
-// ── Push Notifications ─────────────────────────────────────────────────
+// ── Push Notifications ──────────────────────────────────────────────────
 model PushSubscription {
   id        String   @id @default(cuid())
   userId    String
@@ -137,3 +212,216 @@ model PushSubscription {
   auth      String
   createdAt DateTime @default(now())
 }
+
+// ── Pedidos de Insumos ──────────────────────────────────────────────────
+model SupplyRequest {
+  id          String              @id @default(cuid())
+  storeId     String
+  store       Store               @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  requesterId String
+  requester   User                @relation(fields: [requesterId], references: [id])
+  items       SupplyRequestItem[]
+  status      SupplyStatus        @default(PENDING)
+  notes       String?
+  adminNotes  String?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+}
+
+model SupplyRequestItem {
+  id        String        @id @default(cuid())
+  requestId String
+  request   SupplyRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  category  SupplyCategory
+  name      String
+  quantity  Int
+  unit      String        @default("un")
+}
+
+// ── Funcionários ────────────────────────────────────────────────────────
+model Employee {
+  id        String             @id @default(cuid())
+  storeId   String
+  store     Store              @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  name      String
+  role      EmployeeRole       @default(OUTRO)
+  contact   String?
+  active    Boolean            @default(true)
+  shifts    WorkShift[]
+  trainings EmployeeTraining[]
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+}
+
+// ── Escala de Trabalho ──────────────────────────────────────────────────
+model WorkSchedule {
+  id        String      @id @default(cuid())
+  storeId   String
+  store     Store       @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  weekStart DateTime
+  shifts    WorkShift[]
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@unique([storeId, weekStart])
+}
+
+model WorkShift {
+  id         String       @id @default(cuid())
+  scheduleId String
+  schedule   WorkSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  employeeId String
+  employee   Employee     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  dayIndex   Int          // 0=Mon … 6=Sun
+  type       ShiftType    @default(MANHA)
+  startTime  String?
+  endTime    String?
+
+  @@unique([scheduleId, employeeId, dayIndex])
+}
+
+// ── Treinamento de Colaboradores ────────────────────────────────────────
+model EmployeeTraining {
+  id          String    @id @default(cuid())
+  employeeId  String
+  employee    Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  materialId  String
+  material    Material  @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  assignedAt  DateTime  @default(now())
+  completedAt DateTime?
+
+  @@unique([employeeId, materialId])
+}
+
+// ── Alertas de Não Conformidade ─────────────────────────────────────────
+model NonComplianceAlert {
+  id          String        @id @default(cuid())
+  storeId     String
+  store       Store         @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  title       String
+  description String
+  severity    AlertSeverity @default(MEDIUM)
+  status      AlertStatus   @default(OPEN)
+  dueDate     DateTime?
+  resolution  String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+// ── Campanhas de Marketing ──────────────────────────────────────────────
+model MarketingCampaign {
+  id          String          @id @default(cuid())
+  title       String
+  description String?
+  startDate   DateTime
+  endDate     DateTime?
+  published   Boolean         @default(false)
+  assets      CampaignAsset[]
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+}
+
+model CampaignAsset {
+  id         String            @id @default(cuid())
+  campaignId String
+  campaign   MarketingCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  fileUrl    String
+  fileKey    String
+  fileName   String
+  fileType   String
+  createdAt  DateTime          @default(now())
+}
+
+// ── Pesquisas Rápidas ───────────────────────────────────────────────────
+model Survey {
+  id        String           @id @default(cuid())
+  question  String
+  options   SurveyOption[]
+  active    Boolean          @default(true)
+  endsAt    DateTime?
+  responses SurveyResponse[]
+  createdAt DateTime         @default(now())
+}
+
+model SurveyOption {
+  id        String           @id @default(cuid())
+  surveyId  String
+  survey    Survey           @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+  text      String
+  order     Int              @default(0)
+  responses SurveyResponse[]
+}
+
+model SurveyResponse {
+  id          String       @id @default(cuid())
+  surveyId    String
+  survey      Survey       @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+  optionId    String
+  option      SurveyOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  respondedAt DateTime     @default(now())
+
+  @@unique([surveyId, userId])
+}
+
+// ── Documentos por Franqueado ───────────────────────────────────────────
+model FranchiseeDocument {
+  id           String      @id @default(cuid())
+  franchiseeId String
+  franchisee   User        @relation(fields: [franchiseeId], references: [id], onDelete: Cascade)
+  title        String
+  category     DocCategory @default(OUTRO)
+  fileUrl      String
+  fileKey      String
+  fileName     String
+  expiresAt    DateTime?
+  notes        String?
+  createdAt    DateTime    @default(now())
+}
+
+// ── Preço do Quilo ──────────────────────────────────────────────────────
+model KiloPrice {
+  id            String    @id @default(cuid())
+  storeId       String
+  store         Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  price         Float
+  suggestedById String?
+  suggestedNote String?
+  confirmedAt   DateTime?
+  effectiveFrom DateTime  @default(now())
+  createdAt     DateTime  @default(now())
+}
+
+// ── Onboarding de Loja ──────────────────────────────────────────────────
+model StoreOnboarding {
+  id          String           @id @default(cuid())
+  storeId     String           @unique
+  store       Store            @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  isNewStore  Boolean          @default(true)
+  steps       OnboardingStep[]
+  completedAt DateTime?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
+
+model OnboardingStep {
+  id           String          @id @default(cuid())
+  onboardingId String
+  onboarding   StoreOnboarding @relation(fields: [onboardingId], references: [id], onDelete: Cascade)
+  title        String
+  description  String?
+  phase        OnboardingPhase
+  responsible  String?
+  order        Int             @default(0)
+  completedAt  DateTime?
+}
+
+// ── Tutorial visto ──────────────────────────────────────────────────────
+model AppTutorialSeen {
+  id     String   @id @default(cuid())
+  userId String   @unique
+  user   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  seenAt DateTime @default(now())
+}
+

@@ -10,6 +10,8 @@ const updateSchema = z.object({
   code: z.string().min(1).max(40).optional(),
   city: z.string().max(80).optional(),
   active: z.boolean().optional(),
+  lat: z.number().optional().nullable(),
+  lng: z.number().optional().nullable(),
 });
 
 // PATCH /api/stores/[id]

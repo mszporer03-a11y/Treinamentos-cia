@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { MaterialViewer } from "@/components/franchisee/MaterialViewer";
-import { Play, FileText, Image as ImageIcon, File } from "lucide-react";
+import { Play, FileText, Image as ImageIcon, File, PackageSearch, Calendar, GraduationCap, TrendingUp, MessageSquare } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -110,6 +111,18 @@ function FeedCard({ material, onOpen }: { material: Material; onOpen: () => void
   );
 }
 
+import Link from "next/link";
+import { PackageSearch, Calendar, GraduationCap, FileText, TrendingUp, MessageSquare } from "lucide-react";
+
+const QUICK_ACCESS = [
+  { href: "/supply-requests", icon: PackageSearch, label: "Pedido de Insumos",    desc: "Solicite insumos, uniformes e mais",       color: "bg-orange-50 text-orange-600 border-orange-100" },
+  { href: "/schedule",        icon: Calendar,      label: "Escala de Trabalho",   desc: "Monte a escala semanal da equipe",          color: "bg-blue-50 text-blue-600 border-blue-100" },
+  { href: "/employees",       icon: GraduationCap, label: "Treinamentos",         desc: "Atribua treinamentos aos funcionários",     color: "bg-violet-50 text-violet-600 border-violet-100" },
+  { href: "/documents",       icon: FileText,      label: "Documentos",           desc: "Contratos, alvarás e certificados",         color: "bg-teal-50 text-teal-600 border-teal-100" },
+  { href: "/kilo-price",      icon: TrendingUp,    label: "Preço do Quilo",       desc: "Veja e confirme o preço sugerido",          color: "bg-green-50 text-green-600 border-green-100" },
+  { href: "/chat",            icon: MessageSquare, label: "Chat",                 desc: "Fale com a equipe Cia do Churrasco",        color: "bg-gray-50 text-gray-600 border-gray-200" },
+];
+
 export default function GalleryPage() {
   const [materials, setMaterials] = useState<Material[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -138,22 +151,35 @@ export default function GalleryPage() {
   return (
     <div>
       {/* Header */}
-      <div className="mb-4 sm:mb-6">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Treinamentos</h1>
-        <p className="text-gray-500 mt-1 text-sm sm:text-base">
-          Materiais publicados para sua equipe
-        </p>
+      <div className="mb-5">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Portal Franqueado</h1>
+        <p className="text-gray-500 mt-1 text-sm">Gerencie sua operação e acesse os materiais de treinamento.</p>
+      </div>
+
+      {/* Quick access cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-8">
+        {QUICK_ACCESS.map(({ href, icon: Icon, label, desc, color }) => (
+          <Link key={href} href={href}
+            className={`flex flex-col items-start gap-2 p-3 border rounded-xl hover:shadow-sm transition-all ${color}`}>
+            <Icon className="h-5 w-5 shrink-0" />
+            <div>
+              <p className="font-semibold text-sm leading-tight">{label}</p>
+              <p className="text-xs opacity-70 mt-0.5 line-clamp-2 leading-tight">{desc}</p>
+            </div>
+          </Link>
+        ))}
       </div>
 
       {/* Category filter pills */}
+      <div className="mb-2 font-semibold text-gray-700">Materiais de Treinamento</div>
       {categories.length > 0 && (
         <div className="flex gap-2 overflow-x-auto pb-2 mb-5 scrollbar-hide">
           <button
             onClick={() => setActiveCategory("all")}
             className={`flex-shrink-0 px-3 sm:px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
               activeCategory === "all"
-                ? "bg-blue-600 text-white shadow-sm"
-                : "bg-white text-gray-600 border border-gray-200 hover:border-blue-300"
+                ? "bg-orange-600 text-white shadow-sm"
+                : "bg-white text-gray-600 border border-gray-200 hover:border-orange-300"
             }`}
           >
             Todos
@@ -164,8 +190,8 @@ export default function GalleryPage() {
               onClick={() => setActiveCategory(cat.id)}
               className={`flex-shrink-0 flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
                 activeCategory === cat.id
-                  ? "bg-blue-600 text-white shadow-sm"
-                  : "bg-white text-gray-600 border border-gray-200 hover:border-blue-300"
+                  ? "bg-orange-600 text-white shadow-sm"
+                  : "bg-white text-gray-600 border border-gray-200 hover:border-orange-300"
               }`}
             >
               {cat.icon && <span>{cat.icon}</span>}
