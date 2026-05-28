@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { signOut } from "next-auth/react";
-import { BookOpen, LogOut, ChevronDown, UserCircle2, MessageSquare } from "lucide-react";
+import { BookOpen, LogOut, ChevronDown, UserCircle2, MessageSquare, GalleryHorizontalEnd } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
+import { usePathname } from "next/navigation";
 
 interface FranchiseeNavbarProps {
   user: {
@@ -15,6 +16,7 @@ interface FranchiseeNavbarProps {
 export function FranchiseeNavbar({ user }: FranchiseeNavbarProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const pathname = usePathname();
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -40,14 +42,31 @@ export function FranchiseeNavbar({ user }: FranchiseeNavbarProps) {
           <span className="hidden sm:inline">Portal de Treinamentos</span>
         </Link>
 
-        {/* Chat link */}
-        <Link
-          href="/chat"
-          className="flex items-center gap-1.5 px-3 py-2 rounded-xl hover:bg-gray-100 transition text-sm text-gray-600"
-        >
-          <MessageSquare className="h-4 w-4" />
-          <span className="hidden sm:inline text-sm font-medium">Chat</span>
-        </Link>
+        {/* Nav links */}
+        <nav className="flex items-center gap-1">
+          <Link
+            href="/gallery"
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl transition text-sm font-medium ${
+              pathname.startsWith("/gallery") || pathname === "/"
+                ? "bg-blue-50 text-blue-700"
+                : "text-gray-600 hover:bg-gray-100"
+            }`}
+          >
+            <GalleryHorizontalEnd className="h-4 w-4" />
+            <span className="hidden sm:inline">Materiais</span>
+          </Link>
+          <Link
+            href="/chat"
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl transition text-sm font-medium ${
+              pathname === "/chat"
+                ? "bg-blue-50 text-blue-700"
+                : "text-gray-600 hover:bg-gray-100"
+            }`}
+          >
+            <MessageSquare className="h-4 w-4" />
+            <span className="hidden sm:inline">Chat</span>
+          </Link>
+        </nav>
 
         {/* User Menu */}        <div className="relative" ref={ref}>
           <button
