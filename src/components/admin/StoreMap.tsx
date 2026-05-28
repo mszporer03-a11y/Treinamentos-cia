@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 
 // Fix default marker icon (broken with webpack)
 const icon = L.icon({
@@ -17,11 +17,6 @@ const icon = L.icon({
 type Store = { id: string; name: string; code: string; city: string | null; active: boolean; lat: number | null; lng: number | null };
 
 export default function StoreMap({ stores }: { stores: Store[] }) {
-  // Import leaflet CSS
-  useEffect(() => {
-    import("leaflet/dist/leaflet.css");
-  }, []);
-
   const mapped = stores.filter((s) => s.lat !== null && s.lng !== null);
   if (mapped.length === 0) return null;
 

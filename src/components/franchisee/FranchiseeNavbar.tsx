@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { signOut } from "next-auth/react";
-import { BookOpen, LogOut, ChevronDown, UserCircle2, MessageSquare, GalleryHorizontalEnd, PackageSearch, Calendar, GraduationCap, FileText, TrendingUp, Menu, X, BarChart2 } from "lucide-react";
+import { BookOpen, LogOut, ChevronDown, UserCircle2, MessageSquare, GalleryHorizontalEnd, PackageSearch, GraduationCap, FileText, TrendingUp, Menu, X, BarChart2 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { usePathname } from "next/navigation";
 
@@ -16,7 +16,6 @@ interface FranchiseeNavbarProps {
 const NAV_LINKS = [
   { href: "/gallery",          icon: GalleryHorizontalEnd, label: "Início" },
   { href: "/supply-requests",  icon: PackageSearch,        label: "Pedidos" },
-  { href: "/schedule",         icon: Calendar,             label: "Escala" },
   { href: "/employees",        icon: GraduationCap,        label: "Treinamentos" },
   { href: "/surveys",          icon: BarChart2,            label: "Pesquisas" },
   { href: "/documents",        icon: FileText,             label: "Documentos" },
