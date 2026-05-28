@@ -111,9 +111,6 @@ function FeedCard({ material, onOpen }: { material: Material; onOpen: () => void
   );
 }
 
-import Link from "next/link";
-import { PackageSearch, Calendar, GraduationCap, FileText, TrendingUp, MessageSquare } from "lucide-react";
-
 const QUICK_ACCESS = [
   { href: "/supply-requests", icon: PackageSearch, label: "Pedido de Insumos",  desc: "Solicite insumos e materiais",         color: "bg-orange-50 text-orange-600 border-orange-100" },
   { href: "/schedule",        icon: Calendar,      label: "Escala Semanal",     desc: "Monte a escala da equipe",            color: "bg-blue-50 text-blue-600 border-blue-100" },
