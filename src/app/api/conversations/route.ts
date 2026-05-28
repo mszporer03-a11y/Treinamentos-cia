@@ -59,3 +59,43 @@ export async function GET() {
 
   return NextResponse.json(conv);
 }
+
+// POST /api/conversations  — Admin inicia conversa com um franqueado
+export async function POST(req: Request) {
+  const session = await auth();
+  if (!session || session.user.role !== "ADMIN") {
+    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  }
+
+  const { franchiseeId } = await req.json();
+  if (!franchiseeId) {
+    return NextResponse.json({ error: "franchiseeId obrigatório" }, { status: 400 });
+  }
+
+  const franchisee = await db.user.findUnique({
+    where: { id: franchiseeId, role: "FRANCHISEE" },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      stores: { include: { store: { select: { name: true, code: true } } } },
+    },
+  });
+  if (!franchisee) {
+    return NextResponse.json({ error: "Franqueado não encontrado" }, { status: 404 });
+  }
+
+  const conv = await db.conversation.upsert({
+    where: { franchiseeId },
+    create: { franchiseeId },
+    update: {},
+    select: { id: true, updatedAt: true },
+  });
+
+  return NextResponse.json({
+    id: conv.id,
+    franchisee,
+    lastMessage: null,
+    updatedAt: conv.updatedAt,
+  });
+}
