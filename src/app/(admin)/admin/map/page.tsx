@@ -1,8 +1,7 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
-import { AdminShell } from "@/components/admin/AdminShell";
 import { useSession } from "next-auth/react";
 import { MapPin, Edit2, X, Check } from "lucide-react";
 
@@ -49,7 +48,7 @@ export default function MapPage() {
   const unmapped = stores.filter((s) => !s.lat || !s.lng);
 
   return (
-    <AdminShell user={session.user}>
+    <>
       <div className="p-6 max-w-6xl mx-auto">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
@@ -109,6 +108,6 @@ export default function MapPage() {
           </div>
         )}
       </div>
-    </AdminShell>
+    </>
   );
 }

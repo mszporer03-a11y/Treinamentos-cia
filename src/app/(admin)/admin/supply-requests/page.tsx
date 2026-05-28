@@ -1,7 +1,6 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
-import { AdminShell } from "@/components/admin/AdminShell";
 import { useSession } from "next-auth/react";
 import { PackageSearch, Clock, CheckCircle2, XCircle, Truck, ChevronDown, ChevronUp } from "lucide-react";
 
@@ -64,7 +63,7 @@ export default function SupplyRequestsPage() {
   if (!session?.user) return null;
 
   return (
-    <AdminShell user={session.user}>
+    <>
       <div className="p-6 max-w-5xl mx-auto">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
@@ -166,6 +165,6 @@ export default function SupplyRequestsPage() {
           </div>
         )}
       </div>
-    </AdminShell>
+    </>
   );
 }

@@ -1,7 +1,6 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
-import { AdminShell } from "@/components/admin/AdminShell";
 import { useSession } from "next-auth/react";
 import { BarChart2, Plus, X, Users } from "lucide-react";
 
@@ -61,7 +60,7 @@ export default function SurveysPage() {
   if (!session?.user) return null;
 
   return (
-    <AdminShell user={session.user}>
+    <>
       <div className="p-6 max-w-5xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -166,6 +165,6 @@ export default function SurveysPage() {
           </div>
         )}
       </div>
-    </AdminShell>
+    </>
   );
 }

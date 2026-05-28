@@ -1,7 +1,6 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
-import { AdminShell } from "@/components/admin/AdminShell";
 import { useSession } from "next-auth/react";
 import { DollarSign, TrendingUp, Plus, X } from "lucide-react";
 
@@ -43,7 +42,7 @@ export default function KiloPricePage() {
     : 0;
 
   return (
-    <AdminShell user={session.user}>
+    <>
       <div className="p-6 max-w-5xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -146,6 +145,6 @@ export default function KiloPricePage() {
           </div>
         )}
       </div>
-    </AdminShell>
+    </>
   );
 }

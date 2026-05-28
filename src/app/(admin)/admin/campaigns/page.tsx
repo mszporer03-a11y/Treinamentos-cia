@@ -1,7 +1,6 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
-import { AdminShell } from "@/components/admin/AdminShell";
 import { useSession } from "next-auth/react";
 import { Megaphone, Plus, X, Calendar, Eye, EyeOff } from "lucide-react";
 
@@ -62,7 +61,7 @@ export default function CampaignsPage() {
   if (!session?.user) return null;
 
   return (
-    <AdminShell user={session.user}>
+    <>
       <div className="p-6 max-w-5xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -146,6 +145,6 @@ export default function CampaignsPage() {
           </div>
         )}
       </div>
-    </AdminShell>
+    </>
   );
 }

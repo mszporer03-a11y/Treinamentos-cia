@@ -1,7 +1,6 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
-import { AdminShell } from "@/components/admin/AdminShell";
 import { useSession } from "next-auth/react";
 import { AlertTriangle, Plus, X, CheckCircle2 } from "lucide-react";
 
@@ -72,7 +71,7 @@ export default function AlertsPage() {
   const resolved = alerts.filter((a) => a.status === "RESOLVED");
 
   return (
-    <AdminShell user={session.user}>
+    <>
       <div className="p-6 max-w-5xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -182,6 +181,6 @@ export default function AlertsPage() {
           </div>
         )}
       </div>
-    </AdminShell>
+    </>
   );
 }

@@ -1,7 +1,6 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
-import { AdminShell } from "@/components/admin/AdminShell";
 import { useSession } from "next-auth/react";
 import { CheckSquare, Plus, X, CheckCircle2, Circle } from "lucide-react";
 
@@ -68,7 +67,7 @@ export default function OnboardingPage() {
   if (!session?.user) return null;
 
   return (
-    <AdminShell user={session.user}>
+    <>
       <div className="p-6 max-w-4xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -162,6 +161,6 @@ export default function OnboardingPage() {
           </div>
         )}
       </div>
-    </AdminShell>
+    </>
   );
 }
