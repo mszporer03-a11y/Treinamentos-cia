@@ -28,6 +28,18 @@ export const ourFileRouter = {
       return { uploadedBy: metadata.userId, url: file.url, key: file.key };
     }),
 
+  campaignImageUploader: f({
+    image: { maxFileSize: "16MB", maxFileCount: 10 },
+  })
+    .middleware(async () => {
+      const session = await auth();
+      if (!session?.user || session.user.role !== "ADMIN") throw new Error("Unauthorized");
+      return { userId: session.user.id };
+    })
+    .onUploadComplete(async ({ metadata, file }) => {
+      return { uploadedBy: metadata.userId, url: file.url, key: file.key, name: file.name };
+    }),
+
   chatAttachment: f({
     image: { maxFileSize: "16MB", maxFileCount: 1 },
     pdf: { maxFileSize: "32MB", maxFileCount: 1 },

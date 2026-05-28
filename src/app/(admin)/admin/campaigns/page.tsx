@@ -1,8 +1,9 @@
 ﻿"use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
-import { Megaphone, Plus, X, Calendar, Eye, EyeOff } from "lucide-react";
+import { Megaphone, Plus, X, Calendar, Eye, EyeOff, ImagePlus, Loader2 } from "lucide-react";
+import { useUploadThing } from "@/lib/uploadthing-components";
 
 type Campaign = {
   id: string;
@@ -21,23 +22,61 @@ export default function CampaignsPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ title: "", description: "", startDate: "", endDate: "", published: false });
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [previews, setPreviews] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const { startUpload } = useUploadThing("campaignImageUploader");
 
   useEffect(() => {
     fetch("/api/campaigns").then((r) => r.json()).then((d) => { setCampaigns(d); setLoading(false); });
   }, []);
 
+  function addFiles(files: FileList | null) {
+    if (!files) return;
+    const newFiles = Array.from(files).filter((f) => f.type.startsWith("image/"));
+    setPendingFiles((prev) => [...prev, ...newFiles]);
+    newFiles.forEach((f) => {
+      const reader = new FileReader();
+      reader.onload = (e) => setPreviews((prev) => [...prev, e.target?.result as string]);
+      reader.readAsDataURL(f);
+    });
+  }
+
+  function removeFile(index: number) {
+    setPendingFiles((prev) => prev.filter((_, i) => i !== index));
+    setPreviews((prev) => prev.filter((_, i) => i !== index));
+  }
+
   async function create() {
     if (!form.title || !form.startDate) return;
     setSaving(true);
+    let assets: { fileUrl: string; fileKey: string; fileName: string; fileType: string }[] = [];
+    if (pendingFiles.length > 0) {
+      setUploading(true);
+      const uploaded = await startUpload(pendingFiles);
+      setUploading(false);
+      if (uploaded) {
+        assets = uploaded.map((u) => ({
+          fileUrl: u.url,
+          fileKey: u.key,
+          fileName: u.name,
+          fileType: "image",
+        }));
+      }
+    }
     const res = await fetch("/api/campaigns", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...form, assets: [] }),
+      body: JSON.stringify({ ...form, assets }),
     });
     const c = await res.json();
     setCampaigns((prev) => [c, ...prev]);
     setForm({ title: "", description: "", startDate: "", endDate: "", published: false });
+    setPendingFiles([]);
+    setPreviews([]);
     setShowForm(false);
     setSaving(false);
   }
@@ -102,9 +141,41 @@ export default function CampaignsPage() {
                 <input type="checkbox" className="rounded" checked={form.published} onChange={(e) => setForm({ ...form, published: e.target.checked })} />
                 Publicar imediatamente
               </label>
-              <button disabled={saving || !form.title || !form.startDate} onClick={create}
-                className="w-full py-2 bg-pink-600 text-white text-sm font-medium rounded-lg hover:bg-pink-700 disabled:opacity-50 transition">
-                {saving ? "Salvando..." : "Criar Campanha"}
+
+              {/* Image upload */}
+              <div>
+                <label className="text-xs text-gray-500 mb-1.5 block">Imagens</label>
+                <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden"
+                  onChange={(e) => addFiles(e.target.files)} />
+                {previews.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {previews.map((src, i) => (
+                      <div key={i} className="relative w-20 h-20 rounded-lg overflow-hidden border border-gray-200 group">
+                        <img src={src} alt="" className="w-full h-full object-cover" />
+                        <button type="button" onClick={() => removeFile(i)}
+                          className="absolute top-0.5 right-0.5 bg-black/60 rounded-full p-0.5 text-white opacity-0 group-hover:opacity-100 transition">
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                    <button type="button" onClick={() => fileInputRef.current?.click()}
+                      className="w-20 h-20 flex items-center justify-center rounded-lg border-2 border-dashed border-gray-200 hover:border-pink-400 hover:bg-pink-50 transition text-gray-400 hover:text-pink-500">
+                      <Plus className="h-5 w-5" />
+                    </button>
+                  </div>
+                )}
+                {previews.length === 0 && (
+                  <button type="button" onClick={() => fileInputRef.current?.click()}
+                    className="w-full flex items-center justify-center gap-2 py-3 border-2 border-dashed border-gray-200 rounded-lg hover:border-pink-400 hover:bg-pink-50 text-sm text-gray-400 hover:text-pink-500 transition">
+                    <ImagePlus className="h-4 w-4" /> Adicionar imagens
+                  </button>
+                )}
+              </div>
+
+              <button disabled={saving || uploading || !form.title || !form.startDate} onClick={create}
+                className="w-full py-2 bg-pink-600 text-white text-sm font-medium rounded-lg hover:bg-pink-700 disabled:opacity-50 transition flex items-center justify-center gap-2">
+                {(saving || uploading) && <Loader2 className="h-4 w-4 animate-spin" />}
+                {uploading ? "Enviando imagens..." : saving ? "Salvando..." : "Criar Campanha"}
               </button>
             </div>
           </div>
@@ -125,6 +196,16 @@ export default function CampaignsPage() {
                   </span>
                 </div>
                 {c.description && <p className="text-sm text-gray-500 mb-2">{c.description}</p>}
+                {c.assets.length > 0 && (
+                  <div className="flex gap-1.5 flex-wrap mb-3">
+                    {c.assets.map((a) => (
+                      <a key={a.id} href={a.fileUrl} target="_blank" rel="noreferrer"
+                        className="w-16 h-16 rounded-lg overflow-hidden border border-gray-100 hover:opacity-90 transition">
+                        <img src={a.fileUrl} alt={a.fileName} className="w-full h-full object-cover" />
+                      </a>
+                    ))}
+                  </div>
+                )}
                 <div className="flex items-center gap-1.5 text-xs text-gray-400 mb-3">
                   <Calendar className="h-3.5 w-3.5" />
                   {new Date(c.startDate).toLocaleDateString("pt-BR")}
