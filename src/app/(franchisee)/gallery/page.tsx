@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { MaterialViewer } from "@/components/franchisee/MaterialViewer";
-import { Play, FileText, Image as ImageIcon, File, PackageSearch, Calendar, GraduationCap, TrendingUp, MessageSquare } from "lucide-react";
+import { Play, FileText, Image as ImageIcon, File, PackageSearch, Calendar, GraduationCap, TrendingUp, MessageSquare, BarChart2 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -115,12 +115,13 @@ import Link from "next/link";
 import { PackageSearch, Calendar, GraduationCap, FileText, TrendingUp, MessageSquare } from "lucide-react";
 
 const QUICK_ACCESS = [
-  { href: "/supply-requests", icon: PackageSearch, label: "Pedido de Insumos",    desc: "Solicite insumos, uniformes e mais",       color: "bg-orange-50 text-orange-600 border-orange-100" },
-  { href: "/schedule",        icon: Calendar,      label: "Escala de Trabalho",   desc: "Monte a escala semanal da equipe",          color: "bg-blue-50 text-blue-600 border-blue-100" },
-  { href: "/employees",       icon: GraduationCap, label: "Treinamentos",         desc: "Atribua treinamentos aos funcionários",     color: "bg-violet-50 text-violet-600 border-violet-100" },
-  { href: "/documents",       icon: FileText,      label: "Documentos",           desc: "Contratos, alvarás e certificados",         color: "bg-teal-50 text-teal-600 border-teal-100" },
-  { href: "/kilo-price",      icon: TrendingUp,    label: "Preço do Quilo",       desc: "Veja e confirme o preço sugerido",          color: "bg-green-50 text-green-600 border-green-100" },
-  { href: "/chat",            icon: MessageSquare, label: "Chat",                 desc: "Fale com a equipe Cia do Churrasco",        color: "bg-gray-50 text-gray-600 border-gray-200" },
+  { href: "/supply-requests", icon: PackageSearch, label: "Pedido de Insumos",  desc: "Solicite insumos e materiais",         color: "bg-orange-50 text-orange-600 border-orange-100" },
+  { href: "/schedule",        icon: Calendar,      label: "Escala Semanal",     desc: "Monte a escala da equipe",            color: "bg-blue-50 text-blue-600 border-blue-100" },
+  { href: "/employees",       icon: GraduationCap, label: "Treinamentos",       desc: "Gerencie a equipe e cursos",          color: "bg-violet-50 text-violet-600 border-violet-100" },
+  { href: "/surveys",         icon: BarChart2,     label: "Pesquisas",          desc: "Responda pesquisas da rede",          color: "bg-purple-50 text-purple-600 border-purple-100" },
+  { href: "/documents",       icon: FileText,      label: "Documentos",         desc: "Contratos e alvarás",                 color: "bg-teal-50 text-teal-600 border-teal-100" },
+  { href: "/kilo-price",      icon: TrendingUp,    label: "Preço do Quilo",     desc: "Veja e confirme o preço",             color: "bg-green-50 text-green-600 border-green-100" },
+  { href: "/chat",            icon: MessageSquare, label: "Chat",               desc: "Fale com o suporte",                  color: "bg-gray-50 text-gray-600 border-gray-200" },
 ];
 
 export default function GalleryPage() {
@@ -157,7 +158,7 @@ export default function GalleryPage() {
       </div>
 
       {/* Quick access cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-8">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3 mb-8">
         {QUICK_ACCESS.map(({ href, icon: Icon, label, desc, color }) => (
           <Link key={href} href={href}
             className={`flex flex-col items-start gap-2 p-3 border rounded-xl hover:shadow-sm transition-all ${color}`}>

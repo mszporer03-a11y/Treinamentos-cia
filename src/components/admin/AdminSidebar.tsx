@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -39,7 +39,7 @@ const sections = [
     ],
   },
   {
-    label: "Conteúdo",
+    label: "ConteÃºdo",
     items: [
       { href: "/admin/materials", label: "Materiais", icon: FileText },
       { href: "/admin/categories", label: "Categorias", icon: FolderOpen },
@@ -47,11 +47,11 @@ const sections = [
     ],
   },
   {
-    label: "Operações",
+    label: "OperaÃ§Ãµes",
     items: [
       { href: "/admin/supply-requests", label: "Pedidos de Insumos", icon: PackageSearch },
-      { href: "/admin/alerts", label: "Não Conformidades", icon: AlertTriangle },
-      { href: "/admin/kilo-price", label: "Preço do Quilo", icon: DollarSign },
+      { href: "/admin/alerts", label: "NÃ£o Conformidades", icon: AlertTriangle },
+      { href: "/admin/kilo-price", label: "PreÃ§o do Quilo", icon: DollarSign },
     ],
   },
   {
@@ -70,9 +70,9 @@ const sections = [
     ],
   },
   {
-    label: "Usuários",
+    label: "UsuÃ¡rios",
     items: [
-      { href: "/admin/users", label: "Usuários", icon: Users },
+      { href: "/admin/users", label: "UsuÃ¡rios", icon: Users },
       { href: "/admin/perfil", label: "Meu Perfil", icon: UserCircle2 },
     ],
   },
@@ -131,89 +131,6 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
         <button
           onClick={() => signOut({ callbackUrl: "/login" })}
           className="flex items-center gap-2.5 px-3 py-2 w-full text-sm text-gray-400 hover:bg-white/5 hover:text-white rounded-lg transition"
-        >
-          <LogOut className="h-4 w-4 flex-shrink-0" />
-          Sair
-        </button>
-      </div>
-    </aside>
-  );
-}
-
-
-interface AdminSidebarProps {
-  user: {
-    name?: string | null;
-    email?: string | null;
-  };
-}
-
-const navItems = [
-  {
-    href: "/admin",
-    label: "Dashboard",
-    icon: LayoutDashboard,
-    exact: true,
-  },
-  { href: "/admin/categories", label: "Categorias", icon: FolderOpen },
-  { href: "/admin/materials", label: "Materiais", icon: FileText },
-  { href: "/admin/users", label: "Usuários", icon: Users },
-  { href: "/admin/stores", label: "Lojas", icon: Store },
-  { href: "/admin/chat", label: "Chat", icon: MessageSquare },
-  { href: "/admin/perfil", label: "Meu Perfil", icon: UserCircle2 },
-];
-
-export function AdminSidebar({ user }: AdminSidebarProps) {
-  const pathname = usePathname();
-
-  return (
-    <aside className="w-64 bg-blue-950 text-white flex flex-col h-screen sticky top-0 flex-shrink-0">
-      {/* Logo */}
-      <div className="p-5 border-b border-blue-900">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-blue-700 rounded-xl flex items-center justify-center flex-shrink-0">
-            <BookOpen className="h-5 w-5 text-white" />
-          </div>
-          <div>
-            <h1 className="font-bold text-sm leading-tight">Portal Admin</h1>
-            <p className="text-xs text-blue-400">Treinamentos</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Navigation */}
-      <nav className="flex-1 p-3 space-y-0.5">
-        {navItems.map((item) => {
-          const isActive = item.exact
-            ? pathname === item.href
-            : pathname.startsWith(item.href);
-
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition ${
-                isActive
-                  ? "bg-blue-700 text-white"
-                  : "text-blue-300 hover:bg-blue-900 hover:text-white"
-              }`}
-            >
-              <item.icon className="h-4 w-4 flex-shrink-0" />
-              {item.label}
-            </Link>
-          );
-        })}
-      </nav>
-
-      {/* User Info & Logout */}
-      <div className="p-3 border-t border-blue-900">
-        <div className="px-3 py-2 mb-1">
-          <p className="text-sm font-medium text-white truncate">{user.name}</p>
-          <p className="text-xs text-blue-400 truncate">{user.email}</p>
-        </div>
-        <button
-          onClick={() => signOut({ callbackUrl: "/login" })}
-          className="flex items-center gap-3 px-3 py-2.5 w-full text-sm text-blue-300 hover:bg-blue-900 hover:text-white rounded-xl transition"
         >
           <LogOut className="h-4 w-4 flex-shrink-0" />
           Sair
