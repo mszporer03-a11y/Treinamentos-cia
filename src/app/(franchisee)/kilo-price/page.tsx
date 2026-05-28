@@ -63,7 +63,7 @@ export default function KiloPricePage() {
                   <span className="text-lg font-normal text-gray-500 ml-2">/ kg</span>
                 </p>
                 <p className="text-xs text-gray-500 mt-2">Sugerido em {new Date(latest.createdAt).toLocaleDateString("pt-BR")}</p>
-                {latest.notes && <p className="text-sm text-gray-600 mt-2 italic">"{latest.notes}"</p>}
+                {latest.notes && <p className="text-sm text-gray-600 mt-2 italic">&ldquo;{latest.notes}&rdquo;</p>}
               </div>
               <div className="flex flex-col items-end gap-2">
                 {latest.confirmedAt ? (
