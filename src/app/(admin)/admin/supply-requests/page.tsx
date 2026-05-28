@@ -136,7 +136,7 @@ export default function SupplyRequestsPage() {
                           ))}
                         </tbody>
                       </table>
-                      {req.notes && <p className="text-sm text-gray-600 italic">"{req.notes}"</p>}
+                      {req.notes && <p className="text-sm text-gray-600 italic">&ldquo;{req.notes}&rdquo;</p>}
                       {req.status === "PENDING" && (
                         <div className="flex gap-2 pt-1">
                           <button
