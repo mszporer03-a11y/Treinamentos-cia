@@ -230,13 +230,13 @@ export default function GalleryPage() {
       </div>
 
       {showFilters && visibleCategories.length > 0 && (
-        <div className="flex gap-2 overflow-x-auto pb-2 mb-5 scrollbar-hide">
+        <div className="flex flex-col gap-1 mb-5 bg-white border border-gray-100 rounded-2xl p-3 shadow-sm">
           <button
             onClick={() => { setActiveCategory("all"); setShowFilters(false); }}
-            className={`flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
+            className={`flex items-center gap-2 w-full px-4 py-2 rounded-xl text-sm font-medium transition-all text-left ${
               activeCategory === "all"
                 ? "bg-orange-600 text-white shadow-sm"
-                : "bg-white text-gray-600 border border-gray-200 hover:border-orange-300"
+                : "text-gray-600 hover:bg-orange-50"
             }`}
           >
             Todos
@@ -245,10 +245,10 @@ export default function GalleryPage() {
             <button
               key={cat.id}
               onClick={() => { setActiveCategory(cat.id); setShowFilters(false); }}
-              className={`flex-shrink-0 flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
+              className={`flex items-center gap-2 w-full px-4 py-2 rounded-xl text-sm font-medium transition-all text-left ${
                 activeCategory === cat.id
                   ? "bg-orange-600 text-white shadow-sm"
-                  : "bg-white text-gray-600 border border-gray-200 hover:border-orange-300"
+                  : "text-gray-600 hover:bg-orange-50"
               }`}
             >
               {cat.icon && <span>{cat.icon}</span>}
