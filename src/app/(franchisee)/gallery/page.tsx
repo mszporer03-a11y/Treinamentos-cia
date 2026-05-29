@@ -156,6 +156,11 @@ export default function GalleryPage() {
       ? materials
       : materials.filter((m) => m.category.id === activeCategory);
 
+  // Only show categories that have at least one material available to this user
+  const visibleCategories = categories.filter((cat) =>
+    materials.some((m) => m.category.id === cat.id)
+  );
+
   const firstName = session?.user?.name?.split(" ")[0] ?? "Franqueado";
 
   return (
@@ -208,7 +213,7 @@ export default function GalleryPage() {
         <h2 className="text-lg font-bold text-gray-900">Materiais de Treinamento</h2>
       </div>
 
-      {categories.length > 0 && (
+      {visibleCategories.length > 0 && (
         <div className="flex gap-2 overflow-x-auto pb-2 mb-6 scrollbar-hide">
           <button
             onClick={() => setActiveCategory("all")}
@@ -220,7 +225,7 @@ export default function GalleryPage() {
           >
             Todos
           </button>
-          {categories.map((cat) => (
+          {visibleCategories.map((cat) => (
             <button
               key={cat.id}
               onClick={() => setActiveCategory(cat.id)}
