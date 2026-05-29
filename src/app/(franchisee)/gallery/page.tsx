@@ -1,9 +1,10 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { MaterialViewer } from "@/components/franchisee/MaterialViewer";
-import { Play, FileText, Image as ImageIcon, File, GraduationCap, TrendingUp, MessageSquare, BarChart2, ClipboardList } from "lucide-react";
+import { Play, FileText, Image as ImageIcon, File, MessageSquare, BarChart2, ClipboardList, ChevronRight } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -36,20 +37,20 @@ const typeIcon: Record<string, React.ElementType> = {
   OTHER: File,
 };
 
-const typeColor: Record<string, string> = {
-  VIDEO: "bg-red-100 text-red-500",
-  PDF: "bg-orange-100 text-orange-500",
-  IMAGE: "bg-green-100 text-green-500",
-  DOCUMENT: "bg-blue-100 text-blue-500",
-  OTHER: "bg-gray-100 text-gray-500",
-};
-
 const typeLabel: Record<string, string> = {
-  VIDEO: "Vídeo",
+  VIDEO: "Video",
   PDF: "PDF",
   IMAGE: "Imagem",
   DOCUMENT: "Documento",
   OTHER: "Arquivo",
+};
+
+const typeColor: Record<string, string> = {
+  VIDEO: "bg-red-50 text-red-500",
+  PDF: "bg-orange-50 text-orange-500",
+  IMAGE: "bg-sky-50 text-sky-500",
+  DOCUMENT: "bg-blue-50 text-blue-500",
+  OTHER: "bg-gray-50 text-gray-400",
 };
 
 function FeedCard({ material, onOpen }: { material: Material; onOpen: () => void }) {
@@ -57,10 +58,9 @@ function FeedCard({ material, onOpen }: { material: Material; onOpen: () => void
   const color = typeColor[material.fileType] ?? typeColor.OTHER;
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all">
-      {/* Header: uploader + category */}
+    <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden hover:border-gray-200 hover:shadow-md transition-all group">
       <div className="flex items-center gap-2.5 px-4 pt-3 pb-2">
-        <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
+        <div className="w-8 h-8 rounded-full bg-orange-600 flex items-center justify-center flex-shrink-0">
           <span className="text-white text-xs font-bold">
             {(material.createdBy?.name ?? "A").charAt(0).toUpperCase()}
           </span>
@@ -75,52 +75,61 @@ function FeedCard({ material, onOpen }: { material: Material; onOpen: () => void
         </div>
       </div>
 
-      {/* Preview — clickable */}
-      <button
-        onClick={onOpen}
-        className="w-full text-left focus:outline-none group"
-      >
+      <button onClick={onOpen} className="w-full text-left focus:outline-none">
         {material.fileType === "IMAGE" ? (
           <div className="mx-3 rounded-xl overflow-hidden bg-gray-100 aspect-video">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={material.fileUrl}
-              alt={material.title}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-            />
+            <img src={material.fileUrl} alt={material.title}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
           </div>
         ) : (
           <div className={`mx-3 rounded-xl aspect-video flex flex-col items-center justify-center gap-2 ${color} group-hover:opacity-80 transition-opacity`}>
-            <Icon className="h-10 w-10 sm:h-14 sm:w-14 opacity-70" />
-            <span className="text-xs sm:text-sm font-medium opacity-80">{typeLabel[material.fileType] ?? "Arquivo"}</span>
+            <Icon className="h-10 w-10 sm:h-14 sm:w-14 opacity-60" />
+            <span className="text-xs sm:text-sm font-medium opacity-70">{typeLabel[material.fileType] ?? "Arquivo"}</span>
           </div>
         )}
-
-        {/* Title */}
-        <div className="px-4 pt-2.5 pb-3">
-          <p className="font-semibold text-gray-900 text-sm leading-snug line-clamp-2 group-hover:text-blue-600 transition-colors">
+        <div className="px-4 pt-2.5 pb-4">
+          <p className="font-semibold text-gray-900 text-sm leading-snug line-clamp-2 group-hover:text-orange-600 transition-colors">
             {material.title}
           </p>
           {material.description && (
             <p className="text-xs text-gray-500 mt-1 line-clamp-2">{material.description}</p>
           )}
-          <p className="text-xs text-blue-600 font-medium mt-2">Toque para abrir →</p>
+          <p className="text-xs text-orange-600 font-medium mt-2 flex items-center gap-0.5">
+            Abrir <ChevronRight className="h-3 w-3" />
+          </p>
         </div>
       </button>
     </div>
   );
 }
 
-const QUICK_ACCESS = [
-  { href: "/employees",    icon: GraduationCap, label: "Treinamentos",    desc: "Gerencie a equipe e cursos",     color: "bg-violet-50 text-violet-600 border-violet-100" },
-  { href: "/surveys",     icon: BarChart2,     label: "Pesquisas",      desc: "Responda pesquisas da rede",     color: "bg-purple-50 text-purple-600 border-purple-100" },
-  { href: "/documents",   icon: FileText,      label: "Documentos",     desc: "Contratos e alvarás",            color: "bg-teal-50 text-teal-600 border-teal-100" },
-  { href: "/kilo-price",  icon: TrendingUp,    label: "Preço do Quilo", desc: "Veja e confirme o preço",        color: "bg-green-50 text-green-600 border-green-100" },
-  { href: "/checklists",  icon: ClipboardList, label: "Checklists",     desc: "Visualize e preencha checklists",color: "bg-orange-50 text-orange-600 border-orange-100" },
-  { href: "/chat",        icon: MessageSquare, label: "Chat",           desc: "Fale com o suporte",             color: "bg-gray-50 text-gray-600 border-gray-200" },
+const NAV_ITEMS = [
+  {
+    href: "/surveys",
+    icon: BarChart2,
+    label: "Pesquisas",
+    desc: "Responda as pesquisas da rede",
+    bg: "from-violet-600 to-violet-500",
+  },
+  {
+    href: "/checklists",
+    icon: ClipboardList,
+    label: "Checklists",
+    desc: "Visualize e preencha checklists operacionais",
+    bg: "from-orange-600 to-orange-500",
+  },
+  {
+    href: "/chat",
+    icon: MessageSquare,
+    label: "Suporte",
+    desc: "Canal direto com a Cia do Churrasco",
+    bg: "from-sky-600 to-sky-500",
+  },
 ];
 
 export default function GalleryPage() {
+  const { data: session } = useSession();
   const [materials, setMaterials] = useState<Material[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [activeCategory, setActiveCategory] = useState<string>("all");
@@ -141,39 +150,69 @@ export default function GalleryPage() {
     load();
   }, []);
 
-  const filtered = activeCategory === "all"
-    ? materials
-    : materials.filter((m) => m.category.id === activeCategory);
+  const filtered =
+    activeCategory === "all"
+      ? materials
+      : materials.filter((m) => m.category.id === activeCategory);
+
+  const firstName = session?.user?.name?.split(" ")[0] ?? "Franqueado";
 
   return (
-    <div>
-      {/* Header */}
-      <div className="mb-5">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Portal Franqueado</h1>
-        <p className="text-gray-500 mt-1 text-sm">Gerencie sua operação e acesse os materiais de treinamento.</p>
+    <div className="min-h-screen">
+      {/* Hero banner */}
+      <div className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 rounded-2xl px-6 py-8 mb-8 relative overflow-hidden">
+        <div
+          className="absolute inset-0 opacity-10"
+          style={{ backgroundImage: "radial-gradient(circle at 80% 50%, #EA580C 0%, transparent 60%)" }}
+        />
+        <div className="relative">
+          <div className="flex items-center gap-2 mb-1">
+            <div className="w-2 h-2 rounded-full bg-orange-500" />
+            <span className="text-orange-400 text-xs font-semibold uppercase tracking-widest">
+              Portal Franqueado
+            </span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white mt-2">
+            Ola, {firstName} 👋
+          </h1>
+          <p className="text-gray-400 text-sm mt-1">
+            Bem-vindo ao painel da Cia do Churrasco. Acesse suas ferramentas abaixo.
+          </p>
+        </div>
       </div>
 
-      {/* Quick access cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-8">
-        {QUICK_ACCESS.map(({ href, icon: Icon, label, desc, color }) => (
-          <Link key={href} href={href}
-            className={`flex flex-col items-start gap-2 p-3 border rounded-xl hover:shadow-sm transition-all ${color}`}>
-            <Icon className="h-5 w-5 shrink-0" />
-            <div>
-              <p className="font-semibold text-sm leading-tight">{label}</p>
-              <p className="text-xs opacity-70 mt-0.5 line-clamp-2 leading-tight">{desc}</p>
+      {/* Nav cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10">
+        {NAV_ITEMS.map(({ href, icon: Icon, label, desc, bg }) => (
+          <Link
+            key={href}
+            href={href}
+            className="group relative overflow-hidden rounded-2xl p-5 flex items-center gap-4 bg-white border border-gray-100 hover:shadow-lg hover:border-transparent transition-all duration-200"
+          >
+            <div
+              className={`w-12 h-12 rounded-xl bg-gradient-to-br ${bg} flex items-center justify-center flex-shrink-0 shadow-sm group-hover:scale-105 transition-transform`}
+            >
+              <Icon className="h-6 w-6 text-white" />
             </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-gray-900 text-base">{label}</p>
+              <p className="text-xs text-gray-500 mt-0.5 leading-snug">{desc}</p>
+            </div>
+            <ChevronRight className="h-4 w-4 text-gray-300 group-hover:text-gray-500 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
           </Link>
         ))}
       </div>
 
-      {/* Category filter pills */}
-      <div className="mb-2 font-semibold text-gray-700">Materiais de Treinamento</div>
+      {/* Materials section */}
+      <div className="mb-4">
+        <h2 className="text-lg font-bold text-gray-900">Materiais de Treinamento</h2>
+      </div>
+
       {categories.length > 0 && (
-        <div className="flex gap-2 overflow-x-auto pb-2 mb-5 scrollbar-hide">
+        <div className="flex gap-2 overflow-x-auto pb-2 mb-6 scrollbar-hide">
           <button
             onClick={() => setActiveCategory("all")}
-            className={`flex-shrink-0 px-3 sm:px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
+            className={`flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
               activeCategory === "all"
                 ? "bg-orange-600 text-white shadow-sm"
                 : "bg-white text-gray-600 border border-gray-200 hover:border-orange-300"
@@ -185,7 +224,7 @@ export default function GalleryPage() {
             <button
               key={cat.id}
               onClick={() => setActiveCategory(cat.id)}
-              className={`flex-shrink-0 flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
+              className={`flex-shrink-0 flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
                 activeCategory === cat.id
                   ? "bg-orange-600 text-white shadow-sm"
                   : "bg-white text-gray-600 border border-gray-200 hover:border-orange-300"
@@ -198,7 +237,6 @@ export default function GalleryPage() {
         </div>
       )}
 
-      {/* Feed */}
       {loading ? (
         <div className="text-center py-16 text-gray-400">Carregando...</div>
       ) : filtered.length === 0 ? (
@@ -221,13 +259,7 @@ export default function GalleryPage() {
         </div>
       )}
 
-      {/* Viewer */}
-      {viewing && (
-        <MaterialViewer
-          material={viewing}
-          onClose={() => setViewing(null)}
-        />
-      )}
+      {viewing && <MaterialViewer material={viewing} onClose={() => setViewing(null)} />}
     </div>
   );
 }
