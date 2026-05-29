@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import {
@@ -84,16 +85,8 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
   return (
     <aside className="w-60 bg-gray-950 text-white flex flex-col h-screen sticky top-0 flex-shrink-0">
       {/* Logo */}
-      <div className="p-4 border-b border-gray-800">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-red-600 rounded-xl flex items-center justify-center flex-shrink-0">
-            <BookOpen className="h-5 w-5 text-white" />
-          </div>
-          <div>
-            <h1 className="font-bold text-sm leading-tight text-white">Cia do Churrasco</h1>
-            <p className="text-xs text-gray-500">Portal Admin</p>
-          </div>
-        </div>
+      <div className="px-4 py-5 border-b border-gray-800 flex items-center justify-center">
+        <Image src="/logo.png" alt="Companhia do Churrasco" width={148} height={52} className="invert brightness-0 invert" />
       </div>
 
       {/* Navigation */}

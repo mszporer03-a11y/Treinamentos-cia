@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useSession } from "next-auth/react";
 import { MaterialViewer } from "@/components/franchisee/MaterialViewer";
 import { Play, FileText, Image as ImageIcon, File, MessageSquare, BarChart2, ClipboardList, ChevronRight } from "lucide-react";
@@ -166,18 +167,17 @@ export default function GalleryPage() {
           style={{ backgroundImage: "radial-gradient(circle at 80% 50%, #EA580C 0%, transparent 60%)" }}
         />
         <div className="relative">
-          <div className="flex items-center gap-2 mb-1">
-            <div className="w-2 h-2 rounded-full bg-orange-500" />
-            <span className="text-orange-400 text-xs font-semibold uppercase tracking-widest">
-              Portal Franqueado
-            </span>
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h1 className="text-xl sm:text-2xl font-bold text-white">
+                Olá, {firstName} 👋
+              </h1>
+              <p className="text-gray-400 text-sm mt-1">
+                Bem-vindo ao painel. Acesse suas ferramentas abaixo.
+              </p>
+            </div>
+            <Image src="/logo.png" alt="Companhia do Churrasco" width={140} height={50} className="invert brightness-0 invert opacity-90 flex-shrink-0 hidden sm:block" />
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-white mt-2">
-            Ola, {firstName} 👋
-          </h1>
-          <p className="text-gray-400 text-sm mt-1">
-            Bem-vindo ao painel da Cia do Churrasco. Acesse suas ferramentas abaixo.
-          </p>
         </div>
       </div>
 

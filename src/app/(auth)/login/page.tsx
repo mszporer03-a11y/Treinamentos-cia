@@ -3,6 +3,7 @@
 export const dynamic = "force-dynamic";
 
 import { useState } from "react";
+import Image from "next/image";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Lock, Mail } from "lucide-react";
@@ -41,17 +42,14 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-indigo-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-2xl mb-4">
-            <span className="text-3xl">📚</span>
+          <div className="flex items-center justify-center mb-6">
+            <Image src="/logo.png" alt="Companhia do Churrasco" width={220} height={78} className="w-48" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">
-            Portal de Treinamentos
-          </h1>
-          <p className="text-gray-500 mt-1 text-sm">
+          <p className="text-gray-500 text-sm">
             Entre com suas credenciais de acesso
           </p>
         </div>
