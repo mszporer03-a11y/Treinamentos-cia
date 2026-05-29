@@ -131,6 +131,7 @@ model Material {
   createdBy         User?              @relation(fields: [createdById], references: [id], onDelete: SetNull)
   views             MaterialView[]
   employeeTrainings EmployeeTraining[]
+  linkedStores      MaterialStore[]
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
 }
@@ -152,6 +153,7 @@ model Store {
   kiloPrices     KiloPrice[]
   onboarding     StoreOnboarding?
   messageLinks   MessageStore[]
+  materialLinks  MaterialStore[]
   checklistResponses ChecklistResponse[]
   createdAt      DateTime             @default(now())
   updatedAt      DateTime             @updatedAt
@@ -164,6 +166,15 @@ model UserStore {
   store   Store  @relation(fields: [storeId], references: [id], onDelete: Cascade)
 
   @@id([userId, storeId])
+}
+
+model MaterialStore {
+  materialId String
+  storeId    String
+  material   Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  store      Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@id([materialId, storeId])
 }
 
 // ── Chat ────────────────────────────────────────────────────────────────

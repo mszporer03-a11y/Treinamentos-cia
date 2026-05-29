@@ -15,6 +15,12 @@ interface Category {
   icon?: string | null;
 }
 
+interface StoreRef {
+  id: string;
+  name: string;
+  code: string;
+}
+
 interface Material {
   id: string;
   title: string;
@@ -25,6 +31,7 @@ interface Material {
   published: boolean;
   categoryId: string;
   category: Category;
+  linkedStores: { store: StoreRef }[];
   createdAt: string;
 }
 
@@ -41,11 +48,13 @@ const DEFAULT_FORM = {
   description: "",
   categoryId: "",
   published: true,
+  linkedStoreIds: [] as string[],
 };
 
 export default function MaterialsPage() {
   const [materials, setMaterials] = useState<Material[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [stores, setStores] = useState<StoreRef[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -59,13 +68,15 @@ export default function MaterialsPage() {
   const [viewingViews, setViewingViews] = useState<Material | null>(null);
 
   const fetchData = useCallback(async () => {
-    const [matRes, catRes] = await Promise.all([
+    const [matRes, catRes, storeRes] = await Promise.all([
       fetch("/api/materials"),
       fetch("/api/categories"),
+      fetch("/api/stores"),
     ]);
-    const [mats, cats] = await Promise.all([matRes.json(), catRes.json()]);
+    const [mats, cats, sts] = await Promise.all([matRes.json(), catRes.json(), storeRes.json()]);
     setMaterials(mats);
     setCategories(cats);
+    setStores(Array.isArray(sts) ? sts : sts.stores ?? []);
     setLoading(false);
   }, []);
 
@@ -87,6 +98,7 @@ export default function MaterialsPage() {
       description: mat.description ?? "",
       categoryId: mat.categoryId,
       published: mat.published,
+      linkedStoreIds: [],
     });
     setError("");
     setShowEditModal(true);
@@ -116,6 +128,7 @@ export default function MaterialsPage() {
         fileType: getFileType(uploadedFile.type),
         mimeType: uploadedFile.type,
         fileSize: uploadedFile.size,
+        linkedStoreIds: form.linkedStoreIds,
       }),
     });
 
@@ -200,40 +213,32 @@ export default function MaterialsPage() {
         </button>
       </div>
 
-      {/* Category filter cards */}
-      <div className="mb-5 flex flex-wrap gap-2">
+      {/* Category filter — compact scrollable pills */}
+      <div className="mb-5 flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
         <button
           onClick={() => setFilterCategory("")}
-          className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-medium transition ${
+          className={`shrink-0 px-3 py-1 rounded-full text-xs font-medium border transition ${
             filterCategory === ""
               ? "bg-blue-600 text-white border-blue-600"
               : "bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:text-blue-600"
           }`}
         >
-          <span>🗂️</span>
-          <span>Todos</span>
-          <span className={`text-xs px-1.5 py-0.5 rounded-full ${filterCategory === "" ? "bg-blue-500 text-white" : "bg-gray-100 text-gray-500"}`}>
-            {materials.length}
-          </span>
+          Todos
         </button>
         {categories.map((cat) => {
-          const count = materials.filter((m) => m.categoryId === cat.id).length;
           const active = filterCategory === cat.id;
           return (
             <button
               key={cat.id}
               onClick={() => setFilterCategory(active ? "" : cat.id)}
-              className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-medium transition ${
+              className={`shrink-0 flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border transition ${
                 active
                   ? "bg-blue-600 text-white border-blue-600"
                   : "bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:text-blue-600"
               }`}
             >
-              <span>{cat.icon}</span>
+              {cat.icon && <span>{cat.icon}</span>}
               <span>{cat.name}</span>
-              <span className={`text-xs px-1.5 py-0.5 rounded-full ${active ? "bg-blue-500 text-white" : "bg-gray-100 text-gray-500"}`}>
-                {count}
-              </span>
             </button>
           );
         })}
@@ -350,6 +355,15 @@ export default function MaterialsPage() {
                           <p className="text-xs text-gray-400 truncate max-w-xs">
                             {mat.description}
                           </p>
+                        )}
+                        {mat.linkedStores && mat.linkedStores.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {mat.linkedStores.map(({ store }) => (
+                              <span key={store.id} className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-100 text-emerald-700">
+                                {store.name}
+                              </span>
+                            ))}
+                          </div>
                         )}
                       </div>
                     </div>
@@ -534,6 +548,42 @@ export default function MaterialsPage() {
                   ))}
                 </select>
               </div>
+
+              {/* Store picker */}
+              {stores.length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Visível para lojas
+                    <span className="ml-1.5 text-xs font-normal text-gray-400">(vazio = todas)</span>
+                  </label>
+                  <div className="flex flex-wrap gap-1.5 p-2.5 border border-gray-200 rounded-lg max-h-36 overflow-y-auto">
+                    {stores.map((store) => {
+                      const selected = form.linkedStoreIds.includes(store.id);
+                      return (
+                        <button
+                          key={store.id}
+                          type="button"
+                          onClick={() =>
+                            setForm((f) => ({
+                              ...f,
+                              linkedStoreIds: selected
+                                ? f.linkedStoreIds.filter((id) => id !== store.id)
+                                : [...f.linkedStoreIds, store.id],
+                            }))
+                          }
+                          className={`px-2.5 py-1 rounded-full text-xs font-medium border transition ${
+                            selected
+                              ? "bg-blue-600 text-white border-blue-600"
+                              : "bg-white border-gray-200 text-gray-600 hover:border-blue-300"
+                          }`}
+                        >
+                          {store.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               <div className="flex items-center gap-2">
                 <input

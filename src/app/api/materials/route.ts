@@ -16,6 +16,7 @@ const materialSchema = z.object({
   fileSize: z.number().optional(),
   categoryId: z.string(),
   published: z.boolean().optional().default(true),
+  linkedStoreIds: z.array(z.string()).optional().default([]),
 });
 
 export async function GET(req: Request) {
@@ -33,17 +34,33 @@ export async function GET(req: Request) {
       published?: boolean;
       categoryId?: string;
       category?: { slug: string };
+      OR?: object[];
     } = {};
 
     if (session.user.role !== "ADMIN") {
       where.published = true;
+      // Get the franchisee's store IDs
+      const userStores = await db.userStore.findMany({
+        where: { userId: session.user.id },
+        select: { storeId: true },
+      });
+      const storeIds = userStores.map((us) => us.storeId);
+      // Show materials with no store restriction OR linked to one of the user's stores
+      where.OR = [
+        { linkedStores: { none: {} } },
+        { linkedStores: { some: { storeId: { in: storeIds } } } },
+      ];
     }
     if (categoryId) where.categoryId = categoryId;
     if (slug) where.category = { slug };
 
     const materials = await db.material.findMany({
       where,
-      include: { category: true, createdBy: { select: { name: true } } },
+      include: {
+        category: true,
+        createdBy: { select: { name: true } },
+        linkedStores: { include: { store: { select: { id: true, name: true, code: true } } } },
+      },
       orderBy: { createdAt: "desc" },
     });
     return NextResponse.json(materials);
@@ -64,8 +81,19 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const data = materialSchema.parse(body);
+    const { linkedStoreIds, ...rest } = data;
     const material = await db.material.create({
-      data: { ...data, createdById: session.user.id },
+      data: {
+        ...rest,
+        createdById: session.user.id,
+        linkedStores: linkedStoreIds.length > 0
+          ? { create: linkedStoreIds.map((storeId) => ({ storeId })) }
+          : undefined,
+      },
+      include: {
+        category: true,
+        linkedStores: { include: { store: { select: { id: true, name: true, code: true } } } },
+      },
     });
 
     if (data.published) {
