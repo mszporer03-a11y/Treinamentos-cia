@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useSession } from "next-auth/react";
 import { MaterialViewer } from "@/components/franchisee/MaterialViewer";
-import { Play, FileText, Image as ImageIcon, File, MessageSquare, BarChart2, ClipboardList, ChevronRight } from "lucide-react";
+import { Play, FileText, Image as ImageIcon, File, MessageSquare, BarChart2, ClipboardList, ChevronRight, SlidersHorizontal } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -134,6 +134,7 @@ export default function GalleryPage() {
   const [materials, setMaterials] = useState<Material[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [activeCategory, setActiveCategory] = useState<string>("all");
+  const [showFilters, setShowFilters] = useState(false);
   const [viewing, setViewing] = useState<Material | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -209,14 +210,29 @@ export default function GalleryPage() {
       </div>
 
       {/* Materials section */}
-      <div className="mb-4">
+      <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-bold text-gray-900">Materiais de Treinamento</h2>
+        {visibleCategories.length > 0 && (
+          <button
+            onClick={() => { setShowFilters((v) => !v); if (showFilters) setActiveCategory("all"); }}
+            className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border transition ${
+              showFilters || activeCategory !== "all"
+                ? "bg-orange-600 text-white border-orange-600"
+                : "bg-white text-gray-600 border-gray-200 hover:border-orange-300"
+            }`}
+          >
+            <SlidersHorizontal className="h-3.5 w-3.5" />
+            {activeCategory !== "all"
+              ? visibleCategories.find((c) => c.id === activeCategory)?.name ?? "Filtro"
+              : "Filtrar"}
+          </button>
+        )}
       </div>
 
-      {visibleCategories.length > 0 && (
-        <div className="flex gap-2 overflow-x-auto pb-2 mb-6 scrollbar-hide">
+      {showFilters && visibleCategories.length > 0 && (
+        <div className="flex gap-2 overflow-x-auto pb-2 mb-5 scrollbar-hide">
           <button
-            onClick={() => setActiveCategory("all")}
+            onClick={() => { setActiveCategory("all"); setShowFilters(false); }}
             className={`flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
               activeCategory === "all"
                 ? "bg-orange-600 text-white shadow-sm"
@@ -228,7 +244,7 @@ export default function GalleryPage() {
           {visibleCategories.map((cat) => (
             <button
               key={cat.id}
-              onClick={() => setActiveCategory(cat.id)}
+              onClick={() => { setActiveCategory(cat.id); setShowFilters(false); }}
               className={`flex-shrink-0 flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
                 activeCategory === cat.id
                   ? "bg-orange-600 text-white shadow-sm"

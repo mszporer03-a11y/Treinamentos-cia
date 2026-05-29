@@ -303,8 +303,8 @@ export function ChatWindow({
 
       {/* Input bar */}
       <div className="px-4 py-3 bg-white border-t border-gray-200 flex-shrink-0">
-        {/* Store picker (admin only) */}
-        {currentUserRole === "ADMIN" && availableStores.length > 0 && showStorePicker && (
+        {/* Store picker */}
+        {availableStores.length > 0 && showStorePicker && (
           <div className="flex flex-wrap gap-1.5 mb-2 p-2 bg-emerald-50 rounded-xl border border-emerald-100">
             <p className="w-full text-[10px] text-emerald-700 font-semibold mb-1">Vincular à loja:</p>
             {availableStores.map((store) => {
@@ -329,7 +329,7 @@ export function ChatWindow({
         )}
 
         {/* Selected stores badges */}
-        {currentUserRole === "ADMIN" && selectedStoreIds.length > 0 && !showStorePicker && (
+        {selectedStoreIds.length > 0 && !showStorePicker && (
           <div className="flex flex-wrap items-center gap-1.5 mb-2">
             {selectedStoreIds.map((id) => {
               const store = availableStores.find((s) => s.id === id);
@@ -421,8 +421,8 @@ export function ChatWindow({
             <Tag className="h-5 w-5" />
           </button>
 
-          {/* Link to store button (admin only) */}
-          {currentUserRole === "ADMIN" && availableStores.length > 0 && (
+          {/* Link to store button */}
+          {availableStores.length > 0 && (
             <button
               type="button"
               onClick={() => setShowStorePicker((v) => !v)}

@@ -29,8 +29,6 @@ interface LastMessage {
 
 interface PendingStore { id: string; name: string; code: string; }
 
-interface AllStore { id: string; name: string; code: string; }
-
 interface ConversationItem {
   id: string;
   franchisee: Franchisee;
@@ -45,7 +43,6 @@ export default function AdminChatPage() {
   const [selected, setSelected] = useState<ConversationItem | null>(null);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
-  const [allStores, setAllStores] = useState<AllStore[]>([]);
 
   // New-conversation picker state
   const [showPicker, setShowPicker] = useState(false);
@@ -76,10 +73,6 @@ export default function AdminChatPage() {
   useEffect(() => {
     fetchConversations();
     const id = setInterval(fetchConversations, 5000);
-    // Fetch all stores once for the store picker
-    fetch("/api/stores")
-      .then((r) => r.json())
-      .then((data) => setAllStores(Array.isArray(data) ? data.map((s: AllStore) => ({ id: s.id, name: s.name, code: s.code })) : []));
     return () => clearInterval(id);
   }, [fetchConversations]);
 
@@ -296,7 +289,11 @@ export default function AdminChatPage() {
               currentUserId={session?.user?.id ?? ""}
               currentUserRole="ADMIN"
               recipientName={selected.franchisee.name}
-              availableStores={allStores}
+              availableStores={selected.franchisee.stores.map((s) => ({
+                id: s.store.id,
+                name: s.store.name,
+                code: s.store.code,
+              }))}
             />
           </div>
         ) : (

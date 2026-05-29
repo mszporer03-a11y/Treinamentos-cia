@@ -12,12 +12,16 @@ import { usePushNotifications } from "@/hooks/usePushNotifications";
 export default function FranchiseeChatPage() {
   const { data: session } = useSession();
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const [myStores, setMyStores] = useState<{ id: string; name: string; code: string }[]>([]);
   const { permission, subscribe } = usePushNotifications();
 
   useEffect(() => {
     fetch("/api/conversations")
       .then((r) => r.json())
       .then((data) => setConversationId(data.id));
+    fetch("/api/stores")
+      .then((r) => r.json())
+      .then((data) => setMyStores(Array.isArray(data) ? data.map((s: { id: string; name: string; code: string }) => ({ id: s.id, name: s.name, code: s.code })) : []));
   }, []);
 
   return (
@@ -50,6 +54,7 @@ export default function FranchiseeChatPage() {
             currentUserId={session?.user?.id ?? ""}
             currentUserRole="FRANCHISEE"
             recipientName="Admin"
+            availableStores={myStores}
           />
         </div>
       )}
