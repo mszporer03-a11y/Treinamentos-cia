@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BarChart2, CheckCircle2, Clock } from "lucide-react";
+import Link from "next/link";
+import { BarChart2, CheckCircle2, ChevronLeft, Clock } from "lucide-react";
 import { useSession } from "next-auth/react";
 
 type SurveyOption = { id: string; text: string; _count?: { responses: number } };
@@ -49,6 +50,9 @@ export default function SurveysPage() {
 
   return (
     <div>
+      <Link href="/gallery" className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition mb-5">
+        <ChevronLeft className="h-4 w-4" /> Voltar ao início
+      </Link>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
           <BarChart2 className="h-7 w-7 text-violet-500" /> Pesquisas

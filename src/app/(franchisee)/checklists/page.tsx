@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { ClipboardList, Check, ChevronDown, ChevronUp, Store, Loader2 } from "lucide-react";
+import Link from "next/link";
+import { ClipboardList, Check, ChevronDown, ChevronLeft, ChevronUp, Store, Loader2 } from "lucide-react";
 import { useSession } from "next-auth/react";
 
 interface ChecklistItemData {
@@ -124,6 +125,9 @@ export default function FranchiseeChecklistsPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
+      <Link href="/gallery" className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition mb-5">
+        <ChevronLeft className="h-4 w-4" /> Voltar ao início
+      </Link>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
           <ClipboardList className="h-7 w-7 text-orange-500" /> Checklists
