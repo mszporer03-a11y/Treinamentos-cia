@@ -7,11 +7,11 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   ChevronLeft,
-  Wrench,
-  Package,
-  DollarSign,
+  MessageSquare,
   Megaphone,
   HelpCircle,
+  KeyRound,
+  MonitorCog,
   Paperclip,
   X,
   Send,
@@ -23,10 +23,10 @@ import { useUploadThing } from "@/lib/uploadthing-components";
 type Store = { id: string; name: string; code: string };
 
 const CATEGORIES: Record<string, { label: string; Icon: React.ElementType; color: string }> = {
-  equipamentos: { label: "Equipamentos", Icon: Wrench, color: "from-orange-500 to-red-500" },
-  estoque: { label: "Estoque / Insumos", Icon: Package, color: "from-blue-500 to-cyan-500" },
-  financeiro: { label: "Financeiro", Icon: DollarSign, color: "from-emerald-500 to-green-500" },
+  solicitacoes: { label: "Solicitações", Icon: MessageSquare, color: "from-blue-500 to-indigo-500" },
   marketing: { label: "Marketing", Icon: Megaphone, color: "from-purple-500 to-violet-500" },
+  "senhas-usuarios": { label: "Senhas e usuários", Icon: KeyRound, color: "from-amber-500 to-orange-500" },
+  "suporte-sistema": { label: "Suporte Sistema", Icon: MonitorCog, color: "from-cyan-500 to-teal-500" },
   outros: { label: "Outros", Icon: HelpCircle, color: "from-gray-500 to-gray-600" },
 };
 
