@@ -43,7 +43,7 @@ export default function DocumentsPage() {
   });
 
   return (
-    <div>
+    <div className="p-4 sm:p-6">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
           <FileText className="h-7 w-7 text-blue-500" /> Meus Documentos

@@ -67,7 +67,7 @@ export default function EmployeesPage() {
   if (!session?.user) return null;
 
   return (
-    <div>
+    <div className="p-4 sm:p-6">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
           <GraduationCap className="h-7 w-7 text-violet-500" /> Treinamento de Colaboradores

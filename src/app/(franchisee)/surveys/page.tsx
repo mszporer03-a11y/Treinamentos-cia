@@ -49,7 +49,7 @@ export default function SurveysPage() {
   const closed = surveys.filter((s) => !s.active);
 
   return (
-    <div>
+    <div className="p-4 sm:p-6">
       <Link href="/gallery" className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition mb-5">
         <ChevronLeft className="h-4 w-4" /> Voltar ao início
       </Link>

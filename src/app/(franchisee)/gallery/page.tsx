@@ -165,7 +165,7 @@ export default function GalleryPage() {
   const firstName = session?.user?.name?.split(" ")[0] ?? "Franqueado";
 
   return (
-    <div className="min-h-screen">
+    <div className="p-4 sm:p-6">
       {/* Hero banner */}
       <div className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 rounded-2xl px-6 py-8 mb-8 relative overflow-hidden">
         <div

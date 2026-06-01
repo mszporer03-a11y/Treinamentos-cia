@@ -7,7 +7,7 @@ export default async function FranchiseePerfilPage() {
   const session = await auth();
 
   return (
-    <div>
+    <div className="p-4 sm:p-6">
       <div className="mb-6">
         <h1 className="text-xl md:text-2xl font-bold text-gray-900">
           Meu Perfil

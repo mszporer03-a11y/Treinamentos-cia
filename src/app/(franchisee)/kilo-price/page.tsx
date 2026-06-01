@@ -36,7 +36,7 @@ export default function KiloPricePage() {
   const history = prices.slice(1);
 
   return (
-    <div>
+    <div className="p-4 sm:p-6">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
           <TrendingUp className="h-7 w-7 text-green-500" /> Preço do Quilo

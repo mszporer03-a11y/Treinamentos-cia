@@ -25,7 +25,7 @@ export default function FranchiseeChatPage() {
   }, []);
 
   return (
-    <div className="flex flex-col" style={{ height: "calc(100dvh - 64px)" }}>
+    <div className="flex flex-col h-[calc(100vh-56px)] md:h-screen">
       <div className="px-4 py-3 border-b border-gray-200 bg-white flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Link href="/gallery" className="text-gray-400 hover:text-gray-700 transition">

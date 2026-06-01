@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 import { redirect } from "next/navigation";
+import { FranchiseeShell } from "@/components/franchisee/FranchiseeShell";
 
 export default async function FranchiseeLayout({
   children,
@@ -12,11 +13,5 @@ export default async function FranchiseeLayout({
 
   if (!session) redirect("/login");
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
-        {children}
-      </main>
-    </div>
-  );
+  return <FranchiseeShell user={session.user}>{children}</FranchiseeShell>;
 }
