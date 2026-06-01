@@ -13,6 +13,11 @@ import {
   FileText,
   UserCircle2,
   LogOut,
+  Wrench,
+  Package,
+  DollarSign,
+  Megaphone,
+  HelpCircle,
 } from "lucide-react";
 
 interface FranchiseeSidebarProps {
@@ -30,9 +35,19 @@ const sections: { label: string; items: { href: string; label: string; icon: Rea
     ],
   },
   {
-    label: "Comunicação",
+    label: "Suporte",
     items: [
-      { href: "/chat", label: "Chat", icon: MessageSquare },
+      { href: "/chat", label: "Suporte (Chat)", icon: MessageSquare },
+    ],
+  },
+  {
+    label: "Solicitações Rápidas",
+    items: [
+      { href: "/suporte/equipamentos", label: "Equipamentos", icon: Wrench },
+      { href: "/suporte/estoque", label: "Estoque / Insumos", icon: Package },
+      { href: "/suporte/financeiro", label: "Financeiro", icon: DollarSign },
+      { href: "/suporte/marketing", label: "Marketing", icon: Megaphone },
+      { href: "/suporte/outros", label: "Outros", icon: HelpCircle },
     ],
   },
   {

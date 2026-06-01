@@ -21,7 +21,7 @@ interface FranchiseeShellProps {
 
 const mobileNavItems = [
   { href: "/gallery", label: "Materiais", icon: BookOpen, exact: true },
-  { href: "/chat", label: "Chat", icon: MessageSquare },
+  { href: "/chat", label: "Suporte", icon: MessageSquare },
   { href: "/surveys", label: "Pesquisas", icon: BarChart2 },
   { href: "/checklists", label: "Checklists", icon: ClipboardList },
   { href: "/perfil", label: "Perfil", icon: UserCircle2, exact: true },
