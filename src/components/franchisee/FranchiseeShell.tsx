@@ -24,7 +24,6 @@ const mobileNavItems = [
   { href: "/chat", label: "Chat", icon: MessageSquare },
   { href: "/surveys", label: "Pesquisas", icon: BarChart2 },
   { href: "/checklists", label: "Checklists", icon: ClipboardList },
-  { href: "/documents", label: "Documentos", icon: FileText },
   { href: "/perfil", label: "Perfil", icon: UserCircle2, exact: true },
 ];
 

@@ -13,9 +13,6 @@ import {
   FileText,
   UserCircle2,
   LogOut,
-  DollarSign,
-  Package,
-  Users,
 } from "lucide-react";
 
 interface FranchiseeSidebarProps {
@@ -44,14 +41,6 @@ const sections: { label: string; items: { href: string; label: string; icon: Rea
       { href: "/surveys", label: "Pesquisas", icon: BarChart2 },
       { href: "/checklists", label: "Checklists", icon: ClipboardList },
       { href: "/documents", label: "Documentos", icon: FileText },
-      { href: "/kilo-price", label: "Preço do Quilo", icon: DollarSign },
-      { href: "/supply-requests", label: "Pedidos de Suprimentos", icon: Package },
-    ],
-  },
-  {
-    label: "Equipe",
-    items: [
-      { href: "/employees", label: "Funcionários", icon: Users },
     ],
   },
   {
