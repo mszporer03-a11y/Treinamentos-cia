@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -24,7 +25,7 @@ interface FranchiseeSidebarProps {
   };
 }
 
-const sections = [
+const sections: { label: string; items: { href: string; label: string; icon: React.ElementType; exact?: boolean }[] }[] = [
   {
     label: "Treinamentos",
     items: [
