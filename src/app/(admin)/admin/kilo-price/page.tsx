@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
-import { DollarSign, TrendingUp, Plus, X } from "lucide-react";
+import { DollarSign, TrendingUp } from "lucide-react";
 
 type KiloPrice = { id: string; price: number; confirmedAt: string | null; effectiveFrom: string; createdAt: string; suggestedNote: string | null };
 type Store = { id: string; name: string; code: string; city: string | null; active: boolean; kiloPrices: KiloPrice[] };
@@ -11,29 +11,10 @@ export default function KiloPricePage() {
   const { data: session } = useSession();
   const [stores, setStores] = useState<Store[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ storeId: "", price: "", suggestedNote: "" });
-  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     fetch("/api/kilo-prices").then((r) => r.json()).then((d) => { setStores(d); setLoading(false); });
   }, []);
-
-  async function submit() {
-    const price = parseFloat(form.price);
-    if (!form.storeId || isNaN(price) || price <= 0) return;
-    setSaving(true);
-    await fetch("/api/kilo-prices", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ storeId: form.storeId, price, suggestedNote: form.suggestedNote || undefined }),
-    });
-    // Refresh
-    const updated = await fetch("/api/kilo-prices").then((r) => r.json());
-    setStores(updated);
-    setForm({ storeId: "", price: "", suggestedNote: "" });
-    setShowForm(false);
-    setSaving(false);
-  }
 
   if (!session?.user) return null;
 
@@ -49,11 +30,8 @@ export default function KiloPricePage() {
             <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
               <DollarSign className="h-7 w-7 text-emerald-500" /> Monitor do Preço do Quilo
             </h1>
-            <p className="text-gray-500 mt-1">Acompanhe e sugira o preço do quilo para cada loja.</p>
+            <p className="text-gray-500 mt-1">Acompanhe o preço do quilo para cada loja.</p>
           </div>
-          <button onClick={() => setShowForm(true)} className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-xl hover:bg-emerald-700 transition">
-            <Plus className="h-4 w-4" /> Sugerir Preço
-          </button>
         </div>
 
         {avg > 0 && (
@@ -69,30 +47,6 @@ export default function KiloPricePage() {
             <div className="bg-white border border-gray-100 rounded-xl p-4">
               <p className="text-xs text-gray-500 font-medium mb-1">Confirmados</p>
               <p className="text-3xl font-bold text-gray-900">{stores.filter((s) => s.kiloPrices[0]?.confirmedAt).length}</p>
-            </div>
-          </div>
-        )}
-
-        {showForm && (
-          <div className="bg-white border border-gray-200 rounded-xl p-5 mb-6 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-semibold text-gray-900">Sugerir Preço do Quilo</h2>
-              <button onClick={() => setShowForm(false)}><X className="h-4 w-4 text-gray-400" /></button>
-            </div>
-            <div className="space-y-3">
-              <select className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                value={form.storeId} onChange={(e) => setForm({ ...form, storeId: e.target.value })}>
-                <option value="">Selecionar loja...</option>
-                {stores.map((s) => <option key={s.id} value={s.id}>{s.name} ({s.code})</option>)}
-              </select>
-              <input type="number" step="0.01" min="0" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                placeholder="Preço sugerido (R$)" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} />
-              <input className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                placeholder="Observação (opcional)" value={form.suggestedNote} onChange={(e) => setForm({ ...form, suggestedNote: e.target.value })} />
-              <button disabled={saving || !form.storeId || !form.price} onClick={submit}
-                className="w-full py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition">
-                {saving ? "Salvando..." : "Enviar Sugestão"}
-              </button>
             </div>
           </div>
         )}
