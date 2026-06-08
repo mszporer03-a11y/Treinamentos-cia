@@ -65,7 +65,7 @@ export default function SurveysPage() {
         <div>
           <p className="text-sm font-semibold text-violet-900 mb-0.5">O que são as pesquisas?</p>
           <p className="text-sm text-violet-700 leading-relaxed">
-            Pesquisas de opinião e satisfação enviadas pela Cia do Churrasco para a rede de franqueados.
+            Pesquisas de opinião e satisfação enviadas pela Companhia do Churrasco para a rede de franqueados.
             Sua participação é fundamental para a melhoria contínua de produtos, processos e serviços.
             Cada resposta leva menos de 1 minuto — escolha uma opção e envie.
           </p>

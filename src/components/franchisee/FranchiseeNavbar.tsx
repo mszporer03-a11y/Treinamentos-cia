@@ -47,7 +47,7 @@ export function FranchiseeNavbar({ user }: FranchiseeNavbarProps) {
           <div className="w-8 h-8 bg-orange-600 rounded-lg flex items-center justify-center">
             <BookOpen className="h-4 w-4 text-white" />
           </div>
-          <span className="hidden md:inline text-sm">Cia do Churrasco</span>
+          <span className="hidden md:inline text-sm">Companhia do Churrasco</span>
         </Link>
 
         {/* Desktop Nav */}

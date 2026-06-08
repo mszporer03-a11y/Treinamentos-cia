@@ -27,7 +27,7 @@ const CATEGORIES: Record<string, { label: string; Icon: React.ElementType; color
     label: "Solicitações",
     Icon: MessageSquare,
     color: "from-blue-500 to-indigo-500",
-    description: "Use este canal para solicitar qualquer tipo de suporte ou serviço da Cia do Churrasco. Descreva sua necessidade com detalhes e anexe imagens ou documentos se necessário. Nossa equipe responderá em breve.",
+    description: "Use este canal para solicitar qualquer tipo de suporte ou serviço da Companhia do Churrasco. Descreva sua necessidade com detalhes e anexe imagens ou documentos se necessário. Nossa equipe responderá em breve.",
   },
   marketing: {
     label: "Marketing",

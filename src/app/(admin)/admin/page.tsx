@@ -54,7 +54,7 @@ export default async function AdminDashboardPage() {
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-500 text-sm mt-1">Visão geral da rede Cia do Churrasco</p>
+        <p className="text-gray-500 text-sm mt-1">Visão geral da rede Companhia do Churrasco</p>
       </div>
 
       {/* KPIs */}

@@ -191,7 +191,7 @@ export const PORTAL_TUTORIAL_STEPS: TutorialStep[] = [
     icon: "👋",
     title: "Bem-vindo ao Portal!",
     description:
-      "Olá! Este é o Portal do Franqueado da Cia do Churrasco. Vamos te guiar pelas principais funcionalidades em poucos passos.",
+      "Olá! Este é o Portal do Franqueado da Companhia do Churrasco. Vamos te guiar pelas principais funcionalidades em poucos passos.",
     hint: null,
     target: null,
   },
@@ -223,7 +223,7 @@ export const PORTAL_TUTORIAL_STEPS: TutorialStep[] = [
     icon: "📊",
     title: "Pesquisas",
     description:
-      "Responda às pesquisas enviadas pela Cia do Churrasco. Sua participação é essencial para a melhoria contínua de toda a rede.",
+      "Responda às pesquisas enviadas pela Companhia do Churrasco. Sua participação é essencial para a melhoria contínua de toda a rede.",
     hint: "Menu → Pesquisas",
     target: "nav-surveys",
   },
@@ -239,7 +239,7 @@ export const PORTAL_TUTORIAL_STEPS: TutorialStep[] = [
     icon: "💬",
     title: "Suporte (Chat)",
     description:
-      "Precisa de ajuda? Use o chat para entrar em contato diretamente com a equipe da Cia do Churrasco e resolver qualquer dúvida rapidamente.",
+      "Precisa de ajuda? Use o chat para entrar em contato diretamente com a equipe da Companhia do Churrasco e resolver qualquer dúvida rapidamente.",
     hint: "Menu → Suporte",
     target: "nav-chat",
   },

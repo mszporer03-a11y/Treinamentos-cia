@@ -41,7 +41,7 @@ export default function KiloPricePage() {
         <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
           <TrendingUp className="h-7 w-7 text-green-500" /> Preço do Quilo
         </h1>
-        <p className="text-gray-500 text-sm mt-1">Acompanhe e confirme o preço do quilo sugerido pela Cia do Churrasco.</p>
+        <p className="text-gray-500 text-sm mt-1">Acompanhe e confirme o preço do quilo sugerido pela Companhia do Churrasco.</p>
       </div>
 
       {loading ? (

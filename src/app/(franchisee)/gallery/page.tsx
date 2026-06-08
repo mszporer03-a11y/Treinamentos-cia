@@ -129,7 +129,7 @@ const NAV_ITEMS = [
     href: "/chat",
     icon: MessageSquare,
     label: "Suporte",
-    desc: "Canal direto com a Cia do Churrasco",
+    desc: "Canal direto com a Companhia do Churrasco",
     bg: "from-sky-600 to-sky-500",
     tutorialId: "nav-chat",
   },
