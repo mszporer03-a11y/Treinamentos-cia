@@ -9,7 +9,7 @@ const VALID_STATUSES = ["SEEN", "IN_PROGRESS", "DONE"] as const;
 type ValidStatus = typeof VALID_STATUSES[number];
 
 // PATCH /api/solicitacoes/[id]
-// Admin only — atualiza o status e opcionalmente envia resposta no chat
+// Admin only — atualiza status, salva reply + arquivo, envia no chat
 export async function PATCH(
   req: Request,
   { params }: { params: { id: string } }
@@ -20,7 +20,21 @@ export async function PATCH(
   }
 
   const body = await req.json();
-  const { status, reply } = body as { status: string; reply?: string };
+  const {
+    status,
+    reply,
+    replyFileUrl,
+    replyFileKey,
+    replyFileName,
+    replyFileType,
+  } = body as {
+    status: string;
+    reply?: string;
+    replyFileUrl?: string;
+    replyFileKey?: string;
+    replyFileName?: string;
+    replyFileType?: string;
+  };
 
   if (!VALID_STATUSES.includes(status as ValidStatus)) {
     return NextResponse.json({ error: "Status inválido" }, { status: 400 });
@@ -28,30 +42,45 @@ export async function PATCH(
 
   const message = await db.message.findUnique({
     where: { id: params.id },
-    include: {
-      conversation: {
-        select: { id: true, franchiseeId: true },
-      },
-    },
+    include: { conversation: { select: { id: true, franchiseeId: true } } },
   });
 
   if (!message || !message.category) {
     return NextResponse.json({ error: "Solicitação não encontrada" }, { status: 404 });
   }
 
-  // Update status
+  const now = new Date();
+
+  // Build timestamp + reply data for update
+  const updateData: Record<string, unknown> = { requestStatus: status };
+  if (status === "SEEN")        updateData.seenAt = now;
+  if (status === "IN_PROGRESS") updateData.inProgressAt = now;
+  if (status === "DONE") {
+    updateData.doneAt = now;
+    if (reply?.trim())     updateData.adminReplyContent  = reply.trim();
+    if (replyFileUrl)      updateData.adminReplyFileUrl  = replyFileUrl;
+    if (replyFileKey)      updateData.adminReplyFileKey  = replyFileKey;
+    if (replyFileName)     updateData.adminReplyFileName = replyFileName;
+    if (replyFileType)     updateData.adminReplyFileType = replyFileType;
+  }
+
   const updated = await db.message.update({
     where: { id: params.id },
-    data: { requestStatus: status as ValidStatus },
+    data: updateData,
   });
 
-  // If DONE + reply → create a chat message as admin
-  if (status === "DONE" && reply?.trim()) {
+  // If DONE and there's a reply (text or file) → create chat message
+  const hasReply = reply?.trim() || replyFileUrl;
+  if (status === "DONE" && hasReply) {
     const replyMsg = await db.message.create({
       data: {
         conversationId: message.conversation.id,
         senderId: session.user.id,
-        content: reply.trim(),
+        content: reply?.trim() || null,
+        fileUrl:  replyFileUrl  || null,
+        fileKey:  replyFileKey  || null,
+        fileName: replyFileName || null,
+        fileType: replyFileType || null,
         readByAdmin: true,
         readByFranchisee: false,
       },
@@ -63,24 +92,27 @@ export async function PATCH(
 
     await db.conversation.update({
       where: { id: message.conversation.id },
-      data: { updatedAt: new Date() },
+      data: { updatedAt: now },
     });
 
-    // Notificar o franqueado
+    const notifBody = reply?.trim()
+      ? reply.trim()
+      : `📎 ${replyFileName ?? "Arquivo enviado"}`;
+
     await sendPushToUser(message.conversation.franchiseeId, {
-      title: `Solicitação concluída`,
-      body: reply.trim(),
-      url: "/chat",
+      title: "Solicitação concluída!",
+      body: notifBody,
+      url: "/solicitacoes",
     }).catch(() => {});
 
     return NextResponse.json({ updated, replyMsg });
   }
 
-  // Notificar o franqueado sobre mudança de status
+  // Notificar status intermediário
   const statusLabels: Record<string, string> = {
-    SEEN: "Sua solicitação foi vista!",
+    SEEN:        "Sua solicitação foi vista!",
     IN_PROGRESS: "Sua solicitação está em preparo.",
-    DONE: "Sua solicitação foi concluída!",
+    DONE:        "Sua solicitação foi concluída!",
   };
   await sendPushToUser(message.conversation.franchiseeId, {
     title: statusLabels[status] ?? "Atualização na solicitação",

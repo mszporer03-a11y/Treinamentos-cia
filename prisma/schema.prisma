@@ -206,12 +206,20 @@ model Message {
   fileKey          String?
   fileType         String?
   fileName         String?
-  category         String?
-  requestStatus    RequestStatus?
-  readByAdmin      Boolean        @default(false)
-  readByFranchisee Boolean        @default(false)
-  linkedStores     MessageStore[]
-  createdAt        DateTime       @default(now())
+  category            String?
+  requestStatus       RequestStatus?
+  seenAt              DateTime?
+  inProgressAt        DateTime?
+  doneAt              DateTime?
+  adminReplyContent   String?
+  adminReplyFileUrl   String?
+  adminReplyFileKey   String?
+  adminReplyFileName  String?
+  adminReplyFileType  String?
+  readByAdmin         Boolean        @default(false)
+  readByFranchisee    Boolean        @default(false)
+  linkedStores        MessageStore[]
+  createdAt           DateTime       @default(now())
 }
 
 model MessageStore {
