@@ -17,6 +17,7 @@ import {
   HelpCircle,
   KeyRound,
   MonitorCog,
+  Inbox,
 } from "lucide-react";
 
 interface FranchiseeSidebarProps {
@@ -41,8 +42,9 @@ const sections: { label: string; items: { href: string; label: string; icon: Rea
     ],
   },
   {
-    label: "Solicitações Rápidas",
+    label: "Solicitações",
     items: [
+      { href: "/solicitacoes", label: "Minhas Solicitações", icon: Inbox },
       { href: "/suporte/solicitacoes", label: "Solicitações", icon: MessageSquare },
       { href: "/suporte/marketing", label: "Marketing", icon: Megaphone },
       { href: "/suporte/senhas-usuarios", label: "Senhas e usuários", icon: KeyRound },

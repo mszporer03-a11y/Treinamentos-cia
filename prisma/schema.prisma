@@ -83,6 +83,13 @@ enum OnboardingPhase {
   APROVACAO
 }
 
+enum RequestStatus {
+  PENDING
+  SEEN
+  IN_PROGRESS
+  DONE
+}
+
 model User {
   id                String               @id @default(cuid())
   name              String
@@ -200,6 +207,7 @@ model Message {
   fileType         String?
   fileName         String?
   category         String?
+  requestStatus    RequestStatus?
   readByAdmin      Boolean        @default(false)
   readByFranchisee Boolean        @default(false)
   linkedStores     MessageStore[]

@@ -21,6 +21,7 @@ import {
   ClipboardCheck,
   CheckSquare,
   ClipboardList,
+  Inbox,
 } from "lucide-react";
 
 interface AdminSidebarProps {
@@ -36,6 +37,7 @@ const sections = [
     items: [
       { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
       { href: "/admin/chat", label: "Chat", icon: MessageSquare },
+      { href: "/admin/solicitacoes", label: "Solicitações", icon: Inbox },
     ],
   },
   {

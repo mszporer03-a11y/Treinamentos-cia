@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useSession } from "next-auth/react";
 import { MaterialViewer } from "@/components/franchisee/MaterialViewer";
-import { Play, FileText, Image as ImageIcon, File, MessageSquare, BarChart2, ClipboardList, ChevronRight, SlidersHorizontal, Megaphone } from "lucide-react";
+import { Play, FileText, Image as ImageIcon, File, MessageSquare, BarChart2, ClipboardList, ChevronRight, SlidersHorizontal, Megaphone, Inbox } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -133,6 +133,14 @@ const NAV_ITEMS = [
     bg: "from-sky-600 to-sky-500",
     tutorialId: "nav-chat",
   },
+  {
+    href: "/solicitacoes",
+    icon: Inbox,
+    label: "Minhas Solicitações",
+    desc: "Acompanhe o andamento das suas solicitações",
+    bg: "from-indigo-600 to-indigo-500",
+    tutorialId: "nav-solicitacoes",
+  },
 ];
 
 export default function GalleryPage() {
@@ -194,7 +202,7 @@ export default function GalleryPage() {
       </div>
 
       {/* Nav cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
         {NAV_ITEMS.map(({ href, icon: Icon, label, desc, bg, tutorialId }) => (
           <Link
             key={href}

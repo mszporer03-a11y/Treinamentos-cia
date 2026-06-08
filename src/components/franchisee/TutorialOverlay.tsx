@@ -256,8 +256,16 @@ export const PORTAL_TUTORIAL_STEPS: TutorialStep[] = [
     title: "Solicitações Rápidas",
     description:
       "Envie solicitações de suporte, marketing, senhas de usuários, suporte ao sistema e outras demandas diretamente pelo portal.",
-    hint: "Menu lateral → Solicitações Rápidas",
+    hint: "Menu lateral → Solicitações",
     target: null,
+  },
+  {
+    icon: "📬",
+    title: "Minhas Solicitações",
+    description:
+      "Acompanhe o status de todas as solicitações que você enviou. Cada solicitação é atualizada pela equipe com os status: Visto 🟡, Em Preparo 🔵 e Pronto 🟢.",
+    hint: "Início → card Minhas Solicitações",
+    target: "nav-solicitacoes",
   },
   {
     icon: "🎉",

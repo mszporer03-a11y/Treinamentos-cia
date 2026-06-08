@@ -81,6 +81,7 @@ export async function POST(
       fileType: fileType || null,
       fileName: fileName || null,
       category: category || null,
+      requestStatus: (!isAdmin && category) ? "PENDING" : null,
       readByAdmin: isAdmin,
       readByFranchisee: !isAdmin,
       linkedStores: storeIds.length > 0

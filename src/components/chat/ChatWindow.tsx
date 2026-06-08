@@ -16,17 +16,26 @@ import { useUploadThing } from "@/lib/uploadthing-components";
 import { formatDate } from "@/lib/utils";
 
 const MESSAGE_CATEGORIES = [
-  { value: "Solicitacoes", label: "Solicitações", color: "bg-blue-100 text-blue-700" },
-  { value: "Marketing", label: "Marketing", color: "bg-purple-100 text-purple-700" },
-  { value: "SenhasUsuarios", label: "Senhas e usuários", color: "bg-orange-100 text-orange-700" },
-  { value: "SuporteSistema", label: "Suporte Sistema", color: "bg-red-100 text-red-700" },
+  { value: "solicitacoes",   label: "Solicitações",       color: "bg-blue-100 text-blue-700" },
+  { value: "marketing",      label: "Marketing",           color: "bg-purple-100 text-purple-700" },
+  { value: "senhas-usuarios",label: "Senhas e usuários",   color: "bg-orange-100 text-orange-700" },
+  { value: "suporte-sistema",label: "Suporte Sistema",     color: "bg-cyan-100 text-cyan-700" },
+  { value: "outros",         label: "Outros",              color: "bg-gray-100 text-gray-600" },
 ] as const;
+
+// Legacy camelCase values (kept for backward compat with older messages)
+const LEGACY_CATEGORY_MAP: Record<string, { label: string; color: string }> = {
+  Solicitacoes:   { label: "Solicitações",     color: "bg-blue-100 text-blue-700" },
+  Marketing:      { label: "Marketing",         color: "bg-purple-100 text-purple-700" },
+  SenhasUsuarios: { label: "Senhas e usuários", color: "bg-orange-100 text-orange-700" },
+  SuporteSistema: { label: "Suporte Sistema",   color: "bg-cyan-100 text-cyan-700" },
+};
 
 type MessageCategoryValue = typeof MESSAGE_CATEGORIES[number]["value"];
 
 function categoryBadge(value: string | null | undefined) {
   if (!value) return null;
-  const cat = MESSAGE_CATEGORIES.find((c) => c.value === value);
+  const cat = MESSAGE_CATEGORIES.find((c) => c.value === value) ?? LEGACY_CATEGORY_MAP[value];
   if (!cat) return null;
   return (
     <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${cat.color}`}>
