@@ -1,9 +1,11 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import { useState, useCallback } from "react";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
 import { FranchiseeSidebar } from "./FranchiseeSidebar";
+import { TutorialOverlay, PORTAL_TUTORIAL_STEPS } from "./TutorialOverlay";
 import {
   BookOpen,
   MessageSquare,
@@ -12,6 +14,7 @@ import {
   FileText,
   UserCircle2,
   LogOut,
+  HelpCircle,
 } from "lucide-react";
 
 interface FranchiseeShellProps {
@@ -29,12 +32,35 @@ const mobileNavItems = [
 
 export function FranchiseeShell({ user, children }: FranchiseeShellProps) {
   const pathname = usePathname();
+  const [showTutorial, setShowTutorial] = useState(false);
+  const [tutorialStep, setTutorialStep] = useState(0);
+
+  const openTutorial = useCallback(() => {
+    setTutorialStep(0);
+    setShowTutorial(true);
+  }, []);
+
+  const closeTutorial = useCallback(() => setShowTutorial(false), []);
+
+  const nextStep = useCallback(() => {
+    setTutorialStep((s) => {
+      if (s >= PORTAL_TUTORIAL_STEPS.length - 1) {
+        setShowTutorial(false);
+        return 0;
+      }
+      return s + 1;
+    });
+  }, []);
+
+  const prevStep = useCallback(() => {
+    setTutorialStep((s) => Math.max(0, s - 1));
+  }, []);
 
   return (
     <div className="flex h-screen bg-gray-100 overflow-hidden">
       {/* Desktop sidebar — hidden on mobile */}
       <div className="hidden md:flex flex-shrink-0">
-        <FranchiseeSidebar user={user} />
+        <FranchiseeSidebar user={user} onOpenTutorial={openTutorial} />
       </div>
 
       {/* Main area */}
@@ -47,13 +73,24 @@ export function FranchiseeShell({ user, children }: FranchiseeShellProps) {
             </div>
             <span className="font-bold text-gray-900 text-sm">Portal Franqueado</span>
           </div>
-          <button
-            onClick={() => signOut({ callbackUrl: "/login" })}
-            className="flex items-center gap-1.5 px-3 py-2 text-sm text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
-          >
-            <LogOut className="h-4 w-4" />
-            <span className="text-xs font-medium">Sair</span>
-          </button>
+          <div className="flex items-center gap-1">
+            {/* Help / Tutorial button */}
+            <button
+              onClick={openTutorial}
+              className="flex items-center justify-center w-9 h-9 rounded-lg text-gray-500 hover:text-orange-600 hover:bg-orange-50 transition"
+              title="Abrir tutorial"
+              aria-label="Abrir tutorial"
+            >
+              <HelpCircle className="h-5 w-5" />
+            </button>
+            <button
+              onClick={() => signOut({ callbackUrl: "/login" })}
+              className="flex items-center gap-1.5 px-3 py-2 text-sm text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+            >
+              <LogOut className="h-4 w-4" />
+              <span className="text-xs font-medium">Sair</span>
+            </button>
+          </div>
         </header>
 
         {/* Page content — extra bottom padding for the mobile nav */}
@@ -85,6 +122,17 @@ export function FranchiseeShell({ user, children }: FranchiseeShellProps) {
           );
         })}
       </nav>
+
+      {/* Tutorial overlay */}
+      {showTutorial && (
+        <TutorialOverlay
+          steps={PORTAL_TUTORIAL_STEPS}
+          current={tutorialStep}
+          onNext={nextStep}
+          onPrev={prevStep}
+          onClose={closeTutorial}
+        />
+      )}
     </div>
   );
 }

@@ -24,6 +24,7 @@ interface FranchiseeSidebarProps {
     name?: string | null;
     email?: string | null;
   };
+  onOpenTutorial?: () => void;
 }
 
 const sections: { label: string; items: { href: string; label: string; icon: React.ElementType; exact?: boolean }[] }[] = [
@@ -65,7 +66,7 @@ const sections: { label: string; items: { href: string; label: string; icon: Rea
   },
 ];
 
-export function FranchiseeSidebar({ user }: FranchiseeSidebarProps) {
+export function FranchiseeSidebar({ user, onOpenTutorial }: FranchiseeSidebarProps) {
   const pathname = usePathname();
 
   return (
@@ -119,6 +120,15 @@ export function FranchiseeSidebar({ user }: FranchiseeSidebarProps) {
           <p className="text-sm font-medium text-white truncate">{user.name}</p>
           <p className="text-xs text-gray-500 truncate">{user.email}</p>
         </div>
+        {onOpenTutorial && (
+          <button
+            onClick={onOpenTutorial}
+            className="flex items-center gap-2.5 px-3 py-2 w-full text-sm text-gray-400 hover:bg-white/5 hover:text-orange-400 rounded-lg transition mb-0.5"
+          >
+            <HelpCircle className="h-4 w-4 flex-shrink-0" />
+            Tutorial do portal
+          </button>
+        )}
         <button
           onClick={() => signOut({ callbackUrl: "/login" })}
           className="flex items-center gap-2.5 px-3 py-2 w-full text-sm text-gray-400 hover:bg-white/5 hover:text-white rounded-lg transition"

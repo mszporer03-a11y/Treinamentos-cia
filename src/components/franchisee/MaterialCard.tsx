@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Play, FileText, Image, File } from "lucide-react";
+import { Play, FileText, Image, File, Megaphone } from "lucide-react";
 import { formatFileSize, formatDate } from "@/lib/utils";
 import { MaterialViewer } from "./MaterialViewer";
 
@@ -9,7 +9,7 @@ interface Material {
   id: string;
   title: string;
   description?: string | null;
-  fileUrl: string;
+  fileUrl: string | null;
   fileType: string;
   fileSize?: number | null;
   mimeType?: string | null;
@@ -37,6 +37,7 @@ const fileTypeConfig: Record<
     label: "Documento",
   },
   OTHER: { icon: File, color: "text-gray-500 bg-gray-50", label: "Arquivo" },
+  NOTICE: { icon: Megaphone, color: "text-amber-600 bg-amber-50", label: "Aviso" },
 };
 
 export function MaterialCard({ material }: MaterialCardProps) {
@@ -56,7 +57,7 @@ export function MaterialCard({ material }: MaterialCardProps) {
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={material.fileUrl}
+              src={material.fileUrl ?? ""}
               alt={material.title}
               className="w-full h-full object-cover hover:scale-105 transition-transform"
             />

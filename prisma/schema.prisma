@@ -18,6 +18,7 @@ enum FileType {
   IMAGE
   DOCUMENT
   OTHER
+  NOTICE
 }
 
 // ── Novos enums ─────────────────────────────────────────────────────────
@@ -119,8 +120,8 @@ model Material {
   id                String             @id @default(cuid())
   title             String
   description       String?
-  fileUrl           String
-  fileKey           String
+  fileUrl           String?
+  fileKey           String?
   fileType          FileType           @default(OTHER)
   mimeType          String?
   fileSize          Int?

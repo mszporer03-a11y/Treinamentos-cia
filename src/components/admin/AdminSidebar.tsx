@@ -59,7 +59,7 @@ const sections = [
     items: [
       { href: "/admin/stores", label: "Lojas", icon: Store },
       { href: "/admin/map", label: "Mapa de Lojas", icon: MapPin },
-      { href: "/admin/onboarding", label: "Onboarding", icon: CheckSquare },
+      { href: "/admin/onboarding", label: "Inauguração", icon: CheckSquare },
     ],
   },
   {

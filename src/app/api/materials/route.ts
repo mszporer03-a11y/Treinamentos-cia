@@ -9,9 +9,9 @@ import { z } from "zod";
 const materialSchema = z.object({
   title: z.string().min(1).max(200),
   description: z.string().optional(),
-  fileUrl: z.string().url(),
-  fileKey: z.string(),
-  fileType: z.enum(["VIDEO", "PDF", "IMAGE", "DOCUMENT", "OTHER"]),
+  fileUrl: z.string().url().optional(),
+  fileKey: z.string().optional(),
+  fileType: z.enum(["VIDEO", "PDF", "IMAGE", "DOCUMENT", "OTHER", "NOTICE"]).optional().default("OTHER"),
   mimeType: z.string().optional(),
   fileSize: z.number().optional(),
   categoryId: z.string(),
@@ -97,9 +97,10 @@ export async function POST(req: Request) {
     });
 
     if (data.published) {
+      const isNotice = data.fileType === "NOTICE";
       await sendPushToAll(
         {
-          title: "Novo material disponivel!",
+          title: isNotice ? "Novo aviso!" : "Novo material disponivel!",
           body: data.title,
           url: "/gallery",
         },

@@ -59,6 +59,8 @@ export function fileTypeIcon(fileType: string): string {
       return "🖼️";
     case "DOCUMENT":
       return "📝";
+    case "NOTICE":
+      return "📢";
     default:
       return "📁";
   }

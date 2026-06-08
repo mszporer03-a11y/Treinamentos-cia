@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Play, FileText, Image as ImageIcon, File } from "lucide-react";
+import { Play, FileText, Image as ImageIcon, File, Megaphone } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { MaterialViewer } from "@/components/franchisee/MaterialViewer";
 
@@ -9,7 +9,7 @@ interface Material {
   id: string;
   title: string;
   description?: string | null;
-  fileUrl: string;
+  fileUrl: string | null;
   fileType: string;
   fileSize?: number | null;
   mimeType?: string | null;
@@ -25,6 +25,7 @@ const typeIcon: Record<string, React.ElementType> = {
   IMAGE: ImageIcon,
   DOCUMENT: FileText,
   OTHER: File,
+  NOTICE: Megaphone,
 };
 
 const typeColor: Record<string, string> = {
@@ -33,6 +34,7 @@ const typeColor: Record<string, string> = {
   IMAGE: "bg-green-100 text-green-500",
   DOCUMENT: "bg-blue-100 text-blue-500",
   OTHER: "bg-gray-100 text-gray-500",
+  NOTICE: "bg-amber-100 text-amber-600",
 };
 
 const typeLabel: Record<string, string> = {
@@ -41,6 +43,7 @@ const typeLabel: Record<string, string> = {
   IMAGE: "Imagem",
   DOCUMENT: "Documento",
   OTHER: "Arquivo",
+  NOTICE: "Aviso",
 };
 
 function FeedCard({ material, onOpen }: { material: Material; onOpen: () => void }) {
@@ -79,7 +82,7 @@ function FeedCard({ material, onOpen }: { material: Material; onOpen: () => void
           <div className="mx-3 rounded-xl overflow-hidden bg-gray-100 aspect-video">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={material.fileUrl}
+              src={material.fileUrl ?? ""}
               alt={material.title}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             />

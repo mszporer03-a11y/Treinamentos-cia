@@ -66,6 +66,12 @@ async function main() {
       description: "Gestão financeira e controles",
       icon: "📊",
     },
+    {
+      name: "Avisos",
+      slug: "avisos",
+      description: "Comunicados e avisos em texto para a rede",
+      icon: "📢",
+    },
   ];
 
   for (const cat of categories) {

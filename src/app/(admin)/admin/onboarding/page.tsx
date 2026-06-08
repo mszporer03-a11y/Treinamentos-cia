@@ -72,7 +72,7 @@ export default function OnboardingPage() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-              <CheckSquare className="h-7 w-7 text-teal-500" /> Onboarding de Lojas
+              <CheckSquare className="h-7 w-7 text-teal-500" /> Inauguração de Lojas
             </h1>
             <p className="text-gray-500 mt-1">Acompanhe o processo de abertura e checklist de novas lojas.</p>
           </div>
@@ -86,7 +86,7 @@ export default function OnboardingPage() {
         {showForm && (
           <div className="bg-white border border-gray-200 rounded-xl p-5 mb-6 shadow-sm">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="font-semibold text-gray-900">Iniciar Onboarding</h2>
+              <h2 className="font-semibold text-gray-900">Iniciar Inauguração</h2>
               <button onClick={() => setShowForm(false)}><X className="h-4 w-4 text-gray-400" /></button>
             </div>
             <div className="space-y-3">
@@ -101,7 +101,7 @@ export default function OnboardingPage() {
               </label>
               <button disabled={saving || !form.storeId} onClick={create}
                 className="w-full py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 disabled:opacity-50 transition">
-                {saving ? "Criando..." : "Iniciar Onboarding"}
+                {saving ? "Criando..." : "Iniciar Inauguração"}
               </button>
             </div>
           </div>
@@ -110,7 +110,7 @@ export default function OnboardingPage() {
         {loading ? (
           <div className="text-center py-12 text-gray-400">Carregando...</div>
         ) : onboardings.length === 0 ? (
-          <div className="text-center py-12 text-gray-400">Nenhum onboarding iniciado.</div>
+          <div className="text-center py-12 text-gray-400">Nenhuma inauguração iniciada.</div>
         ) : (
           <div className="space-y-4">
             {onboardings.map((o) => {

@@ -46,7 +46,7 @@ export default async function AdminDashboardPage() {
   const shortcuts = [
     { href: "/admin/materials?new=1",   icon: Plus,         label: "Publicar Material",    color: "bg-purple-600 hover:bg-purple-700" },
     { href: "/admin/map",               icon: Map,          label: "Mapa de Lojas",         color: "bg-emerald-600 hover:bg-emerald-700" },
-    { href: "/admin/onboarding",        icon: ClipboardList,label: "Onboarding",            color: "bg-blue-600 hover:bg-blue-700" },
+    { href: "/admin/onboarding",        icon: ClipboardList,label: "Inauguração",           color: "bg-blue-600 hover:bg-blue-700" },
   ];
 
   return (

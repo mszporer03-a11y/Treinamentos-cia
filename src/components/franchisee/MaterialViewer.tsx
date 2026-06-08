@@ -6,7 +6,7 @@ interface Material {
   id: string;
   title: string;
   description?: string | null;
-  fileUrl: string;
+  fileUrl: string | null;
   fileType: string;
   mimeType?: string | null;
 }
@@ -19,10 +19,23 @@ interface MaterialViewerProps {
 export function MaterialViewer({ material, onClose }: MaterialViewerProps) {
   function renderContent() {
     switch (material.fileType) {
+      case "NOTICE":
+        return (
+          <div className="px-1 py-2 sm:px-4">
+            <div className="flex items-center gap-2 mb-4 text-orange-600">
+              <span className="text-2xl">📢</span>
+              <span className="text-sm font-semibold uppercase tracking-wide">Aviso</span>
+            </div>
+            <p className="text-gray-800 text-base leading-relaxed whitespace-pre-wrap">
+              {material.description || "Sem conteúdo."}
+            </p>
+          </div>
+        );
+
       case "VIDEO":
         return (
           <video
-            src={material.fileUrl}
+            src={material.fileUrl ?? ""}
             controls
             autoPlay
             className="w-full max-h-[calc(100svh-120px)] sm:max-h-[70vh] rounded-lg bg-black"
@@ -36,7 +49,7 @@ export function MaterialViewer({ material, onClose }: MaterialViewerProps) {
       case "PDF":
         return (
           <iframe
-            src={material.fileUrl}
+            src={material.fileUrl ?? ""}
             className="w-full h-[calc(100svh-120px)] sm:h-[70vh] rounded-lg border-0"
             title={material.title}
           />
@@ -46,7 +59,7 @@ export function MaterialViewer({ material, onClose }: MaterialViewerProps) {
         return (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={material.fileUrl}
+            src={material.fileUrl ?? ""}
             alt={material.title}
             className="max-w-full max-h-[calc(100svh-120px)] sm:max-h-[70vh] object-contain mx-auto rounded-lg"
           />
@@ -54,7 +67,7 @@ export function MaterialViewer({ material, onClose }: MaterialViewerProps) {
 
       case "DOCUMENT": {
         // Use Google Docs Viewer for Word/PowerPoint files
-        const viewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(material.fileUrl)}&embedded=true`;
+        const viewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(material.fileUrl ?? "")}&embedded=true`;
         return (
           <iframe
             src={viewerUrl}

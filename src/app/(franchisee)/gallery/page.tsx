@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useSession } from "next-auth/react";
 import { MaterialViewer } from "@/components/franchisee/MaterialViewer";
-import { Play, FileText, Image as ImageIcon, File, MessageSquare, BarChart2, ClipboardList, ChevronRight, SlidersHorizontal } from "lucide-react";
+import { Play, FileText, Image as ImageIcon, File, MessageSquare, BarChart2, ClipboardList, ChevronRight, SlidersHorizontal, Megaphone } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -21,7 +21,7 @@ interface Material {
   id: string;
   title: string;
   description?: string | null;
-  fileUrl: string;
+  fileUrl: string | null;
   fileType: string;
   fileSize?: number | null;
   mimeType?: string | null;
@@ -36,6 +36,7 @@ const typeIcon: Record<string, React.ElementType> = {
   IMAGE: ImageIcon,
   DOCUMENT: FileText,
   OTHER: File,
+  NOTICE: Megaphone,
 };
 
 const typeLabel: Record<string, string> = {
@@ -44,6 +45,7 @@ const typeLabel: Record<string, string> = {
   IMAGE: "Imagem",
   DOCUMENT: "Documento",
   OTHER: "Arquivo",
+  NOTICE: "Aviso",
 };
 
 const typeColor: Record<string, string> = {
@@ -52,6 +54,7 @@ const typeColor: Record<string, string> = {
   IMAGE: "bg-sky-50 text-sky-500",
   DOCUMENT: "bg-blue-50 text-blue-500",
   OTHER: "bg-gray-50 text-gray-400",
+  NOTICE: "bg-amber-50 text-amber-600",
 };
 
 function FeedCard({ material, onOpen }: { material: Material; onOpen: () => void }) {
@@ -80,7 +83,7 @@ function FeedCard({ material, onOpen }: { material: Material; onOpen: () => void
         {material.fileType === "IMAGE" ? (
           <div className="mx-3 rounded-xl overflow-hidden bg-gray-100 aspect-video">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={material.fileUrl} alt={material.title}
+            <img src={material.fileUrl ?? ""} alt={material.title}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
           </div>
         ) : (
@@ -112,6 +115,7 @@ const NAV_ITEMS = [
     label: "Pesquisas",
     desc: "Responda as pesquisas da rede",
     bg: "from-violet-600 to-violet-500",
+    tutorialId: "nav-surveys",
   },
   {
     href: "/checklists",
@@ -119,6 +123,7 @@ const NAV_ITEMS = [
     label: "Checklists",
     desc: "Visualize e preencha checklists operacionais",
     bg: "from-orange-600 to-orange-500",
+    tutorialId: "nav-checklists",
   },
   {
     href: "/chat",
@@ -126,6 +131,7 @@ const NAV_ITEMS = [
     label: "Suporte",
     desc: "Canal direto com a Cia do Churrasco",
     bg: "from-sky-600 to-sky-500",
+    tutorialId: "nav-chat",
   },
 ];
 
@@ -189,10 +195,11 @@ export default function GalleryPage() {
 
       {/* Nav cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10">
-        {NAV_ITEMS.map(({ href, icon: Icon, label, desc, bg }) => (
+        {NAV_ITEMS.map(({ href, icon: Icon, label, desc, bg, tutorialId }) => (
           <Link
             key={href}
             href={href}
+            data-tutorial={tutorialId}
             className="group relative overflow-hidden rounded-2xl p-5 flex items-center gap-4 bg-white border border-gray-100 hover:shadow-lg hover:border-transparent transition-all duration-200"
           >
             <div
@@ -210,10 +217,11 @@ export default function GalleryPage() {
       </div>
 
       {/* Materials section */}
-      <div className="flex items-center justify-between mb-4">
+      <div data-tutorial="materials-section" className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-bold text-gray-900">Materiais de Treinamento</h2>
         {visibleCategories.length > 0 && (
           <button
+            data-tutorial="filter-btn"
             onClick={() => { setShowFilters((v) => !v); if (showFilters) setActiveCategory("all"); }}
             className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border transition ${
               showFilters || activeCategory !== "all"

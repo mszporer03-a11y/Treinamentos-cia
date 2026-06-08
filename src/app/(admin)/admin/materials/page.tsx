@@ -12,6 +12,7 @@ import { MaterialViewsModal } from "@/components/admin/MaterialViewsModal";
 interface Category {
   id: string;
   name: string;
+  slug?: string;
   icon?: string | null;
 }
 
@@ -25,7 +26,7 @@ interface Material {
   id: string;
   title: string;
   description?: string | null;
-  fileUrl: string;
+  fileUrl: string | null;
   fileType: string;
   fileSize?: number | null;
   published: boolean;
@@ -106,30 +107,39 @@ export default function MaterialsPage() {
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
-    if (!uploadedFile) {
-      setError("Selecione um arquivo para upload");
-      return;
-    }
     if (!form.categoryId) {
       setError("Selecione uma categoria");
+      return;
+    }
+    if (isAviso) {
+      if (!form.description.trim()) {
+        setError("Escreva a descrição do aviso");
+        return;
+      }
+    } else if (!uploadedFile) {
+      setError("Selecione um arquivo para upload");
       return;
     }
 
     setSaving(true);
     setError("");
 
+    const body = isAviso
+      ? { ...form, fileType: "NOTICE", linkedStoreIds: form.linkedStoreIds }
+      : {
+          ...form,
+          fileUrl: uploadedFile!.url,
+          fileKey: uploadedFile!.key,
+          fileType: getFileType(uploadedFile!.type),
+          mimeType: uploadedFile!.type,
+          fileSize: uploadedFile!.size,
+          linkedStoreIds: form.linkedStoreIds,
+        };
+
     const res = await fetch("/api/materials", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...form,
-        fileUrl: uploadedFile.url,
-        fileKey: uploadedFile.key,
-        fileType: getFileType(uploadedFile.type),
-        mimeType: uploadedFile.type,
-        fileSize: uploadedFile.size,
-        linkedStoreIds: form.linkedStoreIds,
-      }),
+      body: JSON.stringify(body),
     });
 
     setSaving(false);
@@ -193,6 +203,9 @@ export default function MaterialsPage() {
   const filtered = filterCategory
     ? materials.filter((m) => m.categoryId === filterCategory)
     : materials;
+
+  const selectedCategory = categories.find((c) => c.id === form.categoryId);
+  const isAviso = selectedCategory?.slug === "avisos";
 
   return (
     <div className="p-4 sm:p-6 md:p-8">
@@ -440,10 +453,37 @@ export default function MaterialsPage() {
         <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50">
           <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full sm:max-w-lg p-6 max-h-[95vh] overflow-y-auto">
             <h2 className="text-xl font-bold text-gray-900 mb-5">
-              Novo Material
+              {isAviso ? "Novo Aviso" : "Novo Material"}
             </h2>
             <form onSubmit={handleCreate} className="space-y-4">
-              {/* File Upload */}
+              {/* Category — first, so "Avisos" toggles the text-only mode */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Categoria *
+                </label>
+                <select
+                  value={form.categoryId}
+                  onChange={(e) =>
+                    setForm({ ...form, categoryId: e.target.value })
+                  }
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white"
+                >
+                  <option value="">Selecione uma categoria</option>
+                  {categories.map((cat) => (
+                    <option key={cat.id} value={cat.id}>
+                      {cat.icon} {cat.name}
+                    </option>
+                  ))}
+                </select>
+                {isAviso && (
+                  <p className="text-xs text-gray-500 mt-1.5">
+                    Avisos são apenas texto — preencha o título e a descrição abaixo, sem anexar arquivo.
+                  </p>
+                )}
+              </div>
+
+              {/* File Upload — hidden for text-only "Avisos" */}
+              {!isAviso && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Arquivo *
@@ -500,6 +540,7 @@ export default function MaterialsPage() {
                   </div>
                 )}
               </div>
+              )}
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -516,37 +557,17 @@ export default function MaterialsPage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Descrição
+                  {isAviso ? "Descrição *" : "Descrição"}
                 </label>
                 <textarea
                   value={form.description}
                   onChange={(e) =>
                     setForm({ ...form, description: e.target.value })
                   }
-                  rows={2}
+                  rows={isAviso ? 4 : 2}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-sm"
-                  placeholder="Descrição opcional"
+                  placeholder={isAviso ? "Texto do aviso" : "Descrição opcional"}
                 />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Categoria *
-                </label>
-                <select
-                  value={form.categoryId}
-                  onChange={(e) =>
-                    setForm({ ...form, categoryId: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white"
-                >
-                  <option value="">Selecione uma categoria</option>
-                  {categories.map((cat) => (
-                    <option key={cat.id} value={cat.id}>
-                      {cat.icon} {cat.name}
-                    </option>
-                  ))}
-                </select>
               </div>
 
               {/* Store picker */}
@@ -619,10 +640,10 @@ export default function MaterialsPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={saving || !uploadedFile}
+                  disabled={saving || (!isAviso && !uploadedFile)}
                   className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-lg transition text-sm"
                 >
-                  {saving ? "Salvando..." : "Salvar Material"}
+                  {saving ? "Salvando..." : isAviso ? "Publicar Aviso" : "Salvar Material"}
                 </button>
               </div>
             </form>
