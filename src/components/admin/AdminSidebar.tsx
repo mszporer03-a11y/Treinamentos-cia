@@ -17,7 +17,6 @@ import {
   Megaphone,
   AlertTriangle,
   BarChart2,
-  DollarSign,
   MapPin,
   ClipboardCheck,
   CheckSquare,
@@ -51,7 +50,6 @@ const sections = [
     label: "Operações",
     items: [
       { href: "/admin/alerts", label: "Não Conformidades", icon: AlertTriangle },
-      { href: "/admin/kilo-price", label: "Preço do Quilo", icon: DollarSign },
     ],
   },
   {

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { signOut } from "next-auth/react";
-import { BookOpen, LogOut, ChevronDown, UserCircle2, MessageSquare, GalleryHorizontalEnd, GraduationCap, FileText, TrendingUp, Menu, X, BarChart2, ClipboardList } from "lucide-react";
+import { BookOpen, LogOut, ChevronDown, UserCircle2, MessageSquare, GalleryHorizontalEnd, GraduationCap, FileText, Menu, X, BarChart2, ClipboardList } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { usePathname } from "next/navigation";
 
@@ -18,7 +18,6 @@ const NAV_LINKS = [
   { href: "/employees",    icon: GraduationCap,        label: "Treinamentos" },
   { href: "/surveys",      icon: BarChart2,            label: "Pesquisas" },
   { href: "/documents",    icon: FileText,             label: "Documentos" },
-  { href: "/kilo-price",   icon: TrendingUp,           label: "Preço do Quilo" },
   { href: "/checklists",   icon: ClipboardList,        label: "Checklists" },
   { href: "/chat",         icon: MessageSquare,        label: "Chat" },
 ];
