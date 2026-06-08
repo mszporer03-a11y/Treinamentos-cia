@@ -128,11 +128,23 @@ export default function FranchiseeChecklistsPage() {
       <Link href="/gallery" className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition mb-5">
         <ChevronLeft className="h-4 w-4" /> Voltar ao início
       </Link>
-      <div className="mb-6">
+      <div className="mb-4">
         <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
           <ClipboardList className="h-7 w-7 text-orange-500" /> Checklists
         </h1>
-        <p className="text-gray-500 mt-1 text-sm">Preencha os checklists atribuídos às suas lojas</p>
+      </div>
+
+      {/* Description */}
+      <div className="bg-orange-50 border border-orange-100 rounded-xl px-4 py-3 mb-6 flex items-start gap-3">
+        <span className="flex-shrink-0 mt-0.5">✅</span>
+        <div>
+          <p className="text-sm font-semibold text-orange-900 mb-0.5">O que são os checklists?</p>
+          <p className="text-sm text-orange-700 leading-relaxed">
+            Listas de verificação operacional da sua loja. Preencha periodicamente para confirmar que todos os
+            procedimentos e padrões de qualidade da franquia estão sendo seguidos corretamente.
+            Após preencher, os registros ficam salvos para consulta futura.
+          </p>
+        </div>
       </div>
 
       {loading ? (

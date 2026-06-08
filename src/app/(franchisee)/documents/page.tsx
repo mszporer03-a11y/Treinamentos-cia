@@ -44,11 +44,23 @@ export default function DocumentsPage() {
 
   return (
     <div className="p-4 sm:p-6">
-      <div className="mb-6">
+      <div className="mb-4">
         <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
           <FileText className="h-7 w-7 text-blue-500" /> Meus Documentos
         </h1>
-        <p className="text-gray-500 text-sm mt-1">Contratos, alvarás e documentos da sua franquia.</p>
+      </div>
+
+      {/* Description */}
+      <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 mb-6 flex items-start gap-3">
+        <span className="flex-shrink-0 mt-0.5">📄</span>
+        <div>
+          <p className="text-sm font-semibold text-blue-900 mb-0.5">O que são os documentos?</p>
+          <p className="text-sm text-blue-700 leading-relaxed">
+            Repositório dos documentos oficiais da sua franquia: contratos, aditivos, procurações, alvarás,
+            certificados e outros arquivos importantes. Todos ficam disponíveis aqui para consulta a qualquer momento.
+            Fique atento aos documentos próximos do vencimento.
+          </p>
+        </div>
       </div>
 
       {expiringSoon.length > 0 && (

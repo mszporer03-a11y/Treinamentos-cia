@@ -22,12 +22,37 @@ import { useUploadThing } from "@/lib/uploadthing-components";
 
 type Store = { id: string; name: string; code: string };
 
-const CATEGORIES: Record<string, { label: string; Icon: React.ElementType; color: string }> = {
-  solicitacoes: { label: "Solicitações", Icon: MessageSquare, color: "from-blue-500 to-indigo-500" },
-  marketing: { label: "Marketing", Icon: Megaphone, color: "from-purple-500 to-violet-500" },
-  "senhas-usuarios": { label: "Senhas e usuários", Icon: KeyRound, color: "from-amber-500 to-orange-500" },
-  "suporte-sistema": { label: "Suporte Sistema", Icon: MonitorCog, color: "from-cyan-500 to-teal-500" },
-  outros: { label: "Outros", Icon: HelpCircle, color: "from-gray-500 to-gray-600" },
+const CATEGORIES: Record<string, { label: string; Icon: React.ElementType; color: string; description: string }> = {
+  solicitacoes: {
+    label: "Solicitações",
+    Icon: MessageSquare,
+    color: "from-blue-500 to-indigo-500",
+    description: "Use este canal para solicitar qualquer tipo de suporte ou serviço da Cia do Churrasco. Descreva sua necessidade com detalhes e anexe imagens ou documentos se necessário. Nossa equipe responderá em breve.",
+  },
+  marketing: {
+    label: "Marketing",
+    Icon: Megaphone,
+    color: "from-purple-500 to-violet-500",
+    description: "Solicite peças, artes, campanhas, posts para redes sociais, banners, flyers e outros materiais de divulgação para a sua loja. Informe o prazo desejado e todos os detalhes da solicitação.",
+  },
+  "senhas-usuarios": {
+    label: "Senhas e usuários",
+    Icon: KeyRound,
+    color: "from-amber-500 to-orange-500",
+    description: "Solicite criação, alteração ou redefinição de senhas e permissões de acesso ao sistema para você ou sua equipe. Informe o nome do colaborador e o tipo de acesso necessário.",
+  },
+  "suporte-sistema": {
+    label: "Suporte Sistema",
+    Icon: MonitorCog,
+    color: "from-cyan-500 to-teal-500",
+    description: "Relate problemas técnicos, erros no sistema, lentidão ou dificuldades com equipamentos e softwares utilizados na operação da sua loja. Descreva o problema com o máximo de detalhes.",
+  },
+  outros: {
+    label: "Outros",
+    Icon: HelpCircle,
+    color: "from-gray-500 to-gray-600",
+    description: "Para assuntos que não se encaixam nas categorias anteriores — dúvidas gerais, sugestões ou qualquer outro tema. Descreva sua necessidade com o máximo de detalhes possível.",
+  },
 };
 
 export default function SupporteCategoryPage() {
@@ -78,7 +103,7 @@ export default function SupporteCategoryPage() {
     );
   }
 
-  const { label, Icon, color } = category;
+  const { label, Icon, color, description } = category;
 
   function toggleStore(id: string) {
     setSelectedStoreIds((prev) =>
@@ -154,7 +179,7 @@ export default function SupporteCategoryPage() {
       </Link>
 
       {/* Header */}
-      <div className={`bg-gradient-to-br ${color} rounded-2xl px-5 py-4 mb-6 flex items-center gap-4`}>
+      <div className={`bg-gradient-to-br ${color} rounded-2xl px-5 py-4 mb-4 flex items-center gap-4`}>
         <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
           <Icon className="h-6 w-6 text-white" />
         </div>
@@ -162,6 +187,12 @@ export default function SupporteCategoryPage() {
           <p className="text-xs text-white/70 font-semibold uppercase tracking-widest">Solicitação Rápida</p>
           <h1 className="text-lg font-bold text-white">{label}</h1>
         </div>
+      </div>
+
+      {/* Description */}
+      <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 mb-6 flex items-start gap-3">
+        <span className="text-gray-400 mt-0.5 flex-shrink-0">ℹ️</span>
+        <p className="text-sm text-gray-600 leading-relaxed">{description}</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">

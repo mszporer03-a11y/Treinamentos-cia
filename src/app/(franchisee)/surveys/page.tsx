@@ -53,11 +53,23 @@ export default function SurveysPage() {
       <Link href="/gallery" className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition mb-5">
         <ChevronLeft className="h-4 w-4" /> Voltar ao início
       </Link>
-      <div className="mb-6">
+      <div className="mb-4">
         <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
           <BarChart2 className="h-7 w-7 text-violet-500" /> Pesquisas
         </h1>
-        <p className="text-gray-500 text-sm mt-1">Responda às pesquisas da Cia do Churrasco.</p>
+      </div>
+
+      {/* Description */}
+      <div className="bg-violet-50 border border-violet-100 rounded-xl px-4 py-3 mb-6 flex items-start gap-3">
+        <span className="flex-shrink-0 mt-0.5">📊</span>
+        <div>
+          <p className="text-sm font-semibold text-violet-900 mb-0.5">O que são as pesquisas?</p>
+          <p className="text-sm text-violet-700 leading-relaxed">
+            Pesquisas de opinião e satisfação enviadas pela Cia do Churrasco para a rede de franqueados.
+            Sua participação é fundamental para a melhoria contínua de produtos, processos e serviços.
+            Cada resposta leva menos de 1 minuto — escolha uma opção e envie.
+          </p>
+        </div>
       </div>
 
       {loading ? (
