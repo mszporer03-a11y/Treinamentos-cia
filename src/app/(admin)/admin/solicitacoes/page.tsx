@@ -404,10 +404,3 @@ function TimelineRow({ icon, label, time }: { icon: string; label: string; time:
     </div>
   );
 }
-
-function fmtDt(v: string | null | undefined) {
-  if (!v) return "—";
-  return new Date(v).toLocaleString("pt-BR", {
-    day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
-  });
-}
