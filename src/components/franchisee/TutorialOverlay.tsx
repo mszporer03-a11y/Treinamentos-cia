@@ -260,22 +260,6 @@ export const PORTAL_TUTORIAL_STEPS: TutorialStep[] = [
     target: null,
   },
   {
-    icon: "🥩",
-    title: "Preço do Quilo",
-    description:
-      "Informe e confirme o preço do quilo praticado na sua loja, mantendo a franquia atualizada com os preços praticados pela rede.",
-    hint: "Menu lateral → Preço do Quilo",
-    target: null,
-  },
-  {
-    icon: "👥",
-    title: "Funcionários & Treinamentos",
-    description:
-      "Gerencie a equipe da sua loja e acompanhe os treinamentos atribuídos a cada funcionário para garantir a capacitação de todos.",
-    hint: "Menu lateral → Treinamentos",
-    target: null,
-  },
-  {
     icon: "🎉",
     title: "Tudo pronto!",
     description:
