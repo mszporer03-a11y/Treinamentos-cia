@@ -36,7 +36,7 @@ const sections = [
     label: "Geral",
     items: [
       { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
-      { href: "/admin/chat", label: "Chat", icon: MessageSquare },
+      { href: "/admin/chat", label: "Suporte", icon: MessageSquare },
       { href: "/admin/solicitacoes", label: "Solicitações", icon: Inbox },
     ],
   },

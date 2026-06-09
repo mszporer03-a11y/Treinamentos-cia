@@ -9,13 +9,12 @@ import {
   FileText,
   Image as ImageIcon,
   File,
-  BookOpen,
   ChevronRight,
   ChevronLeft,
-  SlidersHorizontal,
   Megaphone,
   Search,
   X,
+  UtensilsCrossed,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
@@ -68,6 +67,17 @@ const typeColor: Record<string, string> = {
   NOTICE: "bg-amber-50 text-amber-600",
 };
 
+function isCardapio(cat: Category) {
+  const n = cat.name.toLowerCase();
+  const s = cat.slug.toLowerCase();
+  return (
+    n.includes("cardápio") ||
+    n.includes("cardapio") ||
+    s.includes("cardapio") ||
+    s.includes("cardápio")
+  );
+}
+
 function FeedCard({ material, onOpen }: { material: Material; onOpen: () => void }) {
   const Icon = typeIcon[material.fileType] ?? File;
   const color = typeColor[material.fileType] ?? typeColor.OTHER;
@@ -75,7 +85,7 @@ function FeedCard({ material, onOpen }: { material: Material; onOpen: () => void
   return (
     <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden hover:border-gray-200 hover:shadow-md transition-all group">
       <div className="flex items-center gap-2.5 px-4 pt-3 pb-2">
-        <div className="w-8 h-8 rounded-full bg-orange-600 flex items-center justify-center flex-shrink-0">
+        <div className="w-8 h-8 rounded-full bg-amber-600 flex items-center justify-center flex-shrink-0">
           <span className="text-white text-xs font-bold">
             {(material.createdBy?.name ?? "A").charAt(0).toUpperCase()}
           </span>
@@ -111,13 +121,13 @@ function FeedCard({ material, onOpen }: { material: Material; onOpen: () => void
           </div>
         )}
         <div className="px-4 pt-2.5 pb-4">
-          <p className="font-semibold text-gray-900 text-sm leading-snug line-clamp-2 group-hover:text-orange-600 transition-colors">
+          <p className="font-semibold text-gray-900 text-sm leading-snug line-clamp-2 group-hover:text-amber-600 transition-colors">
             {material.title}
           </p>
           {material.description && (
             <p className="text-xs text-gray-500 mt-1 line-clamp-2">{material.description}</p>
           )}
-          <p className="text-xs text-orange-600 font-medium mt-2 flex items-center gap-0.5">
+          <p className="text-xs text-amber-600 font-medium mt-2 flex items-center gap-0.5">
             Abrir <ChevronRight className="h-3 w-3" />
           </p>
         </div>
@@ -126,47 +136,31 @@ function FeedCard({ material, onOpen }: { material: Material; onOpen: () => void
   );
 }
 
-export default function MateriaisPage() {
+export default function CardapiosPage() {
   const { data: session } = useSession();
   const [materials, setMaterials] = useState<Material[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [activeCategory, setActiveCategory] = useState<string>("all");
-  const [showFilters, setShowFilters] = useState(false);
   const [search, setSearch] = useState("");
   const [viewing, setViewing] = useState<Material | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function load() {
-      const [matRes, catRes] = await Promise.all([
-        fetch("/api/materials"),
-        fetch("/api/categories"),
-      ]);
-      const [mats, cats] = await Promise.all([matRes.json(), catRes.json()]);
-      setMaterials(mats);
-      setCategories(cats);
-      setLoading(false);
-    }
-    load();
+    fetch("/api/materials")
+      .then((r) => r.json())
+      .then((mats: Material[]) => {
+        setMaterials(Array.isArray(mats) ? mats.filter((m) => isCardapio(m.category)) : []);
+        setLoading(false);
+      });
   }, []);
 
-  const filtered = materials.filter((m) => {
-    if (activeCategory !== "all" && m.category.id !== activeCategory) return false;
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      if (
-        !m.title.toLowerCase().includes(q) &&
-        !m.description?.toLowerCase().includes(q) &&
-        !m.category.name.toLowerCase().includes(q)
-      )
-        return false;
-    }
-    return true;
-  });
-
-  const visibleCategories = categories.filter((cat) =>
-    materials.some((m) => m.category.id === cat.id)
-  );
+  const filtered = search.trim()
+    ? materials.filter((m) => {
+        const q = search.toLowerCase();
+        return (
+          m.title.toLowerCase().includes(q) ||
+          m.description?.toLowerCase().includes(q)
+        );
+      })
+    : materials;
 
   if (!session?.user) return null;
 
@@ -181,51 +175,29 @@ export default function MateriaisPage() {
       </Link>
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-600 to-teal-500 flex items-center justify-center shadow-sm">
-            <BookOpen className="h-5 w-5 text-white" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-gray-900">Todos os Treinamentos</h1>
-            <p className="text-sm text-gray-500">
-              {loading
-                ? "Carregando..."
-                : `${filtered.length} de ${materials.length} material${materials.length !== 1 ? "is" : ""}`}
-            </p>
-          </div>
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-600 to-amber-500 flex items-center justify-center shadow-sm">
+          <UtensilsCrossed className="h-5 w-5 text-white" />
         </div>
-
-        {/* Filter button */}
-        {visibleCategories.length > 0 && (
-          <button
-            onClick={() => {
-              setShowFilters((v) => !v);
-              if (showFilters) setActiveCategory("all");
-            }}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition ${
-              showFilters || activeCategory !== "all"
-                ? "bg-orange-600 text-white border-orange-600"
-                : "bg-white text-gray-600 border-gray-200 hover:border-orange-300"
-            }`}
-          >
-            <SlidersHorizontal className="h-3.5 w-3.5" />
-            {activeCategory !== "all"
-              ? visibleCategories.find((c) => c.id === activeCategory)?.name ?? "Filtro"
-              : "Filtrar"}
-          </button>
-        )}
+        <div>
+          <h1 className="text-xl font-bold text-gray-900">Cardápios</h1>
+          <p className="text-sm text-gray-500">
+            {loading
+              ? "Carregando..."
+              : `${filtered.length} de ${materials.length} cardápio${materials.length !== 1 ? "s" : ""}`}
+          </p>
+        </div>
       </div>
 
       {/* Search bar */}
-      <div className="relative mb-4">
+      <div className="relative mb-5">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
         <input
           type="text"
-          placeholder="Pesquisar por nome..."
+          placeholder="Pesquisar cardápio por nome..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full pl-9 pr-9 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent bg-white transition"
+          className="w-full pl-9 pr-9 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-white transition"
         />
         {search && (
           <button
@@ -237,61 +209,29 @@ export default function MateriaisPage() {
         )}
       </div>
 
-      {/* Filter drawer */}
-      {showFilters && visibleCategories.length > 0 && (
-        <div className="flex flex-col gap-1 mb-5 bg-white border border-gray-100 rounded-2xl p-3 shadow-sm">
-          <button
-            onClick={() => {
-              setActiveCategory("all");
-              setShowFilters(false);
-            }}
-            className={`flex items-center gap-2 w-full px-4 py-2 rounded-xl text-sm font-medium transition-all text-left ${
-              activeCategory === "all"
-                ? "bg-orange-600 text-white shadow-sm"
-                : "text-gray-600 hover:bg-orange-50"
-            }`}
-          >
-            Todos
-          </button>
-          {visibleCategories.map((cat) => (
-            <button
-              key={cat.id}
-              onClick={() => {
-                setActiveCategory(cat.id);
-                setShowFilters(false);
-              }}
-              className={`flex items-center gap-2 w-full px-4 py-2 rounded-xl text-sm font-medium transition-all text-left ${
-                activeCategory === cat.id
-                  ? "bg-orange-600 text-white shadow-sm"
-                  : "text-gray-600 hover:bg-orange-50"
-              }`}
-            >
-              {cat.icon && <span>{cat.icon}</span>}
-              {cat.name}
-            </button>
-          ))}
-        </div>
-      )}
-
       {/* Content */}
       {loading ? (
         <div className="text-center py-16 text-gray-400">Carregando...</div>
+      ) : materials.length === 0 ? (
+        <div className="text-center py-16">
+          <span className="text-5xl">🍽️</span>
+          <p className="text-gray-500 mt-4 font-medium">Nenhum cardápio disponível ainda.</p>
+          <p className="text-sm text-gray-400 mt-1">
+            Os cardápios do mês serão exibidos aqui quando publicados.
+          </p>
+        </div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-16">
-          <span className="text-5xl">{search ? "🔍" : "📭"}</span>
+          <span className="text-5xl">🔍</span>
           <p className="text-gray-500 mt-4 font-medium">
-            {search
-              ? `Nenhum resultado para "${search}".`
-              : "Nenhum material nesta categoria ainda."}
+            Nenhum resultado para &quot;{search}&quot;.
           </p>
-          {search && (
-            <button
-              onClick={() => setSearch("")}
-              className="mt-2 text-sm text-teal-600 hover:underline"
-            >
-              Limpar pesquisa
-            </button>
-          )}
+          <button
+            onClick={() => setSearch("")}
+            className="mt-2 text-sm text-amber-600 hover:underline"
+          >
+            Limpar pesquisa
+          </button>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">

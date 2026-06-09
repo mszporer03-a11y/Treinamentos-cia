@@ -18,6 +18,7 @@ import {
   KeyRound,
   MonitorCog,
   Inbox,
+  UtensilsCrossed,
 } from "lucide-react";
 
 interface FranchiseeSidebarProps {
@@ -38,7 +39,8 @@ const sections: { label: string; items: { href: string; label: string; icon: Rea
   {
     label: "Treinamentos",
     items: [
-      { href: "/materiais", label: "Materiais de Treinamento", icon: BookOpen },
+      { href: "/materiais", label: "Todos os Treinamentos", icon: BookOpen },
+      { href: "/cardapios", label: "Cardápios", icon: UtensilsCrossed },
     ],
   },
   {

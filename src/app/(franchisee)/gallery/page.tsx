@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useSession } from "next-auth/react";
 import { MaterialViewer } from "@/components/franchisee/MaterialViewer";
-import { Play, FileText, Image as ImageIcon, File, MessageSquare, BarChart2, ClipboardList, BookOpen, ChevronRight, SlidersHorizontal, Megaphone, Inbox } from "lucide-react";
+import { Play, FileText, Image as ImageIcon, File, MessageSquare, BarChart2, ClipboardList, BookOpen, ChevronRight, SlidersHorizontal, Megaphone, Inbox, UtensilsCrossed } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -144,10 +144,26 @@ const NAV_ITEMS = [
   {
     href: "/materiais",
     icon: BookOpen,
-    label: "Materiais de Treinamento",
+    label: "Todos os Treinamentos",
     desc: "Acesse todos os materiais e conteúdos da rede",
     bg: "from-teal-600 to-teal-500",
     tutorialId: "nav-materiais",
+  },
+  {
+    href: "/cardapios",
+    icon: UtensilsCrossed,
+    label: "Cardápios",
+    desc: "Cardápios do mês disponíveis para a rede",
+    bg: "from-amber-600 to-amber-500",
+    tutorialId: "nav-cardapios",
+  },
+  {
+    href: "/documents",
+    icon: FileText,
+    label: "Documentos",
+    desc: "Acesse seus documentos contratuais",
+    bg: "from-slate-600 to-slate-500",
+    tutorialId: "nav-documentos",
   },
 ];
 
@@ -210,7 +226,7 @@ export default function GalleryPage() {
       </div>
 
       {/* Nav cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
         {NAV_ITEMS.map(({ href, icon: Icon, label, desc, bg, tutorialId }) => (
           <Link
             key={href}
