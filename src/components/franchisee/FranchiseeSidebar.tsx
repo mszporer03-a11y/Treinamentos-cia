@@ -54,7 +54,7 @@ const sections: { label: string; items: { href: string; label: string; icon: Rea
     items: [
       { href: "/solicitacoes", label: "Minhas Solicitações", icon: Inbox },
       { href: "/suporte/solicitacoes", label: "Solicitações", icon: MessageSquare },
-      { href: "/suporte/marketing", label: "Marketing", icon: Megaphone },
+      { href: "/suporte/marketing", label: "Mídia", icon: Megaphone },
       { href: "/suporte/senhas-usuarios", label: "Senhas e usuários", icon: KeyRound },
       { href: "/suporte/suporte-sistema", label: "Suporte Sistema", icon: MonitorCog },
       { href: "/suporte/outros", label: "Outros", icon: HelpCircle },

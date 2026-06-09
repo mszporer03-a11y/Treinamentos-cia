@@ -30,7 +30,7 @@ const CATEGORIES: Record<string, { label: string; Icon: React.ElementType; color
     description: "Use este canal para solicitar qualquer tipo de suporte ou serviço da Companhia do Churrasco. Descreva sua necessidade com detalhes e anexe imagens ou documentos se necessário. Nossa equipe responderá em breve.",
   },
   marketing: {
-    label: "Marketing",
+    label: "Mídia",
     Icon: Megaphone,
     color: "from-purple-500 to-violet-500",
     description: "Solicite peças, artes, campanhas, posts para redes sociais, banners, flyers e outros materiais de divulgação para a sua loja. Informe o prazo desejado e todos os detalhes da solicitação.",
