@@ -30,9 +30,15 @@ interface FranchiseeSidebarProps {
 
 const sections: { label: string; items: { href: string; label: string; icon: React.ElementType; exact?: boolean }[] }[] = [
   {
+    label: "Início",
+    items: [
+      { href: "/gallery", label: "Menu Principal", icon: BookOpen, exact: true },
+    ],
+  },
+  {
     label: "Treinamentos",
     items: [
-      { href: "/gallery", label: "Materiais", icon: BookOpen, exact: true },
+      { href: "/materiais", label: "Materiais de Treinamento", icon: BookOpen },
     ],
   },
   {

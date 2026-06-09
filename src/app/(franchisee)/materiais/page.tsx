@@ -1,11 +1,20 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { useSession } from "next-auth/react";
 import { MaterialViewer } from "@/components/franchisee/MaterialViewer";
-import { Play, FileText, Image as ImageIcon, File, MessageSquare, BarChart2, ClipboardList, BookOpen, ChevronRight, SlidersHorizontal, Megaphone, Inbox } from "lucide-react";
+import {
+  Play,
+  FileText,
+  Image as ImageIcon,
+  File,
+  BookOpen,
+  ChevronRight,
+  ChevronLeft,
+  SlidersHorizontal,
+  Megaphone,
+} from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -83,13 +92,20 @@ function FeedCard({ material, onOpen }: { material: Material; onOpen: () => void
         {material.fileType === "IMAGE" ? (
           <div className="mx-3 rounded-xl overflow-hidden bg-gray-100 aspect-video">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={material.fileUrl ?? ""} alt={material.title}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+            <img
+              src={material.fileUrl ?? ""}
+              alt={material.title}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            />
           </div>
         ) : (
-          <div className={`mx-3 rounded-xl aspect-video flex flex-col items-center justify-center gap-2 ${color} group-hover:opacity-80 transition-opacity`}>
+          <div
+            className={`mx-3 rounded-xl aspect-video flex flex-col items-center justify-center gap-2 ${color} group-hover:opacity-80 transition-opacity`}
+          >
             <Icon className="h-10 w-10 sm:h-14 sm:w-14 opacity-60" />
-            <span className="text-xs sm:text-sm font-medium opacity-70">{typeLabel[material.fileType] ?? "Arquivo"}</span>
+            <span className="text-xs sm:text-sm font-medium opacity-70">
+              {typeLabel[material.fileType] ?? "Arquivo"}
+            </span>
           </div>
         )}
         <div className="px-4 pt-2.5 pb-4">
@@ -108,50 +124,7 @@ function FeedCard({ material, onOpen }: { material: Material; onOpen: () => void
   );
 }
 
-const NAV_ITEMS = [
-  {
-    href: "/surveys",
-    icon: BarChart2,
-    label: "Pesquisas",
-    desc: "Responda as pesquisas da rede",
-    bg: "from-violet-600 to-violet-500",
-    tutorialId: "nav-surveys",
-  },
-  {
-    href: "/checklists",
-    icon: ClipboardList,
-    label: "Checklists",
-    desc: "Visualize e preencha checklists operacionais",
-    bg: "from-orange-600 to-orange-500",
-    tutorialId: "nav-checklists",
-  },
-  {
-    href: "/chat",
-    icon: MessageSquare,
-    label: "Suporte",
-    desc: "Canal direto com a Companhia do Churrasco",
-    bg: "from-sky-600 to-sky-500",
-    tutorialId: "nav-chat",
-  },
-  {
-    href: "/solicitacoes",
-    icon: Inbox,
-    label: "Minhas Solicitações",
-    desc: "Acompanhe o andamento das suas solicitações",
-    bg: "from-indigo-600 to-indigo-500",
-    tutorialId: "nav-solicitacoes",
-  },
-  {
-    href: "/materiais",
-    icon: BookOpen,
-    label: "Materiais de Treinamento",
-    desc: "Acesse todos os materiais e conteúdos da rede",
-    bg: "from-teal-600 to-teal-500",
-    tutorialId: "nav-materiais",
-  },
-];
-
-export default function GalleryPage() {
+export default function MateriaisPage() {
   const { data: session } = useSession();
   const [materials, setMaterials] = useState<Material[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -179,67 +152,44 @@ export default function GalleryPage() {
       ? materials
       : materials.filter((m) => m.category.id === activeCategory);
 
-  // Only show categories that have at least one material available to this user
   const visibleCategories = categories.filter((cat) =>
     materials.some((m) => m.category.id === cat.id)
   );
 
-  const firstName = session?.user?.name?.split(" ")[0] ?? "Franqueado";
+  if (!session?.user) return null;
 
   return (
     <div className="p-4 sm:p-6">
-      {/* Hero banner */}
-      <div className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 rounded-2xl px-6 py-8 mb-8 relative overflow-hidden">
-        <div
-          className="absolute inset-0 opacity-10"
-          style={{ backgroundImage: "radial-gradient(circle at 80% 50%, #EA580C 0%, transparent 60%)" }}
-        />
-        <div className="relative">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <h1 className="text-xl sm:text-2xl font-bold text-white">
-                Olá, {firstName} 👋
-              </h1>
-              <p className="text-gray-400 text-sm mt-1">
-                Bem-vindo ao painel. Acesse suas ferramentas abaixo.
-              </p>
-            </div>
-            <Image src="/logo.png" alt="Companhia do Churrasco" width={140} height={50} className="invert brightness-0 invert opacity-90 flex-shrink-0 hidden sm:block" />
+      {/* Back link */}
+      <Link
+        href="/gallery"
+        className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition mb-5"
+      >
+        <ChevronLeft className="h-4 w-4" /> Menu Principal
+      </Link>
+
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-600 to-teal-500 flex items-center justify-center shadow-sm">
+            <BookOpen className="h-5 w-5 text-white" />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-gray-900">Materiais de Treinamento</h1>
+            <p className="text-sm text-gray-500">
+              {loading ? "Carregando..." : `${materials.length} material${materials.length !== 1 ? "is" : ""} disponível${materials.length !== 1 ? "is" : ""}`}
+            </p>
           </div>
         </div>
-      </div>
 
-      {/* Nav cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
-        {NAV_ITEMS.map(({ href, icon: Icon, label, desc, bg, tutorialId }) => (
-          <Link
-            key={href}
-            href={href}
-            data-tutorial={tutorialId}
-            className="group relative overflow-hidden rounded-2xl p-5 flex items-center gap-4 bg-white border border-gray-100 hover:shadow-lg hover:border-transparent transition-all duration-200"
-          >
-            <div
-              className={`w-12 h-12 rounded-xl bg-gradient-to-br ${bg} flex items-center justify-center flex-shrink-0 shadow-sm group-hover:scale-105 transition-transform`}
-            >
-              <Icon className="h-6 w-6 text-white" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-semibold text-gray-900 text-base">{label}</p>
-              <p className="text-xs text-gray-500 mt-0.5 leading-snug">{desc}</p>
-            </div>
-            <ChevronRight className="h-4 w-4 text-gray-300 group-hover:text-gray-500 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
-          </Link>
-        ))}
-      </div>
-
-      {/* Materials section */}
-      <div data-tutorial="materials-section" className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-bold text-gray-900">Materiais de Treinamento</h2>
+        {/* Filter button */}
         {visibleCategories.length > 0 && (
           <button
-            data-tutorial="filter-btn"
-            onClick={() => { setShowFilters((v) => !v); if (showFilters) setActiveCategory("all"); }}
-            className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border transition ${
+            onClick={() => {
+              setShowFilters((v) => !v);
+              if (showFilters) setActiveCategory("all");
+            }}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition ${
               showFilters || activeCategory !== "all"
                 ? "bg-orange-600 text-white border-orange-600"
                 : "bg-white text-gray-600 border-gray-200 hover:border-orange-300"
@@ -253,10 +203,14 @@ export default function GalleryPage() {
         )}
       </div>
 
+      {/* Filter drawer */}
       {showFilters && visibleCategories.length > 0 && (
         <div className="flex flex-col gap-1 mb-5 bg-white border border-gray-100 rounded-2xl p-3 shadow-sm">
           <button
-            onClick={() => { setActiveCategory("all"); setShowFilters(false); }}
+            onClick={() => {
+              setActiveCategory("all");
+              setShowFilters(false);
+            }}
             className={`flex items-center gap-2 w-full px-4 py-2 rounded-xl text-sm font-medium transition-all text-left ${
               activeCategory === "all"
                 ? "bg-orange-600 text-white shadow-sm"
@@ -268,7 +222,10 @@ export default function GalleryPage() {
           {visibleCategories.map((cat) => (
             <button
               key={cat.id}
-              onClick={() => { setActiveCategory(cat.id); setShowFilters(false); }}
+              onClick={() => {
+                setActiveCategory(cat.id);
+                setShowFilters(false);
+              }}
               className={`flex items-center gap-2 w-full px-4 py-2 rounded-xl text-sm font-medium transition-all text-left ${
                 activeCategory === cat.id
                   ? "bg-orange-600 text-white shadow-sm"
@@ -282,6 +239,7 @@ export default function GalleryPage() {
         </div>
       )}
 
+      {/* Content */}
       {loading ? (
         <div className="text-center py-16 text-gray-400">Carregando...</div>
       ) : filtered.length === 0 ? (
