@@ -16,7 +16,7 @@ import { useUploadThing } from "@/lib/uploadthing-components";
 import { formatDate } from "@/lib/utils";
 
 const MESSAGE_CATEGORIES = [
-  { value: "solicitacoes",   label: "Solicitações",       color: "bg-blue-100 text-blue-700" },
+  { value: "solicitacoes",   label: "Solicitações (Geral)", color: "bg-blue-100 text-blue-700" },
   { value: "marketing",      label: "Mídia",                color: "bg-purple-100 text-purple-700" },
   { value: "senhas-usuarios",label: "Senhas e usuários",   color: "bg-orange-100 text-orange-700" },
   { value: "suporte-sistema",label: "Suporte Sistema",     color: "bg-cyan-100 text-cyan-700" },
@@ -25,7 +25,7 @@ const MESSAGE_CATEGORIES = [
 
 // Legacy camelCase values (kept for backward compat with older messages)
 const LEGACY_CATEGORY_MAP: Record<string, { label: string; color: string }> = {
-  Solicitacoes:   { label: "Solicitações",     color: "bg-blue-100 text-blue-700" },
+  Solicitacoes:   { label: "Solicitações (Geral)", color: "bg-blue-100 text-blue-700" },
   Marketing:      { label: "Mídia",             color: "bg-purple-100 text-purple-700" },
   SenhasUsuarios: { label: "Senhas e usuários", color: "bg-orange-100 text-orange-700" },
   SuporteSistema: { label: "Suporte Sistema",   color: "bg-cyan-100 text-cyan-700" },

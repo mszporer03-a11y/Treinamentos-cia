@@ -36,9 +36,9 @@ type Solicitacao = {
 };
 
 const CATEGORY_LABEL: Record<string, string> = {
-  solicitacoes: "Solicitações", marketing: "Mídia",
+  solicitacoes: "Solicitações (Geral)", marketing: "Mídia",
   "senhas-usuarios": "Senhas e usuários", "suporte-sistema": "Suporte Sistema", outros: "Outros",
-  Solicitacoes: "Solicitações", Marketing: "Mídia",
+  Solicitacoes: "Solicitações (Geral)", Marketing: "Mídia",
   SenhasUsuarios: "Senhas e usuários", SuporteSistema: "Suporte Sistema",
 };
 const CATEGORY_COLOR: Record<string, string> = {
