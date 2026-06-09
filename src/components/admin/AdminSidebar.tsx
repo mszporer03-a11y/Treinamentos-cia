@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
+import { useBadges, BADGE_KEY } from "@/hooks/useBadges";
 import {
   LayoutDashboard,
   FolderOpen,
@@ -81,6 +82,7 @@ const sections = [
 
 export function AdminSidebar({ user }: AdminSidebarProps) {
   const pathname = usePathname();
+  const badges = useBadges();
 
   return (
     <aside className="w-60 bg-gray-950 text-white flex flex-col h-screen sticky top-0 flex-shrink-0">
@@ -97,6 +99,7 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
             <div className="space-y-0.5">
               {section.items.map((item) => {
                 const isActive = item.exact ? pathname === item.href : pathname.startsWith(item.href);
+                const badgeCount = badges[BADGE_KEY[item.href] ?? ""] ?? 0;
                 return (
                   <Link
                     key={item.href}
@@ -106,7 +109,12 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
                     }`}
                   >
                     <item.icon className="h-4 w-4 flex-shrink-0" />
-                    {item.label}
+                    <span className="flex-1 truncate">{item.label}</span>
+                    {badgeCount > 0 && (
+                      <span className="ml-auto min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 flex-shrink-0">
+                        {badgeCount > 99 ? "99+" : badgeCount}
+                      </span>
+                    )}
                   </Link>
                 );
               })}

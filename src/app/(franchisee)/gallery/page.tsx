@@ -7,6 +7,7 @@ import { useSession } from "next-auth/react";
 import { MaterialViewer } from "@/components/franchisee/MaterialViewer";
 import { Play, FileText, Image as ImageIcon, File, MessageSquare, BarChart2, ClipboardList, BookOpen, ChevronRight, SlidersHorizontal, Megaphone, Inbox, UtensilsCrossed } from "lucide-react";
 import { formatDate } from "@/lib/utils";
+import { useBadges, BADGE_KEY } from "@/hooks/useBadges";
 
 export const dynamic = "force-dynamic";
 
@@ -169,6 +170,7 @@ const NAV_ITEMS = [
 
 export default function GalleryPage() {
   const { data: session } = useSession();
+  const badges = useBadges();
   const [materials, setMaterials] = useState<Material[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [activeCategory, setActiveCategory] = useState<string>("all");
@@ -227,25 +229,35 @@ export default function GalleryPage() {
 
       {/* Nav cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
-        {NAV_ITEMS.map(({ href, icon: Icon, label, desc, bg, tutorialId }) => (
-          <Link
-            key={href}
-            href={href}
-            data-tutorial={tutorialId}
-            className="group relative overflow-hidden rounded-2xl p-5 flex items-center gap-4 bg-white border border-gray-100 hover:shadow-lg hover:border-transparent transition-all duration-200"
-          >
-            <div
-              className={`w-12 h-12 rounded-xl bg-gradient-to-br ${bg} flex items-center justify-center flex-shrink-0 shadow-sm group-hover:scale-105 transition-transform`}
+        {NAV_ITEMS.map(({ href, icon: Icon, label, desc, bg, tutorialId }) => {
+          const badgeCount = badges[BADGE_KEY[href] ?? ""] ?? 0;
+          return (
+            <Link
+              key={href}
+              href={href}
+              data-tutorial={tutorialId}
+              className="group relative overflow-hidden rounded-2xl p-5 flex items-center gap-4 bg-white border border-gray-100 hover:shadow-lg hover:border-transparent transition-all duration-200"
             >
-              <Icon className="h-6 w-6 text-white" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-semibold text-gray-900 text-base">{label}</p>
-              <p className="text-xs text-gray-500 mt-0.5 leading-snug">{desc}</p>
-            </div>
-            <ChevronRight className="h-4 w-4 text-gray-300 group-hover:text-gray-500 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
-          </Link>
-        ))}
+              <div className="relative flex-shrink-0">
+                <div
+                  className={`w-12 h-12 rounded-xl bg-gradient-to-br ${bg} flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform`}
+                >
+                  <Icon className="h-6 w-6 text-white" />
+                </div>
+                {badgeCount > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 shadow ring-2 ring-white">
+                    {badgeCount > 99 ? "99+" : badgeCount}
+                  </span>
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-gray-900 text-base">{label}</p>
+                <p className="text-xs text-gray-500 mt-0.5 leading-snug">{desc}</p>
+              </div>
+              <ChevronRight className="h-4 w-4 text-gray-300 group-hover:text-gray-500 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+            </Link>
+          );
+        })}
       </div>
 
       {/* Materials section */}

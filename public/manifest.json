@@ -1,0 +1,21 @@
+{
+  "name": "Portal Companhia do Churrasco",
+  "short_name": "Portal CdC",
+  "description": "Portal de treinamentos e materiais para franqueados",
+  "start_url": "/gallery",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1d4ed8",
+  "orientation": "portrait-primary",
+  "categories": ["business", "productivity"],
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "prefer_related_applications": false
+}

@@ -6,6 +6,8 @@ import Link from "next/link";
 import { signOut } from "next-auth/react";
 import { FranchiseeSidebar } from "./FranchiseeSidebar";
 import { TutorialOverlay, PORTAL_TUTORIAL_STEPS } from "./TutorialOverlay";
+import { PwaInstallPrompt } from "@/components/PwaInstallPrompt";
+import { useBadges, BADGE_KEY } from "@/hooks/useBadges";
 import {
   BookOpen,
   MessageSquare,
@@ -32,6 +34,7 @@ const mobileNavItems = [
 
 export function FranchiseeShell({ user, children }: FranchiseeShellProps) {
   const pathname = usePathname();
+  const badges = useBadges();
   const [showTutorial, setShowTutorial] = useState(false);
   const [tutorialStep, setTutorialStep] = useState(0);
 
@@ -105,16 +108,24 @@ export function FranchiseeShell({ user, children }: FranchiseeShellProps) {
           const isActive = item.exact
             ? pathname === item.href
             : pathname.startsWith(item.href);
+          const badgeCount = badges[BADGE_KEY[item.href] ?? ""] ?? 0;
 
           return (
             <Link
               key={item.href}
               href={item.href}
-              className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2.5 transition ${
+              className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2.5 transition relative ${
                 isActive ? "text-orange-600" : "text-gray-400"
               }`}
             >
-              <item.icon className="h-5 w-5" />
+              <div className="relative">
+                <item.icon className="h-5 w-5" />
+                {badgeCount > 0 && (
+                  <span className="absolute -top-1 -right-1.5 min-w-[14px] h-3.5 bg-red-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center px-0.5 ring-1 ring-white">
+                    {badgeCount > 9 ? "9+" : badgeCount}
+                  </span>
+                )}
+              </div>
               <span className="text-[10px] font-medium leading-tight">
                 {item.label}
               </span>
@@ -122,6 +133,9 @@ export function FranchiseeShell({ user, children }: FranchiseeShellProps) {
           );
         })}
       </nav>
+
+      {/* PWA install / notification prompt */}
+      <PwaInstallPrompt />
 
       {/* Tutorial overlay */}
       {showTutorial && (
