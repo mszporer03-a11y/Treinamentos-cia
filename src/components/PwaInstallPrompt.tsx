@@ -37,14 +37,17 @@ async function registerPush(): Promise<boolean> {
   const auth = sub.getKey("auth");
   if (!key || !auth) return false;
 
+  const toBase64 = (buf: ArrayBuffer) =>
+    btoa(Array.from(new Uint8Array(buf)).map((b) => String.fromCharCode(b)).join(""));
+
   await fetch("/api/push/subscribe", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       endpoint: sub.endpoint,
       keys: {
-        p256dh: btoa(String.fromCharCode(...new Uint8Array(key))),
-        auth:   btoa(String.fromCharCode(...new Uint8Array(auth))),
+        p256dh: toBase64(key),
+        auth:   toBase64(auth),
       },
     }),
   });
