@@ -9,19 +9,22 @@ export type BadgeCounts = Partial<{
   materiais: number;
   cardapios: number;
   documentos: number;
+  notificacoes: number;
 }>;
 
 /** Maps href paths to badge keys returned by /api/badges */
 export const BADGE_KEY: Record<string, keyof BadgeCounts> = {
-  "/surveys":     "surveys",
-  "/chat":        "chat",
-  "/solicitacoes": "solicitacoes",
-  "/materiais":   "materiais",
-  "/cardapios":   "cardapios",
-  "/documents":   "documentos",
+  "/surveys":       "surveys",
+  "/chat":          "chat",
+  "/solicitacoes":  "solicitacoes",
+  "/materiais":     "materiais",
+  "/cardapios":     "cardapios",
+  "/documents":     "documentos",
+  "/notificacoes":  "notificacoes",
   // Admin routes
-  "/admin/chat":         "chat",
-  "/admin/solicitacoes": "solicitacoes",
+  "/admin/chat":           "chat",
+  "/admin/solicitacoes":   "solicitacoes",
+  "/admin/notificacoes":   "notificacoes",
 };
 
 /** Fetch badge counts, refresh every 60 s */

@@ -1,103 +1,88 @@
-﻿import { db } from "@/lib/db";
-import { Users, FolderOpen, FileText, Eye, Store, AlertTriangle, BarChart2, Plus, Map, ClipboardList } from "lucide-react";
+import { db } from "@/lib/db";
+import { auth } from "@/lib/auth";
 import { AdminFeed } from "@/components/admin/AdminFeed";
-import Link from "next/link";
+import { AdminDashboardCards } from "@/components/admin/AdminDashboardCards";
+import Image from "next/image";
 
 export const dynamic = "force-dynamic";
 
 async function getDashboardData() {
-  const [
-    totalUsers, activeStores, totalCategories, totalMaterials, publishedMaterials,
-    openAlerts, activeSurveys, recentMaterials,
-  ] = await Promise.all([
-    db.user.count({ where: { role: "FRANCHISEE", active: true } }),
-    db.store.count({ where: { active: true } }),
-    db.category.count(),
-    db.material.count(),
-    db.material.count({ where: { published: true } }),
-    db.nonComplianceAlert.count({ where: { status: { not: "RESOLVED" } } }),
-    db.survey.count({ where: { active: true } }),
-    db.material.findMany({
-      take: 12,
-      orderBy: { createdAt: "desc" },
-      include: { category: true, createdBy: { select: { name: true } } },
-    }),
-  ]);
+  const [totalUsers, activeStores, publishedMaterials, openAlerts, pendingRequests, recentMaterials] =
+    await Promise.all([
+      db.user.count({ where: { role: "FRANCHISEE", active: true } }),
+      db.store.count({ where: { active: true } }),
+      db.material.count({ where: { published: true } }),
+      db.nonComplianceAlert.count({ where: { status: { not: "RESOLVED" } } }),
+      db.message.count({ where: { category: { not: null }, requestStatus: "PENDING" } }),
+      db.material.findMany({
+        take: 12,
+        orderBy: { createdAt: "desc" },
+        include: { category: true, createdBy: { select: { name: true } } },
+      }),
+    ]);
 
-  return { totalUsers, activeStores, totalCategories, totalMaterials, publishedMaterials, openAlerts, activeSurveys, recentMaterials };
+  return { totalUsers, activeStores, publishedMaterials, openAlerts, pendingRequests, recentMaterials };
 }
 
 export default async function AdminDashboardPage() {
+  const session = await auth();
   const data = await getDashboardData();
+  const firstName = session?.user?.name?.split(" ")[0] ?? "Admin";
 
-  const kpis = [
-    { label: "Franqueados",    value: data.totalUsers,         icon: Users,      color: "bg-blue-500",    href: "/admin/users" },
-    { label: "Lojas ativas",   value: data.activeStores,       icon: Store,      color: "bg-emerald-500", href: "/admin/stores" },
-    { label: "Materiais",      value: data.totalMaterials,     icon: FileText,   color: "bg-purple-500",  href: "/admin/materials" },
-    { label: "Publicados",     value: data.publishedMaterials, icon: Eye,        color: "bg-indigo-500",  href: "/admin/materials" },
-  ];
-
-  const alerts = [
-    { label: "Alertas abertos",    value: data.openAlerts,     icon: AlertTriangle, color: "text-red-600 bg-red-50 border-red-100",           href: "/admin/alerts",          urgent: data.openAlerts > 0 },
-    { label: "Pesquisas ativas",   value: data.activeSurveys,  icon: BarChart2,     color: "text-violet-600 bg-violet-50 border-violet-100",  href: "/admin/surveys",         urgent: false },
-    { label: "Categorias",         value: data.totalCategories,icon: FolderOpen,    color: "text-gray-600 bg-gray-50 border-gray-100",        href: "/admin/categories",      urgent: false },
-  ];
-
-  const shortcuts = [
-    { href: "/admin/materials?new=1",   icon: Plus,         label: "Publicar Material",    color: "bg-purple-600 hover:bg-purple-700" },
-    { href: "/admin/map",               icon: Map,          label: "Mapa de Lojas",         color: "bg-emerald-600 hover:bg-emerald-700" },
-    { href: "/admin/onboarding",        icon: ClipboardList,label: "Inauguração",           color: "bg-blue-600 hover:bg-blue-700" },
+  const stats = [
+    { label: "Franqueados",       value: data.totalUsers,          color: "text-blue-400" },
+    { label: "Lojas ativas",      value: data.activeStores,        color: "text-emerald-400" },
+    { label: "Materiais publicados", value: data.publishedMaterials, color: "text-purple-400" },
+    ...(data.openAlerts > 0
+      ? [{ label: "Alertas abertos", value: data.openAlerts, color: "text-red-400" }]
+      : []),
+    ...(data.pendingRequests > 0
+      ? [{ label: "Solicitações pendentes", value: data.pendingRequests, color: "text-amber-400" }]
+      : []),
   ];
 
   return (
-    <div className="p-4 sm:p-6 md:p-8 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-500 text-sm mt-1">Visão geral da rede Companhia do Churrasco</p>
-      </div>
-
-      {/* KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
-        {kpis.map((stat) => (
-          <Link key={stat.label} href={stat.href}
-            className="bg-white rounded-xl border border-gray-100 p-4 flex items-center gap-3 hover:shadow-md transition group">
-            <div className={`${stat.color} p-2.5 rounded-xl shrink-0`}>
-              <stat.icon className="h-5 w-5 text-white" />
-            </div>
+    <div className="p-4 sm:p-6">
+      {/* Hero banner */}
+      <div className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 rounded-2xl px-6 py-8 mb-8 relative overflow-hidden">
+        <div
+          className="absolute inset-0 opacity-10"
+          style={{ backgroundImage: "radial-gradient(circle at 80% 50%, #EA580C 0%, transparent 60%)" }}
+        />
+        <div className="relative">
+          <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
-              <p className="text-xs text-gray-500 leading-tight">{stat.label}</p>
+              <h1 className="text-xl sm:text-2xl font-bold text-white">
+                Olá, {firstName} 👋
+              </h1>
+              <p className="text-gray-400 text-sm mt-1">
+                Painel de administração — Companhia do Churrasco
+              </p>
+              {/* Stats chips */}
+              <div className="flex flex-wrap gap-3 mt-4">
+                {stats.map((s) => (
+                  <div key={s.label} className="flex items-center gap-1.5 bg-white/10 rounded-xl px-3 py-1.5">
+                    <span className={`text-base font-bold ${s.color}`}>{s.value}</span>
+                    <span className="text-xs text-gray-400">{s.label}</span>
+                  </div>
+                ))}
+              </div>
             </div>
-          </Link>
-        ))}
+            <Image
+              src="/logo.png"
+              alt="Companhia do Churrasco"
+              width={140}
+              height={50}
+              className="invert brightness-0 invert opacity-90 flex-shrink-0 hidden sm:block"
+            />
+          </div>
+        </div>
       </div>
 
-      {/* Attention items */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-        {alerts.map((stat) => (
-          <Link key={stat.label} href={stat.href}
-            className={`rounded-xl border p-4 flex items-center gap-3 hover:shadow-sm transition ${stat.color} ${stat.urgent ? "ring-1 ring-current/20" : ""}`}>
-            <stat.icon className="h-5 w-5 shrink-0" />
-            <div>
-              <p className="text-2xl font-bold">{stat.value}</p>
-              <p className="text-xs leading-tight opacity-75">{stat.label}</p>
-            </div>
-          </Link>
-        ))}
-      </div>
+      {/* Nav cards — client component (loads badges) */}
+      <AdminDashboardCards />
 
-      {/* Quick shortcuts */}
-      <div className="flex flex-wrap gap-2 mb-8">
-        {shortcuts.map((s) => (
-          <Link key={s.href} href={s.href}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-white text-sm font-medium transition ${s.color}`}>
-            <s.icon className="h-4 w-4" />
-            {s.label}
-          </Link>
-        ))}
-      </div>
-
+      {/* Recent materials */}
       <div className="mb-3">
         <h2 className="text-base font-semibold text-gray-900">Materiais Recentes</h2>
       </div>

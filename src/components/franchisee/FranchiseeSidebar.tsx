@@ -20,6 +20,7 @@ import {
   MonitorCog,
   Inbox,
   UtensilsCrossed,
+  Bell,
 } from "lucide-react";
 
 interface FranchiseeSidebarProps {
@@ -64,6 +65,7 @@ const sections: { label: string; items: { href: string; label: string; icon: Rea
   {
     label: "Operações",
     items: [
+      { href: "/notificacoes", label: "Notificações", icon: Bell },
       { href: "/surveys", label: "Pesquisas", icon: BarChart2 },
       { href: "/checklists", label: "Checklists", icon: ClipboardList },
       { href: "/documents", label: "Documentos", icon: FileText },

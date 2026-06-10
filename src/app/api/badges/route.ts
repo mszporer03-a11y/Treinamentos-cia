@@ -7,8 +7,8 @@ export const dynamic = "force-dynamic";
 /**
  * GET /api/badges
  * Returns unread/new counts per section for the current user.
- * Franchisee: { surveys, chat, solicitacoes, materiais, cardapios, documentos }
- * Admin:      { chat, solicitacoes }
+ * Franchisee: { surveys, chat, solicitacoes, materiais, cardapios, documentos, notificacoes }
+ * Admin:      { chat, solicitacoes, notificacoes }
  */
 export async function GET() {
   const session = await auth();
@@ -22,7 +22,7 @@ export async function GET() {
   const thirtyDays    = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
   if (isAdmin) {
-    const [chat, solicitacoes] = await Promise.all([
+    const [chat, solicitacoes, notificacoes] = await Promise.all([
       // Conversations with unread franchisee messages
       db.conversation.count({
         where: {
@@ -38,13 +38,22 @@ export async function GET() {
           requestStatus: "PENDING",
         },
       }),
+      // Open non-conformity alerts
+      db.nonComplianceAlert.count({
+        where: { status: { not: "RESOLVED" } },
+      }),
     ]);
 
-    return NextResponse.json({ chat, solicitacoes });
+    return NextResponse.json({ chat, solicitacoes, notificacoes });
   }
 
   // ── FRANCHISEE ────────────────────────────────────────────────────────
-  const [surveys, chat, solicitacoes, materiais, cardapios, documentos] =
+  // Get user's store IDs for alert filtering
+  const userStoreIds = await db.userStore
+    .findMany({ where: { userId }, select: { storeId: true } })
+    .then((rows) => rows.map((r) => r.storeId));
+
+  const [surveys, chat, solicitacoes, materiais, cardapios, documentos, notificacoes] =
     await Promise.all([
       // Active surveys not yet answered by this user
       db.survey.count({
@@ -117,6 +126,14 @@ export async function GET() {
           createdAt: { gte: fourteenDays },
         },
       }),
+
+      // Open non-conformity alerts for this franchisee's stores
+      db.nonComplianceAlert.count({
+        where: {
+          storeId: { in: userStoreIds },
+          status: { not: "RESOLVED" },
+        },
+      }),
     ]);
 
   return NextResponse.json({
@@ -126,5 +143,6 @@ export async function GET() {
     materiais,
     cardapios,
     documentos,
+    notificacoes,
   });
 }

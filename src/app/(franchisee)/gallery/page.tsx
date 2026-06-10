@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useSession } from "next-auth/react";
 import { MaterialViewer } from "@/components/franchisee/MaterialViewer";
-import { Play, FileText, Image as ImageIcon, File, MessageSquare, BarChart2, ClipboardList, BookOpen, ChevronRight, SlidersHorizontal, Megaphone, Inbox, UtensilsCrossed } from "lucide-react";
+import { Play, FileText, Image as ImageIcon, File, MessageSquare, BarChart2, ClipboardList, BookOpen, ChevronRight, SlidersHorizontal, Megaphone, Inbox, UtensilsCrossed, Bell } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { useBadges, BADGE_KEY } from "@/hooks/useBadges";
 
@@ -165,6 +165,14 @@ const NAV_ITEMS = [
     desc: "Acesse seus documentos contratuais",
     bg: "from-slate-600 to-slate-500",
     tutorialId: "nav-documentos",
+  },
+  {
+    href: "/notificacoes",
+    icon: Bell,
+    label: "Notificações",
+    desc: "Alertas da sua loja e campanhas",
+    bg: "from-rose-600 to-rose-500",
+    tutorialId: "nav-notificacoes",
   },
 ];
 
