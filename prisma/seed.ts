@@ -43,10 +43,10 @@ async function main() {
       icon: "💰",
     },
     {
-      name: "Marketing",
-      slug: "marketing",
-      description: "Materiais de marketing e comunicação",
-      icon: "📢",
+      name: "Mídia",
+      slug: "midia",
+      description: "Materiais de mídia e comunicação",
+      icon: "📣",
     },
     {
       name: "Operações",
