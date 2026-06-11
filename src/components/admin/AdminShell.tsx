@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
 import { AdminSidebar } from "./AdminSidebar";
+import { PwaInstallPrompt } from "@/components/PwaInstallPrompt";
 import {
   LayoutDashboard,
   FolderOpen,
@@ -87,6 +88,9 @@ export function AdminShell({ user, children }: AdminShellProps) {
           );
         })}
       </nav>
+
+      {/* PWA install / notification prompt */}
+      <PwaInstallPrompt />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { sendPushToUser } from "@/lib/push";
 import { z } from "zod";
 
 const createSchema = z.object({
@@ -55,5 +56,21 @@ export async function POST(req: Request) {
     },
     include: { store: { select: { id: true, name: true } } },
   });
+
+  // Notificar franqueados vinculados à loja
+  const links = await db.userStore.findMany({
+    where: { storeId: alert.storeId },
+    select: { userId: true },
+  });
+  await Promise.allSettled(
+    links.map((link) =>
+      sendPushToUser(link.userId, {
+        title: `⚠️ Alerta — ${alert.store.name}`,
+        body: alert.title,
+        url: "/notificacoes",
+      })
+    )
+  );
+
   return NextResponse.json(alert, { status: 201 });
 }

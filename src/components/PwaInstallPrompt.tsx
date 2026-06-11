@@ -24,7 +24,8 @@ async function registerPush(): Promise<boolean> {
   const permission = await Notification.requestPermission();
   if (permission !== "granted") return false;
 
-  const reg = await navigator.serviceWorker.ready;
+  const reg = await navigator.serviceWorker.register("/sw.js");
+  await navigator.serviceWorker.ready;
   const existing = await reg.pushManager.getSubscription();
   const sub = existing ?? await reg.pushManager.subscribe({
     userVisibleOnly: true,
