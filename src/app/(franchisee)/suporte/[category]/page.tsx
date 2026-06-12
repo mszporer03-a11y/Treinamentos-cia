@@ -21,6 +21,7 @@ import {
 import { useUploadThing } from "@/lib/uploadthing-components";
 
 type Store = { id: string; name: string; code: string };
+type AdminUser = { id: string; name: string; email: string };
 
 const CATEGORIES: Record<string, { label: string; Icon: React.ElementType; color: string; description: string }> = {
   solicitacoes: {
@@ -61,6 +62,8 @@ export default function SupporteCategoryPage() {
   const category = CATEGORIES[params.category];
 
   const [stores, setStores] = useState<Store[]>([]);
+  const [admins, setAdmins] = useState<AdminUser[]>([]);
+  const [selectedAdminId, setSelectedAdminId] = useState<string>("");
   const [selectedStoreIds, setSelectedStoreIds] = useState<string[]>([]);
   const [message, setMessage] = useState("");
   const [pendingFile, setPendingFile] = useState<{
@@ -90,6 +93,14 @@ export default function SupporteCategoryPage() {
       .then((data) => {
         if (Array.isArray(data)) setStores(data);
       });
+    fetch("/api/admins")
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setAdmins(data);
+          if (data.length === 1) setSelectedAdminId(data[0].id);
+        }
+      });
   }, []);
 
   if (!category) {
@@ -114,10 +125,15 @@ export default function SupporteCategoryPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!message.trim() && !pendingFile) return;
+    if (!selectedAdminId) return;
     setSubmitting(true);
     try {
-      // 1. Get (or create) the franchisee's conversation
-      const convRes = await fetch("/api/conversations");
+      // 1. Get (or create) the conversation with the chosen admin
+      const convRes = await fetch("/api/conversations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ adminId: selectedAdminId }),
+      });
       if (!convRes.ok) throw new Error("Falha ao obter conversa");
       const conv = await convRes.json();
       const conversationId: string = conv.id;
@@ -196,6 +212,35 @@ export default function SupporteCategoryPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
+        {/* Admin picker */}
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">
+            Enviar para <span className="text-red-500">*</span>
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {admins.map((admin) => {
+              const sel = selectedAdminId === admin.id;
+              return (
+                <button
+                  key={admin.id}
+                  type="button"
+                  onClick={() => setSelectedAdminId(admin.id)}
+                  className={`px-3 py-1.5 rounded-full text-sm font-medium border transition ${
+                    sel
+                      ? "bg-orange-600 text-white border-orange-600"
+                      : "bg-white text-gray-600 border-gray-200 hover:border-orange-300"
+                  }`}
+                >
+                  {admin.name}
+                </button>
+              );
+            })}
+            {admins.length === 0 && (
+              <p className="text-xs text-gray-400">Carregando administradores…</p>
+            )}
+          </div>
+        </div>
+
         {/* Store picker */}
         {stores.length > 0 && (
           <div>
@@ -289,7 +334,7 @@ export default function SupporteCategoryPage() {
         {/* Submit */}
         <button
           type="submit"
-          disabled={submitting || uploading || (!message.trim() && !pendingFile)}
+          disabled={submitting || uploading || !selectedAdminId || (!message.trim() && !pendingFile)}
           className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition"
         >
           {submitting ? (

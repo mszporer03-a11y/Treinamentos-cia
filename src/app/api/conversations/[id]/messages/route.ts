@@ -5,6 +5,18 @@ import { sendPushToUser } from "@/lib/push";
 
 export const dynamic = "force-dynamic";
 
+// Admin acessa as próprias conversas + legadas (adminId null);
+// franqueado/gerente acessa apenas as suas
+function canAccess(
+  user: { id: string; role: string },
+  conv: { franchiseeId: string; adminId: string | null }
+) {
+  if (user.role === "ADMIN") {
+    return conv.adminId === null || conv.adminId === user.id;
+  }
+  return conv.franchiseeId === user.id;
+}
+
 // GET /api/conversations/[id]/messages
 export async function GET(
   _req: Request,
@@ -16,8 +28,7 @@ export async function GET(
   const conv = await db.conversation.findUnique({ where: { id: params.id } });
   if (!conv) return NextResponse.json({ error: "Conversa não encontrada" }, { status: 404 });
 
-  // Somente admin ou o próprio franqueado pode ver
-  if (session.user.role !== "ADMIN" && conv.franchiseeId !== session.user.id) {
+  if (!canAccess(session.user, conv)) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
   }
 
@@ -57,8 +68,19 @@ export async function POST(
   const conv = await db.conversation.findUnique({ where: { id: params.id } });
   if (!conv) return NextResponse.json({ error: "Conversa não encontrada" }, { status: 404 });
 
-  if (session.user.role !== "ADMIN" && conv.franchiseeId !== session.user.id) {
+  if (!canAccess(session.user, conv)) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
+  }
+
+  const isAdmin = session.user.role === "ADMIN";
+
+  // Conversa legada é somente leitura para franqueado/gerente —
+  // novas mensagens devem ir para a conversa com um admin específico
+  if (!isAdmin && conv.adminId === null) {
+    return NextResponse.json(
+      { error: "Esta conversa é um histórico. Inicie uma conversa com um administrador." },
+      { status: 403 }
+    );
   }
 
   const body = await req.json();
@@ -68,7 +90,6 @@ export async function POST(
     return NextResponse.json({ error: "Mensagem vazia" }, { status: 400 });
   }
 
-  const isAdmin = session.user.role === "ADMIN";
   const storeIds: string[] = Array.isArray(linkedStoreIds) ? linkedStoreIds : [];
 
   const message = await db.message.create({
@@ -105,14 +126,21 @@ export async function POST(
   const notifBody = content?.trim() ? content.trim() : `📎 ${fileName ?? "Arquivo"}`;
 
   if (isAdmin) {
-    // Notificar o franqueado
+    // Notificar o franqueado/gerente
     await sendPushToUser(conv.franchiseeId, {
       title: `Mensagem de ${senderName}`,
       body: notifBody,
       url: "/chat",
     });
+  } else if (conv.adminId) {
+    // Notificar apenas o admin dono da conversa
+    await sendPushToUser(conv.adminId, {
+      title: `Nova mensagem de ${senderName}`,
+      body: notifBody,
+      url: `/admin/chat/${params.id}`,
+    });
   } else {
-    // Notificar todos os admins
+    // Conversa legada — notificar todos os admins
     const admins = await db.user.findMany({
       where: { role: "ADMIN", active: true },
       select: { id: true },

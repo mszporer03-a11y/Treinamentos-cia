@@ -220,19 +220,11 @@ export const PORTAL_TUTORIAL_STEPS: TutorialStep[] = [
     target: null,
   },
   {
-    icon: "📊",
-    title: "Pesquisas",
-    description:
-      "Responda às pesquisas enviadas pela Companhia do Churrasco. Sua participação é essencial para a melhoria contínua de toda a rede.",
-    hint: "Menu → Pesquisas",
-    target: "nav-surveys",
-  },
-  {
     icon: "✅",
-    title: "Checklists Operacionais",
+    title: "Planilhas de controle",
     description:
-      "Preencha os checklists de operação da sua loja para garantir que os padrões de qualidade e conformidade da franquia sejam seguidos.",
-    hint: "Menu → Checklists",
+      "Preencha as planilhas de controle da sua loja para garantir que os padrões de qualidade e conformidade da franquia sejam seguidos.",
+    hint: "Menu → Planilhas de controle",
     target: "nav-checklists",
   },
   {

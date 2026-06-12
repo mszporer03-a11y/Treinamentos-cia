@@ -10,8 +10,10 @@ const updateSchema = z.object({
   name: z.string().min(1).max(100).optional(),
   email: z.string().email().optional(),
   password: z.string().min(6).optional(),
-  role: z.enum(["ADMIN", "FRANCHISEE"]).optional(),
+  role: z.enum(["ADMIN", "FRANCHISEE", "MANAGER"]).optional(),
+  phone: z.string().max(30).optional().nullable(),
   active: z.boolean().optional(),
+  storeIds: z.array(z.string()).optional(),
 });
 
 const userSelectFields = {
@@ -19,31 +21,80 @@ const userSelectFields = {
   name: true,
   email: true,
   role: true,
+  phone: true,
   active: true,
   createdAt: true,
+  stores: { select: { store: { select: { id: true, name: true, code: true } } } },
 };
+
+// Franqueado pode gerenciar apenas gerentes criados por ele
+async function canManage(sessionUserId: string, sessionRole: string, targetId: string) {
+  if (sessionRole === "ADMIN") return true;
+  if (sessionRole !== "FRANCHISEE") return false;
+  const target = await db.user.findUnique({
+    where: { id: targetId },
+    select: { role: true, createdById: true },
+  });
+  return target?.role === "MANAGER" && target.createdById === sessionUserId;
+}
 
 export async function PATCH(
   req: Request,
   { params }: { params: { id: string } }
 ) {
   const session = await auth();
-  if (!session || session.user.role !== "ADMIN") {
+  if (!session?.user) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  }
+
+  const isAdmin = session.user.role === "ADMIN";
+  if (!(await canManage(session.user.id, session.user.role, params.id))) {
+    return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
   }
 
   try {
     const body = await req.json();
     const data = updateSchema.parse(body);
 
-    const updateData: Record<string, unknown> = { ...data };
+    // Franqueado não pode alterar o papel da conta
+    if (!isAdmin && data.role && data.role !== "MANAGER") {
+      return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
+    }
+
+    const { storeIds, ...fields } = data;
+    const updateData: Record<string, unknown> = { ...fields };
     if (data.password) {
       updateData.password = await bcrypt.hash(data.password, 12);
     }
 
+    // Franqueado só pode vincular às próprias lojas
+    if (storeIds && !isAdmin) {
+      const myStores = await db.userStore.findMany({
+        where: { userId: session.user.id },
+        select: { storeId: true },
+      });
+      const myStoreIds = new Set(myStores.map((s) => s.storeId));
+      if (storeIds.some((id) => !myStoreIds.has(id))) {
+        return NextResponse.json(
+          { error: "Você só pode vincular gerentes às suas próprias lojas" },
+          { status: 403 }
+        );
+      }
+    }
+
     const user = await db.user.update({
       where: { id: params.id },
-      data: updateData,
+      data: {
+        ...updateData,
+        ...(storeIds
+          ? {
+              stores: {
+                deleteMany: {},
+                create: storeIds.map((storeId) => ({ storeId })),
+              },
+            }
+          : {}),
+      },
       select: userSelectFields,
     });
     return NextResponse.json(user);
@@ -63,7 +114,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   const session = await auth();
-  if (!session || session.user.role !== "ADMIN") {
+  if (!session?.user) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   }
 
@@ -73,6 +124,10 @@ export async function DELETE(
       { error: "Não é possível excluir sua própria conta" },
       { status: 400 }
     );
+  }
+
+  if (!(await canManage(session.user.id, session.user.role, params.id))) {
+    return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
   }
 
   try {

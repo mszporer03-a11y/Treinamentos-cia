@@ -50,6 +50,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         return Response.redirect(new URL("/gallery", nextUrl));
       }
 
+      // Gerentes não acessam documentos nem a gestão de gerentes
+      if (
+        auth.user.role === "MANAGER" &&
+        (path.startsWith("/documents") || path.startsWith("/gerentes"))
+      ) {
+        return Response.redirect(new URL("/gallery", nextUrl));
+      }
+
       return true;
     },
   },

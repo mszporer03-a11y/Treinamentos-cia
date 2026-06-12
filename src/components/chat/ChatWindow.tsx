@@ -72,10 +72,38 @@ interface Message {
 interface ChatWindowProps {
   conversationId: string;
   currentUserId: string;
-  currentUserRole: "ADMIN" | "FRANCHISEE";
+  currentUserRole: "ADMIN" | "FRANCHISEE" | "MANAGER";
   recipientName?: string;
+  recipientRole?: string;
   pollInterval?: number;
   availableStores?: LinkedStore[];
+  readOnly?: boolean;
+}
+
+const ROLE_LABEL: Record<string, string> = {
+  ADMIN: "Admin",
+  FRANCHISEE: "Franqueado",
+  MANAGER: "Gerente",
+};
+
+function dayLabel(dateStr: string): string {
+  const d = new Date(dateStr);
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+
+  const sameDay = (a: Date, b: Date) =>
+    a.getDate() === b.getDate() &&
+    a.getMonth() === b.getMonth() &&
+    a.getFullYear() === b.getFullYear();
+
+  if (sameDay(d, today)) return "Hoje";
+  if (sameDay(d, yesterday)) return "Ontem";
+  return d.toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
 }
 
 function FilePreview({ url, type, name }: { url: string; type: string | null; name: string | null }) {
@@ -112,8 +140,10 @@ export function ChatWindow({
   currentUserId,
   currentUserRole,
   recipientName = "Admin",
+  recipientRole,
   pollInterval = 4000,
   availableStores = [],
+  readOnly = false,
 }: ChatWindowProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [text, setText] = useState("");
@@ -221,7 +251,11 @@ export function ChatWindow({
         <div>
           <p className="font-semibold text-gray-900 text-sm">{recipientName}</p>
           <p className="text-xs text-gray-400">
-            {currentUserRole === "ADMIN" ? "Franqueado" : "Admin"}
+            {recipientRole
+              ? ROLE_LABEL[recipientRole] ?? recipientRole
+              : currentUserRole === "ADMIN"
+              ? "Franqueado"
+              : "Admin"}
           </p>
         </div>
       </div>
@@ -233,11 +267,25 @@ export function ChatWindow({
             Nenhuma mensagem ainda. Diga olá! 👋
           </div>
         )}
-        {messages.map((msg) => {
+        {messages.map((msg, idx) => {
           const isMe = msg.sender.id === currentUserId;
+          const prevMsg = messages[idx - 1];
+          const showDayDivider =
+            !prevMsg ||
+            new Date(prevMsg.createdAt).toDateString() !==
+              new Date(msg.createdAt).toDateString();
           return (
+            <div key={msg.id}>
+              {showDayDivider && (
+                <div className="flex items-center gap-3 my-4">
+                  <div className="flex-1 h-px bg-gray-200" />
+                  <span className="text-[11px] font-medium text-gray-400 bg-gray-100 px-2.5 py-0.5 rounded-full">
+                    {dayLabel(msg.createdAt)}
+                  </span>
+                  <div className="flex-1 h-px bg-gray-200" />
+                </div>
+              )}
             <div
-              key={msg.id}
               className={`flex items-end gap-2 ${isMe ? "flex-row-reverse" : "flex-row"}`}
             >
               {/* Avatar */}
@@ -290,13 +338,21 @@ export function ChatWindow({
                 </span>
               </div>
             </div>
+            </div>
           );
         })}
         <div ref={bottomRef} />
       </div>
 
+      {/* Read-only notice (conversa de histórico) */}
+      {readOnly && (
+        <div className="px-4 py-3 bg-gray-100 border-t border-gray-200 text-center text-xs text-gray-500 flex-shrink-0">
+          Esta conversa é um histórico — para falar com a equipe, inicie uma conversa com um administrador.
+        </div>
+      )}
+
       {/* Pending file preview */}
-      {pendingFile && (
+      {!readOnly && pendingFile && (
         <div className="mx-4 mb-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-xl flex items-center gap-2 text-sm text-blue-700">
           {pendingFile.type === "image" ? (
             <ImageIcon className="h-4 w-4 flex-shrink-0" />
@@ -311,6 +367,7 @@ export function ChatWindow({
       )}
 
       {/* Input bar */}
+      {!readOnly && (
       <div className="px-4 py-3 bg-white border-t border-gray-200 flex-shrink-0">
         {/* Store picker */}
         {availableStores.length > 0 && showStorePicker && (
@@ -465,6 +522,7 @@ export function ChatWindow({
           </button>
         </div>
       </div>
+      )}
     </div>
   );
 }

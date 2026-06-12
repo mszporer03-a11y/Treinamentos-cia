@@ -47,16 +47,19 @@ export async function sendPushToUser(userId: string, payload: PushPayload) {
   );
 }
 
-export async function sendPushToAll(payload: PushPayload, role?: "ADMIN" | "FRANCHISEE") {
+export async function sendPushToAll(payload: PushPayload, audience?: "ADMIN" | "NON_ADMIN") {
   if (!process.env.VAPID_PRIVATE_KEY) return;
 
   const subscriptions = await db.pushSubscription.findMany({
     include: { user: { select: { role: true, active: true } } },
   });
 
-  const filtered = role
-    ? subscriptions.filter((s) => s.user.role === role && s.user.active)
-    : subscriptions.filter((s) => s.user.active);
+  const filtered = subscriptions.filter((s) => {
+    if (!s.user.active) return false;
+    if (audience === "ADMIN") return s.user.role === "ADMIN";
+    if (audience === "NON_ADMIN") return s.user.role !== "ADMIN";
+    return true;
+  });
 
   const data = JSON.stringify(payload);
 

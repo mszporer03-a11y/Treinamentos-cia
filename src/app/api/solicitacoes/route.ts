@@ -22,8 +22,11 @@ export async function GET(req: Request) {
     const messages = await db.message.findMany({
       where: {
         category: { not: null },
-        sender: { role: "FRANCHISEE" },
-        ...(franchiseeId ? { conversation: { franchiseeId } } : {}),
+        sender: { role: { in: ["FRANCHISEE", "MANAGER"] } },
+        conversation: {
+          OR: [{ adminId: session.user.id }, { adminId: null }],
+          ...(franchiseeId ? { franchiseeId } : {}),
+        },
         ...(category ? { category } : {}),
         ...(status ? { requestStatus: status as never } : {}),
         ...(storeId
@@ -31,11 +34,11 @@ export async function GET(req: Request) {
           : {}),
       },
       include: {
-        sender: { select: { id: true, name: true, email: true } },
+        sender: { select: { id: true, name: true, email: true, role: true, phone: true } },
         conversation: {
           select: {
             id: true,
-            franchisee: { select: { id: true, name: true, email: true } },
+            franchisee: { select: { id: true, name: true, email: true, role: true, phone: true } },
           },
         },
         linkedStores: {
@@ -48,20 +51,13 @@ export async function GET(req: Request) {
     return NextResponse.json(messages);
   }
 
-  // Franqueado: apenas as suas mensagens que são quick-requests
-  const conv = await db.conversation.findUnique({
-    where: { franchiseeId: session.user.id },
-    select: { id: true },
-  });
-
-  if (!conv) return NextResponse.json([]);
-
+  // Franqueado/gerente: apenas as suas mensagens que são quick-requests
   const category = searchParams.get("category") || undefined;
   const storeId = searchParams.get("storeId") || undefined;
 
   const messages = await db.message.findMany({
     where: {
-      conversationId: conv.id,
+      conversation: { franchiseeId: session.user.id },
       senderId: session.user.id,
       category: category ? { equals: category } : { not: null },
       ...(storeId ? { linkedStores: { some: { storeId } } } : {}),

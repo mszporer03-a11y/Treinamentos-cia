@@ -9,7 +9,6 @@ import { useBadges, BADGE_KEY } from "@/hooks/useBadges";
 import {
   BookOpen,
   MessageSquare,
-  BarChart2,
   ClipboardList,
   FileText,
   UserCircle2,
@@ -21,17 +20,28 @@ import {
   Inbox,
   UtensilsCrossed,
   Bell,
+  Users,
 } from "lucide-react";
 
 interface FranchiseeSidebarProps {
   user: {
     name?: string | null;
     email?: string | null;
+    role?: string;
   };
   onOpenTutorial?: () => void;
 }
 
-const sections: { label: string; items: { href: string; label: string; icon: React.ElementType; exact?: boolean }[] }[] = [
+type NavItem = {
+  href: string;
+  label: string;
+  icon: React.ElementType;
+  exact?: boolean;
+  /** Se definido, o item só aparece para estes papéis */
+  roles?: string[];
+};
+
+const sections: { label: string; items: NavItem[] }[] = [
   {
     label: "Início",
     items: [
@@ -66,9 +76,14 @@ const sections: { label: string; items: { href: string; label: string; icon: Rea
     label: "Operações",
     items: [
       { href: "/notificacoes", label: "Notificações", icon: Bell },
-      { href: "/surveys", label: "Pesquisas", icon: BarChart2 },
-      { href: "/checklists", label: "Checklists", icon: ClipboardList },
-      { href: "/documents", label: "Documentos", icon: FileText },
+      { href: "/checklists", label: "Planilhas de controle", icon: ClipboardList },
+      { href: "/documents", label: "Documentos", icon: FileText, roles: ["FRANCHISEE"] },
+    ],
+  },
+  {
+    label: "Equipe",
+    items: [
+      { href: "/gerentes", label: "Gerentes", icon: Users, roles: ["FRANCHISEE"] },
     ],
   },
   {
@@ -82,6 +97,7 @@ const sections: { label: string; items: { href: string; label: string; icon: Rea
 export function FranchiseeSidebar({ user, onOpenTutorial }: FranchiseeSidebarProps) {
   const pathname = usePathname();
   const badges = useBadges();
+  const role = user.role ?? "FRANCHISEE";
 
   return (
     <aside className="w-60 bg-gray-950 text-white flex flex-col h-screen sticky top-0 flex-shrink-0">
@@ -98,7 +114,13 @@ export function FranchiseeSidebar({ user, onOpenTutorial }: FranchiseeSidebarPro
 
       {/* Navigation */}
       <nav className="flex-1 p-3 space-y-5 overflow-y-auto">
-        {sections.map((section) => (
+        {sections
+          .map((section) => ({
+            ...section,
+            items: section.items.filter((item) => !item.roles || item.roles.includes(role)),
+          }))
+          .filter((section) => section.items.length > 0)
+          .map((section) => (
           <div key={section.label}>
             <p className="px-3 mb-1 text-[10px] font-semibold text-gray-500 uppercase tracking-widest">
               {section.label}

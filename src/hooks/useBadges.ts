@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from "react";
 
 export type BadgeCounts = Partial<{
-  surveys: number;
   chat: number;
   solicitacoes: number;
   materiais: number;
@@ -14,7 +13,6 @@ export type BadgeCounts = Partial<{
 
 /** Maps href paths to badge keys returned by /api/badges */
 export const BADGE_KEY: Record<string, keyof BadgeCounts> = {
-  "/surveys":       "surveys",
   "/chat":          "chat",
   "/solicitacoes":  "solicitacoes",
   "/materiais":     "materiais",

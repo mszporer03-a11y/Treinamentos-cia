@@ -3,27 +3,52 @@
 export const dynamic = "force-dynamic";
 
 import { useState, useEffect, useCallback } from "react";
-import { Plus, Pencil, Trash2, Users, ShieldCheck, User } from "lucide-react";
+import { Plus, Pencil, Trash2, Users, ShieldCheck, User, UserCog } from "lucide-react";
 import { formatDate } from "@/lib/utils";
+
+type RoleValue = "ADMIN" | "FRANCHISEE" | "MANAGER";
+
+interface StoreOption {
+  id: string;
+  name: string;
+  code: string;
+}
 
 interface UserData {
   id: string;
   name: string;
   email: string;
-  role: "ADMIN" | "FRANCHISEE";
+  role: RoleValue;
+  phone?: string | null;
   active: boolean;
   createdAt: string;
+  stores?: { store: StoreOption }[];
 }
+
+const ROLE_LABEL: Record<RoleValue, string> = {
+  ADMIN: "Admin",
+  FRANCHISEE: "Franqueado",
+  MANAGER: "Gerente",
+};
+
+const ROLE_BADGE: Record<RoleValue, string> = {
+  ADMIN: "bg-blue-100 text-blue-700",
+  FRANCHISEE: "bg-gray-100 text-gray-600",
+  MANAGER: "bg-violet-100 text-violet-700",
+};
 
 const DEFAULT_FORM = {
   name: "",
   email: "",
   password: "",
-  role: "FRANCHISEE" as "ADMIN" | "FRANCHISEE",
+  role: "FRANCHISEE" as RoleValue,
+  phone: "",
+  storeIds: [] as string[],
 };
 
 export default function UsersPage() {
   const [users, setUsers] = useState<UserData[]>([]);
+  const [stores, setStores] = useState<StoreOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -33,7 +58,9 @@ export default function UsersPage() {
     name: "",
     email: "",
     password: "",
-    role: "FRANCHISEE" as "ADMIN" | "FRANCHISEE",
+    role: "FRANCHISEE" as RoleValue,
+    phone: "",
+    storeIds: [] as string[],
     active: true,
   });
   const [saving, setSaving] = useState(false);
@@ -48,6 +75,13 @@ export default function UsersPage() {
 
   useEffect(() => {
     fetchUsers();
+    fetch("/api/stores")
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setStores(data.map((s: StoreOption) => ({ id: s.id, name: s.name, code: s.code })));
+        }
+      });
   }, [fetchUsers]);
 
   function openCreate() {
@@ -63,6 +97,8 @@ export default function UsersPage() {
       email: user.email,
       password: "",
       role: user.role,
+      phone: user.phone ?? "",
+      storeIds: user.stores?.map((s) => s.store.id) ?? [],
       active: user.active,
     });
     setError("");
@@ -74,10 +110,19 @@ export default function UsersPage() {
     setSaving(true);
     setError("");
 
+    const payload: Record<string, unknown> = {
+      name: form.name,
+      email: form.email,
+      password: form.password,
+      role: form.role,
+    };
+    if (form.phone.trim()) payload.phone = form.phone.trim();
+    if (form.role === "MANAGER") payload.storeIds = form.storeIds;
+
     const res = await fetch("/api/users", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
+      body: JSON.stringify(payload),
     });
 
     setSaving(false);
@@ -105,6 +150,8 @@ export default function UsersPage() {
       active: editForm.active,
     };
     if (editForm.password) payload.password = editForm.password;
+    payload.phone = editForm.phone.trim() || null;
+    if (editForm.role === "MANAGER") payload.storeIds = editForm.storeIds;
 
     const res = await fetch(`/api/users/${editing.id}`, {
       method: "PATCH",
@@ -170,6 +217,8 @@ export default function UsersPage() {
                 <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
                   {user.role === "ADMIN" ? (
                     <ShieldCheck className="h-5 w-5 text-blue-600" />
+                  ) : user.role === "MANAGER" ? (
+                    <UserCog className="h-5 w-5 text-violet-600" />
                   ) : (
                     <User className="h-5 w-5 text-blue-600" />
                   )}
@@ -177,11 +226,10 @@ export default function UsersPage() {
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-gray-900 text-sm truncate">{user.name}</p>
                   <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                  {user.phone && <p className="text-xs text-gray-400 truncate">📞 {user.phone}</p>}
                   <div className="flex items-center gap-1.5 mt-1.5">
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                      user.role === "ADMIN" ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-600"
-                    }`}>
-                      {user.role === "ADMIN" ? "Admin" : "Franqueado"}
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${ROLE_BADGE[user.role]}`}>
+                      {ROLE_LABEL[user.role]}
                     </span>
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                       user.active ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
@@ -238,25 +286,26 @@ export default function UsersPage() {
                       <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
                         {user.role === "ADMIN" ? (
                           <ShieldCheck className="h-4 w-4 text-blue-600" />
+                        ) : user.role === "MANAGER" ? (
+                          <UserCog className="h-4 w-4 text-violet-600" />
                         ) : (
                           <User className="h-4 w-4 text-blue-600" />
                         )}
                       </div>
                       <div>
                         <p className="font-medium text-gray-900">{user.name}</p>
-                        <p className="text-xs text-gray-500">{user.email}</p>
+                        <p className="text-xs text-gray-500">
+                          {user.email}
+                          {user.phone ? ` · 📞 ${user.phone}` : ""}
+                        </p>
                       </div>
                     </div>
                   </td>
                   <td className="px-5 py-4">
                     <span
-                      className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${
-                        user.role === "ADMIN"
-                          ? "bg-blue-100 text-blue-700"
-                          : "bg-gray-100 text-gray-600"
-                      }`}
+                      className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${ROLE_BADGE[user.role]}`}
                     >
-                      {user.role === "ADMIN" ? "Admin" : "Franqueado"}
+                      {ROLE_LABEL[user.role]}
                     </span>
                   </td>
                   <td className="px-5 py-4">
@@ -355,15 +404,64 @@ export default function UsersPage() {
                   onChange={(e) =>
                     setForm({
                       ...form,
-                      role: e.target.value as "ADMIN" | "FRANCHISEE",
+                      role: e.target.value as RoleValue,
                     })
                   }
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white"
                 >
                   <option value="FRANCHISEE">Franqueado</option>
+                  <option value="MANAGER">Gerente</option>
                   <option value="ADMIN">Administrador</option>
                 </select>
               </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Telefone {form.role === "MANAGER" ? "*" : "(opcional)"}
+                </label>
+                <input
+                  required={form.role === "MANAGER"}
+                  type="tel"
+                  value={form.phone}
+                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  placeholder="(85) 99999-9999"
+                />
+              </div>
+
+              {form.role === "MANAGER" && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Lojas vinculadas *
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {stores.map((store) => {
+                      const sel = form.storeIds.includes(store.id);
+                      return (
+                        <button
+                          key={store.id}
+                          type="button"
+                          onClick={() =>
+                            setForm({
+                              ...form,
+                              storeIds: sel
+                                ? form.storeIds.filter((id) => id !== store.id)
+                                : [...form.storeIds, store.id],
+                            })
+                          }
+                          className={`px-3 py-1.5 rounded-full text-sm font-medium border transition ${
+                            sel
+                              ? "bg-violet-600 text-white border-violet-600"
+                              : "bg-white text-gray-600 border-gray-200 hover:border-violet-300"
+                          }`}
+                        >
+                          {store.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {error && (
                 <p className="text-sm text-red-600 bg-red-50 rounded-lg p-3">
@@ -451,15 +549,62 @@ export default function UsersPage() {
                   onChange={(e) =>
                     setEditForm({
                       ...editForm,
-                      role: e.target.value as "ADMIN" | "FRANCHISEE",
+                      role: e.target.value as RoleValue,
                     })
                   }
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white"
                 >
                   <option value="FRANCHISEE">Franqueado</option>
+                  <option value="MANAGER">Gerente</option>
                   <option value="ADMIN">Administrador</option>
                 </select>
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Telefone {editForm.role === "MANAGER" ? "*" : "(opcional)"}
+                </label>
+                <input
+                  required={editForm.role === "MANAGER"}
+                  type="tel"
+                  value={editForm.phone}
+                  onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  placeholder="(85) 99999-9999"
+                />
+              </div>
+              {editForm.role === "MANAGER" && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Lojas vinculadas *
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {stores.map((store) => {
+                      const sel = editForm.storeIds.includes(store.id);
+                      return (
+                        <button
+                          key={store.id}
+                          type="button"
+                          onClick={() =>
+                            setEditForm({
+                              ...editForm,
+                              storeIds: sel
+                                ? editForm.storeIds.filter((id) => id !== store.id)
+                                : [...editForm.storeIds, store.id],
+                            })
+                          }
+                          className={`px-3 py-1.5 rounded-full text-sm font-medium border transition ${
+                            sel
+                              ? "bg-violet-600 text-white border-violet-600"
+                              : "bg-white text-gray-600 border-gray-200 hover:border-violet-300"
+                          }`}
+                        >
+                          {store.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
               <div className="flex items-center gap-2">
                 <input
                   type="checkbox"

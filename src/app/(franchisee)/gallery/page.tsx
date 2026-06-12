@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useSession } from "next-auth/react";
 import { MaterialViewer } from "@/components/franchisee/MaterialViewer";
-import { Play, FileText, Image as ImageIcon, File, MessageSquare, BarChart2, ClipboardList, BookOpen, ChevronRight, SlidersHorizontal, Megaphone, Inbox, UtensilsCrossed, Bell } from "lucide-react";
+import { Play, FileText, Image as ImageIcon, File, MessageSquare, ClipboardList, BookOpen, ChevronRight, SlidersHorizontal, Megaphone, Inbox, UtensilsCrossed, Bell, Users } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { useBadges, BADGE_KEY } from "@/hooks/useBadges";
 
@@ -109,20 +109,23 @@ function FeedCard({ material, onOpen }: { material: Material; onOpen: () => void
   );
 }
 
-const NAV_ITEMS = [
-  {
-    href: "/surveys",
-    icon: BarChart2,
-    label: "Pesquisas",
-    desc: "Responda as pesquisas da rede",
-    bg: "from-violet-600 to-violet-500",
-    tutorialId: "nav-surveys",
-  },
+type GalleryNavItem = {
+  href: string;
+  icon: React.ElementType;
+  label: string;
+  desc: string;
+  bg: string;
+  tutorialId: string;
+  /** Se definido, o card só aparece para estes papéis */
+  roles?: string[];
+};
+
+const NAV_ITEMS: GalleryNavItem[] = [
   {
     href: "/checklists",
     icon: ClipboardList,
-    label: "Checklists",
-    desc: "Visualize e preencha checklists operacionais",
+    label: "Planilhas de controle",
+    desc: "Visualize e preencha as planilhas operacionais",
     bg: "from-orange-600 to-orange-500",
     tutorialId: "nav-checklists",
   },
@@ -165,6 +168,7 @@ const NAV_ITEMS = [
     desc: "Acesse seus documentos contratuais",
     bg: "from-slate-600 to-slate-500",
     tutorialId: "nav-documentos",
+    roles: ["FRANCHISEE"],
   },
   {
     href: "/notificacoes",
@@ -173,6 +177,15 @@ const NAV_ITEMS = [
     desc: "Alertas da sua loja e campanhas",
     bg: "from-rose-600 to-rose-500",
     tutorialId: "nav-notificacoes",
+  },
+  {
+    href: "/gerentes",
+    icon: Users,
+    label: "Gerentes",
+    desc: "Crie e gerencie as contas de gerente das suas lojas",
+    bg: "from-violet-600 to-violet-500",
+    tutorialId: "nav-gerentes",
+    roles: ["FRANCHISEE"],
   },
 ];
 
@@ -237,7 +250,9 @@ export default function GalleryPage() {
 
       {/* Nav cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
-        {NAV_ITEMS.map(({ href, icon: Icon, label, desc, bg, tutorialId }) => {
+        {NAV_ITEMS.filter(
+          (item) => !item.roles || item.roles.includes(session?.user?.role ?? "FRANCHISEE")
+        ).map(({ href, icon: Icon, label, desc, bg, tutorialId }) => {
           const badgeCount = badges[BADGE_KEY[href] ?? ""] ?? 0;
           return (
             <Link

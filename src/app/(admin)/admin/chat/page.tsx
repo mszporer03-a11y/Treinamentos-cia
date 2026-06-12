@@ -3,7 +3,7 @@
 export const dynamic = "force-dynamic";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { MessageSquare, Search, Plus, X } from "lucide-react";
+import { MessageSquare, Search, Plus, X, Download, Phone } from "lucide-react";
 import { ChatWindow } from "@/components/chat/ChatWindow";
 import { useSession } from "next-auth/react";
 
@@ -15,6 +15,8 @@ interface Franchisee {
   id: string;
   name: string;
   email: string;
+  role?: string;
+  phone?: string | null;
   stores: StoreRef[];
 }
 
@@ -35,6 +37,7 @@ interface ConversationItem {
   lastMessage: LastMessage | null;
   updatedAt: string;
   pendingStores: PendingStore[];
+  isLegacy?: boolean;
 }
 
 export default function AdminChatPage() {
@@ -83,7 +86,12 @@ export default function AdminChatPage() {
       const res = await fetch("/api/users");
       if (res.ok) {
         const users = await res.json();
-        setAllFranchisees(users.filter((u: Franchisee & { role: string }) => u.role === "FRANCHISEE"));
+        setAllFranchisees(
+          users.filter(
+            (u: Franchisee & { role: string }) =>
+              u.role === "FRANCHISEE" || u.role === "MANAGER"
+          )
+        );
       }
     }
   }
@@ -107,8 +115,11 @@ export default function AdminChatPage() {
     setShowPicker(false);
   }
 
-  // Franchisees that don't yet have a conversation shown in the list
-  const franchiseesWithConv = new Set(conversations.map((c) => c.franchisee.id));
+  // Franchisees that don't yet have a conversation with this admin
+  // (legacy/unified conversations don't count)
+  const franchiseesWithConv = new Set(
+    conversations.filter((c) => !c.isLegacy).map((c) => c.franchisee.id)
+  );
   const pickerFranchisees = allFranchisees.filter(
     (f) =>
       !franchiseesWithConv.has(f.id) &&
@@ -142,14 +153,24 @@ export default function AdminChatPage() {
       >
         <div className="p-4 border-b border-gray-100">
           <div className="flex items-center justify-between mb-3">
-            <h1 className="text-lg font-bold text-gray-900">Chat</h1>
-            <button
-              onClick={openPicker}
-              className="p-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition"
-              title="Nova conversa"
-            >
-              <Plus className="h-4 w-4" />
-            </button>
+            <h1 className="text-lg font-bold text-gray-900">Suporte</h1>
+            <div className="flex items-center gap-1.5">
+              <a
+                href="/api/export/chats"
+                download
+                className="p-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 transition"
+                title="Exportar todo o histórico (CSV)"
+              >
+                <Download className="h-4 w-4" />
+              </a>
+              <button
+                onClick={openPicker}
+                className="p-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition"
+                title="Nova conversa"
+              >
+                <Plus className="h-4 w-4" />
+              </button>
+            </div>
           </div>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -197,7 +218,14 @@ export default function AdminChatPage() {
                       {f.name[0]?.toUpperCase()}
                     </div>
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">{f.name}</p>
+                      <p className="text-sm font-medium text-gray-900 truncate flex items-center gap-1.5">
+                        {f.name}
+                        {f.role === "MANAGER" && (
+                          <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-700 flex-shrink-0">
+                            Gerente
+                          </span>
+                        )}
+                      </p>
                       <p className="text-xs text-gray-400 truncate">{f.email}</p>
                     </div>
                   </button>
@@ -236,8 +264,18 @@ export default function AdminChatPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
-                        <span className={`text-sm font-medium text-gray-900 truncate ${unread ? "font-bold" : ""}`}>
+                        <span className={`text-sm font-medium text-gray-900 truncate flex items-center gap-1.5 ${unread ? "font-bold" : ""}`}>
                           {conv.franchisee.name}
+                          {conv.franchisee.role === "MANAGER" && (
+                            <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-700 flex-shrink-0">
+                              Gerente
+                            </span>
+                          )}
+                          {conv.isLegacy && (
+                            <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 flex-shrink-0">
+                              Histórico
+                            </span>
+                          )}
                         </span>
                         {conv.lastMessage && (
                           <span className="text-[10px] text-gray-400 flex-shrink-0 ml-2">
@@ -283,12 +321,34 @@ export default function AdminChatPage() {
             >
               ←
             </button>
+            {/* Export + phone — top right of the chat */}
+            <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5">
+              {selected.franchisee.phone && (
+                <a
+                  href={`tel:${selected.franchisee.phone}`}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white rounded-lg shadow text-xs font-medium text-gray-600 hover:text-emerald-600 transition"
+                  title="Telefone de contato"
+                >
+                  <Phone className="h-3.5 w-3.5" />
+                  {selected.franchisee.phone}
+                </a>
+              )}
+              <a
+                href={`/api/export/chats?conversationId=${selected.id}`}
+                download
+                className="p-1.5 bg-white rounded-lg shadow text-gray-500 hover:text-blue-600 transition"
+                title="Exportar esta conversa (CSV)"
+              >
+                <Download className="h-4 w-4" />
+              </a>
+            </div>
             <ChatWindow
               key={selected.id}
               conversationId={selected.id}
               currentUserId={session?.user?.id ?? ""}
               currentUserRole="ADMIN"
               recipientName={selected.franchisee.name}
+              recipientRole={selected.franchisee.role}
               availableStores={selected.franchisee.stores.map((s) => ({
                 id: s.store.id,
                 name: s.store.name,

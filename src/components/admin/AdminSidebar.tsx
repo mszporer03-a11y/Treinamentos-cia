@@ -17,13 +17,13 @@ import {
   Store,
   Megaphone,
   AlertTriangle,
-  BarChart2,
   MapPin,
   ClipboardCheck,
   CheckSquare,
   ClipboardList,
   Inbox,
   Bell,
+  UtensilsCrossed,
 } from "lucide-react";
 
 interface AdminSidebarProps {
@@ -33,7 +33,10 @@ interface AdminSidebarProps {
   };
 }
 
-const sections = [
+const sections: {
+  label: string;
+  items: { href: string; label: string; icon: React.ElementType; exact?: boolean }[];
+}[] = [
   {
     label: "Geral",
     items: [
@@ -47,6 +50,7 @@ const sections = [
     label: "Conteúdo",
     items: [
       { href: "/admin/materials", label: "Materiais", icon: FileText },
+      { href: "/admin/cardapios", label: "Cardápios do Mês", icon: UtensilsCrossed },
       { href: "/admin/categories", label: "Categorias", icon: FolderOpen },
       { href: "/admin/campaigns", label: "Campanhas", icon: Megaphone },
     ],
@@ -68,9 +72,8 @@ const sections = [
   {
     label: "Engajamento",
     items: [
-      { href: "/admin/surveys", label: "Pesquisas", icon: BarChart2 },
       { href: "/admin/documents", label: "Documentos", icon: ClipboardCheck },
-      { href: "/admin/checklists", label: "Checklists", icon: ClipboardList },
+      { href: "/admin/checklists", label: "Planilhas de controle", icon: ClipboardList },
     ],
   },
   {

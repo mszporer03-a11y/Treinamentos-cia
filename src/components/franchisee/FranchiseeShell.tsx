@@ -11,24 +11,23 @@ import { useBadges, BADGE_KEY } from "@/hooks/useBadges";
 import {
   BookOpen,
   MessageSquare,
-  BarChart2,
   ClipboardList,
-  FileText,
   UserCircle2,
   LogOut,
   HelpCircle,
+  Inbox,
 } from "lucide-react";
 
 interface FranchiseeShellProps {
-  user: { name?: string | null; email?: string | null };
+  user: { name?: string | null; email?: string | null; role?: string };
   children: React.ReactNode;
 }
 
 const mobileNavItems = [
   { href: "/gallery", label: "Início", icon: BookOpen, exact: true },
   { href: "/chat", label: "Suporte", icon: MessageSquare },
-  { href: "/surveys", label: "Pesquisas", icon: BarChart2 },
-  { href: "/checklists", label: "Checklists", icon: ClipboardList },
+  { href: "/solicitacoes", label: "Solicitações", icon: Inbox },
+  { href: "/checklists", label: "Planilhas", icon: ClipboardList },
   { href: "/perfil", label: "Perfil", icon: UserCircle2, exact: true },
 ];
 
@@ -74,7 +73,9 @@ export function FranchiseeShell({ user, children }: FranchiseeShellProps) {
             <div className="w-8 h-8 bg-orange-600 rounded-lg flex items-center justify-center flex-shrink-0">
               <BookOpen className="h-4 w-4 text-white" />
             </div>
-            <span className="font-bold text-gray-900 text-sm">Portal Franqueado</span>
+            <span className="font-bold text-gray-900 text-sm">
+              {user.role === "MANAGER" ? "Portal Gerente" : "Portal Franqueado"}
+            </span>
           </div>
           <div className="flex items-center gap-1">
             {/* Help / Tutorial button */}

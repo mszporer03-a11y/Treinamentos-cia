@@ -12,7 +12,7 @@ import {
 import { useUploadThing } from "@/lib/uploadthing-components";
 
 type StoreRef = { store: { id: string; name: string; code: string } };
-type Franchisee = { id: string; name: string; email: string };
+type Franchisee = { id: string; name: string; email: string; role?: string; phone?: string | null };
 
 type Solicitacao = {
   id: string;
@@ -160,11 +160,21 @@ export default function AdminSolicitacoesPage() {
 
   return (
     <div className="p-4 sm:p-6 max-w-4xl">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-          <Inbox className="h-7 w-7 text-indigo-500" /> Acompanhamento de Solicitações
-        </h1>
-        <p className="text-gray-500 text-sm mt-1">Gerencie e responda as solicitações dos franqueados.</p>
+      <div className="mb-6 flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <Inbox className="h-7 w-7 text-indigo-500" /> Acompanhamento de Solicitações
+          </h1>
+          <p className="text-gray-500 text-sm mt-1">Gerencie e responda as solicitações de franqueados e gerentes.</p>
+        </div>
+        <a
+          href="/api/export/chats"
+          download
+          className="flex items-center gap-1.5 px-3 py-2 bg-white border border-gray-200 hover:border-indigo-300 text-gray-600 hover:text-indigo-600 rounded-lg transition text-xs font-medium flex-shrink-0"
+          title="Exportar todo o histórico (CSV)"
+        >
+          ⬇️ Exportar CSV
+        </a>
       </div>
 
       {/* Status chips */}
@@ -231,6 +241,11 @@ export default function AdminSolicitacoesPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-1.5 mb-1">
                       <span className="text-sm font-semibold text-gray-900">{item.conversation.franchisee.name}</span>
+                      {item.sender.role === "MANAGER" && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-violet-100 text-violet-700">
+                          Gerente
+                        </span>
+                      )}
                       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium ${catColor}`}>
                         <Tag className="h-2.5 w-2.5" /> {catLabel}
                       </span>

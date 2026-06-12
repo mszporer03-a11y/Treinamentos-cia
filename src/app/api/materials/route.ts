@@ -104,7 +104,7 @@ export async function POST(req: Request) {
           body: data.title,
           url: "/gallery",
         },
-        "FRANCHISEE"
+        "NON_ADMIN"
       );
     }
 

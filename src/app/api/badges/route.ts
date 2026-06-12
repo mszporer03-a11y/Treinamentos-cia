@@ -7,8 +7,8 @@ export const dynamic = "force-dynamic";
 /**
  * GET /api/badges
  * Returns unread/new counts per section for the current user.
- * Franchisee: { surveys, chat, solicitacoes, materiais, cardapios, documentos, notificacoes }
- * Admin:      { chat, solicitacoes, notificacoes }
+ * Franchisee/Manager: { chat, solicitacoes, materiais, cardapios, documentos, notificacoes }
+ * Admin:              { chat, solicitacoes, notificacoes }
  */
 export async function GET() {
   const session = await auth();
@@ -16,18 +16,23 @@ export async function GET() {
 
   const userId = session.user.id;
   const isAdmin = session.user.role === "ADMIN";
+  const isManager = session.user.role === "MANAGER";
 
   const sevenDaysAgo  = new Date(Date.now() -  7 * 24 * 60 * 60 * 1000);
   const fourteenDays  = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
   const thirtyDays    = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
   if (isAdmin) {
+    // Cada admin vê apenas suas conversas + legadas (adminId null)
+    const myConvFilter = { OR: [{ adminId: userId }, { adminId: null }] };
+
     const [chat, solicitacoes, notificacoes] = await Promise.all([
-      // Conversations with unread franchisee messages
+      // Conversations with unread non-admin messages
       db.conversation.count({
         where: {
+          ...myConvFilter,
           messages: {
-            some: { readByAdmin: false, sender: { role: "FRANCHISEE" } },
+            some: { readByAdmin: false, sender: { role: { not: "ADMIN" } } },
           },
         },
       }),
@@ -36,6 +41,7 @@ export async function GET() {
         where: {
           category: { not: null },
           requestStatus: "PENDING",
+          conversation: myConvFilter,
         },
       }),
       // Open non-conformity alerts
@@ -47,23 +53,14 @@ export async function GET() {
     return NextResponse.json({ chat, solicitacoes, notificacoes });
   }
 
-  // ── FRANCHISEE ────────────────────────────────────────────────────────
+  // ── FRANCHISEE / MANAGER ──────────────────────────────────────────────
   // Get user's store IDs for alert filtering
   const userStoreIds = await db.userStore
     .findMany({ where: { userId }, select: { storeId: true } })
     .then((rows) => rows.map((r) => r.storeId));
 
-  const [surveys, chat, solicitacoes, materiais, cardapios, documentos, notificacoes] =
+  const [chat, solicitacoes, materiais, cardapios, documentos, notificacoes] =
     await Promise.all([
-      // Active surveys not yet answered by this user
-      db.survey.count({
-        where: {
-          active: true,
-          OR: [{ endsAt: null }, { endsAt: { gte: new Date() } }],
-          responses: { none: { userId } },
-        },
-      }),
-
       // Unread messages from admin
       db.message.count({
         where: {
@@ -120,14 +117,17 @@ export async function GET() {
       }),
 
       // New documents uploaded for this franchisee in last 14 days
-      db.franchiseeDocument.count({
-        where: {
-          franchiseeId: userId,
-          createdAt: { gte: fourteenDays },
-        },
-      }),
+      // (gerentes não têm acesso a documentos)
+      isManager
+        ? Promise.resolve(0)
+        : db.franchiseeDocument.count({
+            where: {
+              franchiseeId: userId,
+              createdAt: { gte: fourteenDays },
+            },
+          }),
 
-      // Open non-conformity alerts for this franchisee's stores
+      // Open non-conformity alerts for this user's stores
       db.nonComplianceAlert.count({
         where: {
           storeId: { in: userStoreIds },
@@ -137,7 +137,6 @@ export async function GET() {
     ]);
 
   return NextResponse.json({
-    surveys,
     chat,
     solicitacoes,
     materiais,

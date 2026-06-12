@@ -42,11 +42,16 @@ export async function PATCH(
 
   const message = await db.message.findUnique({
     where: { id: params.id },
-    include: { conversation: { select: { id: true, franchiseeId: true } } },
+    include: { conversation: { select: { id: true, franchiseeId: true, adminId: true } } },
   });
 
   if (!message || !message.category) {
     return NextResponse.json({ error: "Solicitação não encontrada" }, { status: 404 });
+  }
+
+  // Admin só atua nas solicitações das suas conversas (ou legadas)
+  if (message.conversation.adminId && message.conversation.adminId !== session.user.id) {
+    return NextResponse.json({ error: "Solicitação atribuída a outro admin" }, { status: 403 });
   }
 
   const now = new Date();

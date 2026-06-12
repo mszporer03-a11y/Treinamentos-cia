@@ -15,7 +15,7 @@ export async function GET(req: Request) {
   const storeId = searchParams.get("storeId");
 
   let storeIds: string[] | undefined;
-  if (session.user.role === "FRANCHISEE") {
+  if (session.user.role !== "ADMIN") {
     const userStores = await db.userStore.findMany({
       where: { userId: session.user.id },
       select: { storeId: true },
@@ -53,8 +53,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "templateId e storeId são obrigatórios" }, { status: 400 });
   }
 
-  // Validate store access for franchisee
-  if (session.user.role === "FRANCHISEE") {
+  // Validate store access for franchisee/manager
+  if (session.user.role !== "ADMIN") {
     const access = await db.userStore.findFirst({
       where: { userId: session.user.id, storeId },
     });
