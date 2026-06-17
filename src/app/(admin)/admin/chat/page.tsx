@@ -3,7 +3,7 @@
 export const dynamic = "force-dynamic";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { MessageSquare, Search, Plus, X, Download, Phone } from "lucide-react";
+import { MessageSquare, Search, Plus, X, Download, Phone, Trash2 } from "lucide-react";
 import { ChatWindow } from "@/components/chat/ChatWindow";
 import { useSession } from "next-auth/react";
 
@@ -46,6 +46,7 @@ export default function AdminChatPage() {
   const [selected, setSelected] = useState<ConversationItem | null>(null);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const [deleting, setDeleting] = useState(false);
 
   // New-conversation picker state
   const [showPicker, setShowPicker] = useState(false);
@@ -113,6 +114,23 @@ export default function AdminChatPage() {
     }
     setCreating(false);
     setShowPicker(false);
+  }
+
+  async function deleteConversation(conv: ConversationItem) {
+    const who = conv.franchisee?.name ?? "este usuário";
+    if (!confirm(`Excluir definitivamente a conversa com ${who}? Todas as mensagens serão apagadas.`)) {
+      return;
+    }
+    setDeleting(true);
+    const res = await fetch(`/api/conversations/${conv.id}`, { method: "DELETE" });
+    setDeleting(false);
+    if (res.ok) {
+      setConversations((prev) => prev.filter((c) => c.id !== conv.id));
+      setSelected((cur) => (cur?.id === conv.id ? null : cur));
+    } else {
+      const data = await res.json().catch(() => ({}));
+      alert(data.error ?? "Erro ao excluir a conversa");
+    }
   }
 
   // Franchisees that don't yet have a conversation with this admin
@@ -341,6 +359,14 @@ export default function AdminChatPage() {
               >
                 <Download className="h-4 w-4" />
               </a>
+              <button
+                onClick={() => deleteConversation(selected)}
+                disabled={deleting}
+                className="p-1.5 bg-white rounded-lg shadow text-gray-500 hover:text-red-600 disabled:opacity-50 transition"
+                title="Excluir esta conversa"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
             </div>
             <ChatWindow
               key={selected.id}
