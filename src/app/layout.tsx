@@ -19,16 +19,16 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Portal CdC",
-    startupImage: "/icon.svg",
+    title: "CdC Intranet",
+    startupImage: "/icon.png",
   },
   formatDetection: {
     telephone: false,
   },
   icons: {
-    icon: "/icon.svg",
-    apple: "/icon.svg",
-    shortcut: "/icon.svg",
+    icon: "/icon.png",
+    apple: "/icon.png",
+    shortcut: "/icon.png",
   },
 };
 

@@ -1,21 +1,32 @@
 {
-  "name": "Portal Companhia do Churrasco",
-  "short_name": "Portal CdC",
-  "description": "Portal de treinamentos e materiais para franqueados",
-  "start_url": "/gallery",
+  "name": "Companhia do Churrasco — Intranet",
+  "short_name": "CdC Intranet",
+  "description": "Intranet de treinamentos e materiais para franqueados",
+  "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#1d4ed8",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
   "orientation": "portrait-primary",
   "categories": ["business", "productivity"],
   "icons": [
     {
-      "src": "/icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "src": "/icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ],
-  "screenshots": [],
   "prefer_related_applications": false
 }

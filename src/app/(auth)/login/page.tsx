@@ -47,7 +47,14 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center mb-6">
-            <Image src="/logo.png" alt="Companhia do Churrasco" width={220} height={78} className="w-48" />
+            <Image
+              src="/icon.png"
+              alt="Companhia do Churrasco — Intranet"
+              width={400}
+              height={400}
+              className="w-40 h-40 rounded-2xl shadow-md object-contain"
+              priority
+            />
           </div>
           <p className="text-gray-500 text-sm">
             Entre com suas credenciais de acesso
