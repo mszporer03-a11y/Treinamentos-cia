@@ -63,7 +63,7 @@ export default function SupporteCategoryPage() {
 
   const [stores, setStores] = useState<Store[]>([]);
   const [admins, setAdmins] = useState<AdminUser[]>([]);
-  const [selectedAdminId, setSelectedAdminId] = useState<string>("");
+  const [selectedAdminIds, setSelectedAdminIds] = useState<string[]>([]);
   const [selectedStoreIds, setSelectedStoreIds] = useState<string[]>([]);
   const [message, setMessage] = useState("");
   const [pendingFile, setPendingFile] = useState<{
@@ -98,7 +98,7 @@ export default function SupporteCategoryPage() {
       .then((data) => {
         if (Array.isArray(data)) {
           setAdmins(data);
-          if (data.length === 1) setSelectedAdminId(data[0].id);
+          if (data.length === 1) setSelectedAdminIds([data[0].id]);
         }
       });
   }, []);
@@ -122,23 +122,19 @@ export default function SupporteCategoryPage() {
     );
   }
 
+  function toggleAdmin(id: string) {
+    setSelectedAdminIds((prev) =>
+      prev.includes(id) ? prev.filter((a) => a !== id) : [...prev, id]
+    );
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!message.trim() && !pendingFile) return;
-    if (!selectedAdminId) return;
+    if (selectedAdminIds.length === 0) return;
     setSubmitting(true);
     try {
-      // 1. Get (or create) the conversation with the chosen admin
-      const convRes = await fetch("/api/conversations", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ adminId: selectedAdminId }),
-      });
-      if (!convRes.ok) throw new Error("Falha ao obter conversa");
-      const conv = await convRes.json();
-      const conversationId: string = conv.id;
-
-      // 2. Build the message content with category prefix
+      // Build the message content with category prefix
       const storeNames = selectedStoreIds
         .map((id) => stores.find((s) => s.id === id)?.name)
         .filter(Boolean)
@@ -146,8 +142,10 @@ export default function SupporteCategoryPage() {
       const prefix = storeNames ? `[${label}] — Loja: ${storeNames}` : `[${label}]`;
       const fullContent = message.trim() ? `${prefix}\n\n${message.trim()}` : prefix;
 
-      // 3. Send message
+      // Send to one or more admins — copies share a request group so any of
+      // them can update the status.
       const body: Record<string, unknown> = {
+        adminIds: selectedAdminIds,
         content: fullContent,
         category: params.category,
         linkedStoreIds: selectedStoreIds,
@@ -159,15 +157,15 @@ export default function SupporteCategoryPage() {
         body.fileName = pendingFile.name;
       }
 
-      const msgRes = await fetch(`/api/conversations/${conversationId}/messages`, {
+      const msgRes = await fetch(`/api/solicitacoes`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      if (!msgRes.ok) throw new Error("Falha ao enviar mensagem");
+      if (!msgRes.ok) throw new Error("Falha ao enviar solicitação");
 
       setDone(true);
-      setTimeout(() => router.push("/chat"), 2000);
+      setTimeout(() => router.push("/solicitacoes"), 2000);
     } catch {
       setSubmitting(false);
     }
@@ -178,7 +176,9 @@ export default function SupporteCategoryPage() {
       <div className="p-4 sm:p-6 flex flex-col items-center justify-center min-h-[60vh] text-center">
         <CheckCircle2 className="h-16 w-16 text-emerald-500 mb-4" />
         <h2 className="text-xl font-bold text-gray-900 mb-1">Solicitação enviada!</h2>
-        <p className="text-gray-500 text-sm">Redirecionando para o Suporte…</p>
+        <p className="text-gray-500 text-sm">
+          Enviada para {selectedAdminIds.length} {selectedAdminIds.length === 1 ? "administrador" : "administradores"}. Redirecionando…
+        </p>
       </div>
     );
   }
@@ -212,26 +212,29 @@ export default function SupporteCategoryPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
-        {/* Admin picker */}
+        {/* Admin picker (multi-seleção) */}
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">
+          <label className="block text-sm font-semibold text-gray-700 mb-1">
             Enviar para <span className="text-red-500">*</span>
           </label>
+          <p className="text-xs text-gray-400 mb-2">
+            Selecione um ou mais administradores. Qualquer um deles poderá responder e atualizar o andamento.
+          </p>
           <div className="flex flex-wrap gap-2">
             {admins.map((admin) => {
-              const sel = selectedAdminId === admin.id;
+              const sel = selectedAdminIds.includes(admin.id);
               return (
                 <button
                   key={admin.id}
                   type="button"
-                  onClick={() => setSelectedAdminId(admin.id)}
+                  onClick={() => toggleAdmin(admin.id)}
                   className={`px-3 py-1.5 rounded-full text-sm font-medium border transition ${
                     sel
                       ? "bg-orange-600 text-white border-orange-600"
                       : "bg-white text-gray-600 border-gray-200 hover:border-orange-300"
                   }`}
                 >
-                  {admin.name}
+                  {sel && "✓ "}{admin.name}
                 </button>
               );
             })}
@@ -239,6 +242,19 @@ export default function SupporteCategoryPage() {
               <p className="text-xs text-gray-400">Carregando administradores…</p>
             )}
           </div>
+          {admins.length > 1 && (
+            <button
+              type="button"
+              onClick={() =>
+                setSelectedAdminIds(
+                  selectedAdminIds.length === admins.length ? [] : admins.map((a) => a.id)
+                )
+              }
+              className="mt-2 text-xs font-medium text-orange-600 hover:text-orange-700"
+            >
+              {selectedAdminIds.length === admins.length ? "Limpar seleção" : "Selecionar todos"}
+            </button>
+          )}
         </div>
 
         {/* Store picker */}
@@ -334,7 +350,7 @@ export default function SupporteCategoryPage() {
         {/* Submit */}
         <button
           type="submit"
-          disabled={submitting || uploading || !selectedAdminId || (!message.trim() && !pendingFile)}
+          disabled={submitting || uploading || selectedAdminIds.length === 0 || (!message.trim() && !pendingFile)}
           className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition"
         >
           {submitting ? (

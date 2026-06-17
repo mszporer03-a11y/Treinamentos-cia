@@ -220,6 +220,8 @@ model Message {
   fileName         String?
   category            String?
   requestStatus       RequestStatus?
+  // Agrupa as cópias de uma mesma solicitação enviada a vários admins
+  requestGroupId      String?
   seenAt              DateTime?
   inProgressAt        DateTime?
   doneAt              DateTime?
@@ -232,6 +234,8 @@ model Message {
   readByFranchisee    Boolean        @default(false)
   linkedStores        MessageStore[]
   createdAt           DateTime       @default(now())
+
+  @@index([requestGroupId])
 }
 
 model MessageStore {

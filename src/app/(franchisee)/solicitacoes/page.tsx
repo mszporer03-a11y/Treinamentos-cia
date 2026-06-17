@@ -22,6 +22,7 @@ type Solicitacao = {
   adminReplyFileType: string | null;
   linkedStores: StoreRef[];
   conversation: { id: string };
+  recipients?: string[];
   fileUrl?: string | null;
   fileName?: string | null;
 };
@@ -172,6 +173,11 @@ export default function SolicitacoesPage() {
                           <Store className="h-3 w-3" /> {store.name}
                         </span>
                       ))}
+                      {item.recipients && item.recipients.length > 0 && (
+                        <span className="flex items-center gap-1 text-xs text-gray-400">
+                          📨 {item.recipients.join(", ")}
+                        </span>
+                      )}
                     </div>
                   </div>
                   {isExpanded

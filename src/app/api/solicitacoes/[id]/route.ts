@@ -49,30 +49,45 @@ export async function PATCH(
     return NextResponse.json({ error: "Solicitação não encontrada" }, { status: 404 });
   }
 
-  // Admin só atua nas solicitações das suas conversas (ou legadas)
+  // Admin só atua nas solicitações das suas conversas (ou legadas).
+  // Em solicitações enviadas a vários admins, cada admin atua na sua própria
+  // cópia (a lista só mostra a cópia da conversa dele), então esta checagem
+  // garante que ele é um dos destinatários.
   if (message.conversation.adminId && message.conversation.adminId !== session.user.id) {
     return NextResponse.json({ error: "Solicitação atribuída a outro admin" }, { status: 403 });
   }
 
   const now = new Date();
 
-  // Build timestamp + reply data for update
-  const updateData: Record<string, unknown> = { requestStatus: status };
-  if (status === "SEEN")        updateData.seenAt = now;
-  if (status === "IN_PROGRESS") updateData.inProgressAt = now;
+  // Status + timestamps são compartilhados por todas as cópias do grupo
+  const statusData: Record<string, unknown> = { requestStatus: status };
+  if (status === "SEEN")        statusData.seenAt = now;
+  if (status === "IN_PROGRESS") statusData.inProgressAt = now;
+  if (status === "DONE")        statusData.doneAt = now;
+
+  // Resposta da equipe fica só na cópia do admin que respondeu
+  const replyData: Record<string, unknown> = {};
   if (status === "DONE") {
-    updateData.doneAt = now;
-    if (reply?.trim())     updateData.adminReplyContent  = reply.trim();
-    if (replyFileUrl)      updateData.adminReplyFileUrl  = replyFileUrl;
-    if (replyFileKey)      updateData.adminReplyFileKey  = replyFileKey;
-    if (replyFileName)     updateData.adminReplyFileName = replyFileName;
-    if (replyFileType)     updateData.adminReplyFileType = replyFileType;
+    if (reply?.trim())  replyData.adminReplyContent  = reply.trim();
+    if (replyFileUrl)   replyData.adminReplyFileUrl  = replyFileUrl;
+    if (replyFileKey)   replyData.adminReplyFileKey  = replyFileKey;
+    if (replyFileName)  replyData.adminReplyFileName = replyFileName;
+    if (replyFileType)  replyData.adminReplyFileType = replyFileType;
   }
 
-  const updated = await db.message.update({
-    where: { id: params.id },
-    data: updateData,
-  });
+  // Propaga o status para todas as cópias (ou só esta, se não houver grupo)
+  if (message.requestGroupId) {
+    await db.message.updateMany({
+      where: { requestGroupId: message.requestGroupId },
+      data: statusData,
+    });
+  } else {
+    await db.message.update({ where: { id: params.id }, data: statusData });
+  }
+
+  const updated = Object.keys(replyData).length
+    ? await db.message.update({ where: { id: params.id }, data: replyData })
+    : await db.message.findUnique({ where: { id: params.id } });
 
   // If DONE and there's a reply (text or file) → create chat message
   const hasReply = reply?.trim() || replyFileUrl;
