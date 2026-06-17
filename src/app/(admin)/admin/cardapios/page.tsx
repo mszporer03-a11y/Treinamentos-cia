@@ -3,7 +3,7 @@
 export const dynamic = "force-dynamic";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { UtensilsCrossed, Plus, Trash2, Loader2, FileText, Image as ImageIcon, X, Search } from "lucide-react";
+import { UtensilsCrossed, Plus, Trash2, Loader2, FileText, Image as ImageIcon, X, Search, Eye, EyeOff } from "lucide-react";
 import { useUploadThing } from "@/lib/uploadthing-components";
 import { formatDate } from "@/lib/utils";
 
@@ -19,6 +19,7 @@ interface Material {
   description?: string | null;
   fileUrl: string | null;
   fileType: string;
+  published: boolean;
   createdAt: string;
   category: Category;
 }
@@ -173,6 +174,26 @@ export default function AdminCardapiosPage() {
     }
   }
 
+  async function toggleVisibility(material: Material) {
+    const next = !material.published;
+    // Atualização otimista
+    setMaterials((prev) =>
+      prev.map((m) => (m.id === material.id ? { ...m, published: next } : m))
+    );
+    const res = await fetch(`/api/materials/${material.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ published: next }),
+    });
+    if (!res.ok) {
+      // Reverte em caso de erro
+      setMaterials((prev) =>
+        prev.map((m) => (m.id === material.id ? { ...m, published: !next } : m))
+      );
+      alert("Erro ao alterar a visibilidade do cardápio");
+    }
+  }
+
   const filtered = materials.filter((m) =>
     m.title.toLowerCase().includes(search.toLowerCase())
   );
@@ -223,23 +244,32 @@ export default function AdminCardapiosPage() {
           {filtered.map((material) => (
             <div
               key={material.id}
-              className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden"
+              className={`bg-white rounded-2xl border shadow-sm overflow-hidden transition ${
+                material.published ? "border-gray-100" : "border-gray-200 ring-1 ring-gray-200"
+              }`}
             >
-              {material.fileType === "IMAGE" && material.fileUrl ? (
-                <div className="aspect-video bg-gray-100">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={material.fileUrl}
-                    alt={material.title}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              ) : (
-                <div className="aspect-video bg-amber-50 flex flex-col items-center justify-center gap-2 text-amber-500">
-                  <FileText className="h-10 w-10 opacity-70" />
-                  <span className="text-xs font-medium opacity-70">{material.fileType}</span>
-                </div>
-              )}
+              <div className="relative">
+                {material.fileType === "IMAGE" && material.fileUrl ? (
+                  <div className={`aspect-video bg-gray-100 ${material.published ? "" : "opacity-50 grayscale"}`}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={material.fileUrl}
+                      alt={material.title}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                ) : (
+                  <div className={`aspect-video bg-amber-50 flex flex-col items-center justify-center gap-2 text-amber-500 ${material.published ? "" : "opacity-50 grayscale"}`}>
+                    <FileText className="h-10 w-10 opacity-70" />
+                    <span className="text-xs font-medium opacity-70">{material.fileType}</span>
+                  </div>
+                )}
+                {!material.published && (
+                  <span className="absolute top-2 left-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-gray-900/80 text-white">
+                    <EyeOff className="h-3 w-3" /> Oculto
+                  </span>
+                )}
+              </div>
               <div className="p-4">
                 <p className="font-semibold text-gray-900 text-sm leading-snug line-clamp-2">
                   {material.title}
@@ -260,6 +290,17 @@ export default function AdminCardapiosPage() {
                         Abrir
                       </a>
                     )}
+                    <button
+                      onClick={() => toggleVisibility(material)}
+                      className={`p-1.5 rounded-lg transition ${
+                        material.published
+                          ? "text-gray-400 hover:text-gray-700 hover:bg-gray-100"
+                          : "text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                      }`}
+                      title={material.published ? "Ocultar para franqueados e gerentes" : "Tornar visível"}
+                    >
+                      {material.published ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                    </button>
                     <button
                       onClick={() => handleDelete(material)}
                       className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
