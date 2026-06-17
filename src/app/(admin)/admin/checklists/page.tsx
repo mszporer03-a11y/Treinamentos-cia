@@ -131,7 +131,7 @@ export default function AdminChecklistsPage() {
   }
 
   async function deleteTemplate(id: string) {
-    if (!confirm("Desativar este checklist?")) return;
+    if (!confirm("Desativar esta planilha?")) return;
     await fetch(`/api/checklists/templates/${id}`, { method: "DELETE" });
     await fetchTemplates();
   }
@@ -184,15 +184,15 @@ export default function AdminChecklistsPage() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-              <ClipboardList className="h-7 w-7 text-orange-500" /> Checklists
+              <ClipboardList className="h-7 w-7 text-orange-500" /> Planilhas de controle
             </h1>
-            <p className="text-gray-500 mt-1 text-sm">Crie modelos de checklist para preenchimento por gerentes e franqueados</p>
+            <p className="text-gray-500 mt-1 text-sm">Crie modelos de planilha para preenchimento por gerentes e franqueados</p>
           </div>
           <button
             onClick={openNew}
             className="flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-sm font-medium transition"
           >
-            <Plus className="h-4 w-4" /> Novo Checklist
+            <Plus className="h-4 w-4" /> Nova Planilha
           </button>
         </div>
 
@@ -225,7 +225,7 @@ export default function AdminChecklistsPage() {
             ) : templates.length === 0 ? (
               <div className="text-center py-16 text-gray-400">
                 <ClipboardList className="h-12 w-12 mx-auto mb-3 text-gray-200" />
-                <p>Nenhum checklist criado ainda.</p>
+                <p>Nenhuma planilha criada ainda.</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -336,7 +336,7 @@ export default function AdminChecklistsPage() {
             <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl">
               <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
                 <h2 className="text-lg font-bold text-gray-900">
-                  {editingId ? "Editar Checklist" : "Novo Checklist"}
+                  {editingId ? "Editar Planilha" : "Nova Planilha"}
                 </h2>
                 <button onClick={() => setShowForm(false)} className="text-gray-400 hover:text-gray-700">
                   <X className="h-5 w-5" />
@@ -350,7 +350,7 @@ export default function AdminChecklistsPage() {
                     value={formName}
                     onChange={(e) => setFormName(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
-                    placeholder="Ex.: Checklist de Abertura"
+                    placeholder="Ex.: Planilha de Abertura"
                   />
                 </div>
                 <div>
@@ -441,7 +441,7 @@ export default function AdminChecklistsPage() {
                   disabled={saving || !formName.trim()}
                   className="px-5 py-2 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white rounded-xl text-sm font-medium transition"
                 >
-                  {saving ? "Salvando..." : editingId ? "Salvar alterações" : "Criar Checklist"}
+                  {saving ? "Salvando..." : editingId ? "Salvar alterações" : "Criar Planilha"}
                 </button>
               </div>
             </div>

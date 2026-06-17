@@ -120,7 +120,7 @@ export default function FranchiseeChecklistsPage() {
         loadData().catch(() => {});
       } else {
         const data = await res.json().catch(() => ({}));
-        setError(data.error ?? "Não foi possível enviar o checklist. Tente novamente.");
+        setError(data.error ?? "Não foi possível enviar a planilha. Tente novamente.");
       }
     } catch {
       setError("Falha de conexão ao enviar. Verifique sua internet e tente novamente.");
@@ -142,7 +142,7 @@ export default function FranchiseeChecklistsPage() {
       </Link>
       <div className="mb-4">
         <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-          <ClipboardList className="h-7 w-7 text-orange-500" /> Checklists
+          <ClipboardList className="h-7 w-7 text-orange-500" /> Planilhas de controle
         </h1>
       </div>
 
@@ -150,7 +150,7 @@ export default function FranchiseeChecklistsPage() {
       <div className="bg-orange-50 border border-orange-100 rounded-xl px-4 py-3 mb-6 flex items-start gap-3">
         <span className="flex-shrink-0 mt-0.5">✅</span>
         <div>
-          <p className="text-sm font-semibold text-orange-900 mb-0.5">O que são os checklists?</p>
+          <p className="text-sm font-semibold text-orange-900 mb-0.5">O que são as planilhas de controle?</p>
           <p className="text-sm text-orange-700 leading-relaxed">
             Listas de verificação operacional da sua loja. Preencha periodicamente para confirmar que todos os
             procedimentos e padrões de qualidade da franquia estão sendo seguidos corretamente.
@@ -178,13 +178,13 @@ export default function FranchiseeChecklistsPage() {
               <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Check className="h-7 w-7 text-green-600" />
               </div>
-              <p className="text-lg font-bold text-green-800">Checklist enviado!</p>
+              <p className="text-lg font-bold text-green-800">Planilha enviada!</p>
               <p className="text-sm text-green-600 mt-1">{checkedCount} de {totalItems} itens concluídos</p>
               <button
                 onClick={() => setActiveTemplate(null)}
                 className="mt-5 px-5 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-sm font-medium transition"
               >
-                Ver outros checklists
+                Ver outras planilhas
               </button>
             </div>
           ) : (
@@ -277,7 +277,7 @@ export default function FranchiseeChecklistsPage() {
                   disabled={submitting || !selectedStore}
                   className="mt-3 w-full py-2.5 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white rounded-xl text-sm font-medium transition"
                 >
-                  {submitting ? "Enviando..." : "Enviar Checklist"}
+                  {submitting ? "Enviando..." : "Enviar Planilha"}
                 </button>
               </div>
             </div>
@@ -289,7 +289,7 @@ export default function FranchiseeChecklistsPage() {
           {templates.length === 0 ? (
             <div className="text-center py-16 text-gray-400">
               <ClipboardList className="h-12 w-12 mx-auto mb-3 text-gray-200" />
-              <p>Nenhum checklist disponível no momento.</p>
+              <p>Nenhuma planilha de controle disponível no momento.</p>
             </div>
           ) : (
             <>
