@@ -61,6 +61,7 @@ export default function FranchiseeChecklistsPage() {
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState("");
 
   // Expand responses
   const [expandedResponse, setExpandedResponse] = useState<string | null>(null);
@@ -89,6 +90,7 @@ export default function FranchiseeChecklistsPage() {
     );
     setNotes("");
     setSubmitted(false);
+    setError("");
   }
 
   function toggleItem(itemId: string) {
@@ -100,21 +102,31 @@ export default function FranchiseeChecklistsPage() {
   async function submitChecklist() {
     if (!activeTemplate || !selectedStore) return;
     setSubmitting(true);
-    const res = await fetch("/api/checklists/responses", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        templateId: activeTemplate.id,
-        storeId: selectedStore,
-        notes,
-        items: answers,
-      }),
-    });
-    if (res.ok) {
-      setSubmitted(true);
-      await loadData();
+    setError("");
+    try {
+      const res = await fetch("/api/checklists/responses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          templateId: activeTemplate.id,
+          storeId: selectedStore,
+          notes,
+          items: answers,
+        }),
+      });
+      if (res.ok) {
+        setSubmitted(true);
+        // Recarrega o histórico em segundo plano — não bloqueia o sucesso
+        loadData().catch(() => {});
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? "Não foi possível enviar o checklist. Tente novamente.");
+      }
+    } catch {
+      setError("Falha de conexão ao enviar. Verifique sua internet e tente novamente.");
+    } finally {
+      setSubmitting(false);
     }
-    setSubmitting(false);
   }
 
   if (!session?.user) return null;
@@ -250,6 +262,16 @@ export default function FranchiseeChecklistsPage() {
                   className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"
                   placeholder="Comentários gerais..."
                 />
+                {!selectedStore && (
+                  <p className="mt-3 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                    Nenhuma loja vinculada à sua conta. Fale com a equipe para liberar o envio.
+                  </p>
+                )}
+                {error && (
+                  <p className="mt-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                    {error}
+                  </p>
+                )}
                 <button
                   onClick={submitChecklist}
                   disabled={submitting || !selectedStore}

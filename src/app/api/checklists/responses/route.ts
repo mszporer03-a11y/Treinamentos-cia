@@ -61,30 +61,41 @@ export async function POST(req: Request) {
     if (!access) return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
   }
 
-  const allChecked = Array.isArray(items) && items.every((i: { checked: boolean }) => i.checked);
+  const itemList: { itemId: string; checked: boolean; notes?: string }[] = Array.isArray(items)
+    ? items
+    : [];
+  const allChecked = itemList.length > 0 && itemList.every((i) => i.checked);
 
-  const response = await db.checklistResponse.create({
-    data: {
-      templateId,
-      storeId,
-      responderId: session.user.id,
-      notes: notes?.trim() || null,
-      completedAt: allChecked ? new Date() : null,
-      items: {
-        create: (items ?? []).map((item: { itemId: string; checked: boolean; notes?: string }) => ({
-          itemId: item.itemId,
-          checked: !!item.checked,
-          notes: item.notes?.trim() || null,
-        })),
+  try {
+    const response = await db.checklistResponse.create({
+      data: {
+        templateId,
+        storeId,
+        responderId: session.user.id,
+        notes: notes?.trim() || null,
+        completedAt: allChecked ? new Date() : null,
+        items: {
+          create: itemList.map((item) => ({
+            itemId: item.itemId,
+            checked: !!item.checked,
+            notes: item.notes?.trim() || null,
+          })),
+        },
       },
-    },
-    include: {
-      template: { select: { id: true, name: true } },
-      store: { select: { id: true, name: true, code: true } },
-      responder: { select: { id: true, name: true } },
-      items: true,
-    },
-  });
+      include: {
+        template: { select: { id: true, name: true } },
+        store: { select: { id: true, name: true, code: true } },
+        responder: { select: { id: true, name: true } },
+        items: true,
+      },
+    });
 
-  return NextResponse.json(response, { status: 201 });
+    return NextResponse.json(response, { status: 201 });
+  } catch (e) {
+    console.error("Erro ao salvar checklist:", e);
+    return NextResponse.json(
+      { error: "Erro ao salvar o checklist. Verifique os dados e tente novamente." },
+      { status: 500 }
+    );
+  }
 }
