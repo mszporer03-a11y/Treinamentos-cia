@@ -118,9 +118,22 @@ export default function AdminChatPage() {
 
   async function deleteConversation(conv: ConversationItem) {
     const who = conv.franchisee?.name ?? "este usuário";
-    if (!confirm(`Excluir definitivamente a conversa com ${who}? Todas as mensagens serão apagadas.`)) {
+
+    // Tripla confirmação — ação irreversível
+    if (!confirm(`Excluir a conversa com ${who}?\n\nTodas as mensagens e solicitações desta conversa serão apagadas.`)) {
       return;
     }
+    if (!confirm(`Tem certeza? Esta ação é DEFINITIVA e não pode ser desfeita.\n\nConfirmar exclusão da conversa com ${who}?`)) {
+      return;
+    }
+    const typed = prompt(
+      `Confirmação final.\n\nPara apagar a conversa com ${who}, digite EXCLUIR abaixo:`
+    );
+    if (typed?.trim().toUpperCase() !== "EXCLUIR") {
+      if (typed !== null) alert("Exclusão cancelada — texto de confirmação incorreto.");
+      return;
+    }
+
     setDeleting(true);
     const res = await fetch(`/api/conversations/${conv.id}`, { method: "DELETE" });
     setDeleting(false);
