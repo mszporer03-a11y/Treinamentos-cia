@@ -48,11 +48,11 @@ export default function LoginPage() {
         <div className="text-center mb-8">
           <div className="flex items-center justify-center mb-6">
             <Image
-              src="/icon.png"
+              src="/logo.png"
               alt="Companhia do Churrasco — Intranet"
-              width={400}
-              height={400}
-              className="w-40 h-40 rounded-2xl shadow-md object-contain"
+              width={220}
+              height={78}
+              className="w-48"
               priority
             />
           </div>
