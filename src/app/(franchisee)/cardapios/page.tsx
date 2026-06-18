@@ -9,7 +9,6 @@ import {
   FileText,
   Image as ImageIcon,
   File,
-  ChevronRight,
   ChevronLeft,
   Megaphone,
   Search,
@@ -140,9 +139,6 @@ function FeedCard({ material, onOpen }: { material: Material; onOpen: () => void
           {material.description && (
             <p className="text-xs text-gray-500 mt-1 line-clamp-2">{material.description}</p>
           )}
-          <p className={`text-xs ${styles.accent} font-medium mt-2 flex items-center gap-0.5`}>
-            Abrir <ChevronRight className="h-3 w-3" />
-          </p>
         </div>
       </button>
     </div>
