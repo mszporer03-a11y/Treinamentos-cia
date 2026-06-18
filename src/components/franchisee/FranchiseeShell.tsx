@@ -10,8 +10,8 @@ import { PwaInstallPrompt } from "@/components/PwaInstallPrompt";
 import { useBadges, BADGE_KEY } from "@/hooks/useBadges";
 import {
   BookOpen,
-  MessageSquare,
-  ClipboardList,
+  Megaphone,
+  Send,
   UserCircle2,
   LogOut,
   HelpCircle,
@@ -25,9 +25,9 @@ interface FranchiseeShellProps {
 
 const mobileNavItems = [
   { href: "/gallery", label: "Início", icon: BookOpen, exact: true },
-  { href: "/chat", label: "Suporte", icon: MessageSquare },
-  { href: "/solicitacoes", label: "Solicitações", icon: Inbox },
-  { href: "/checklists", label: "Planilhas", icon: ClipboardList },
+  { href: "/solicitar", label: "Solicitar", icon: Send },
+  { href: "/solicitacoes", label: "Acompanhar", icon: Inbox },
+  { href: "/comunicados", label: "Comunicados", icon: Megaphone },
   { href: "/perfil", label: "Perfil", icon: UserCircle2, exact: true },
 ];
 

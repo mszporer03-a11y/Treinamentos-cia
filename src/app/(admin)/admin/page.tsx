@@ -12,7 +12,7 @@ async function getDashboardData() {
       db.user.count({ where: { role: "FRANCHISEE", active: true } }),
       db.store.count({ where: { active: true } }),
       db.material.count({ where: { published: true } }),
-      db.nonComplianceAlert.count({ where: { status: { not: "RESOLVED" } } }),
+      db.nonComplianceAlert.count(),
       db.message.count({ where: { category: { not: null }, requestStatus: "PENDING" } }),
       db.material.findMany({
         take: 12,
@@ -34,7 +34,7 @@ export default async function AdminDashboardPage() {
     { label: "Lojas ativas",      value: data.activeStores,        color: "text-emerald-400" },
     { label: "Materiais publicados", value: data.publishedMaterials, color: "text-purple-400" },
     ...(data.openAlerts > 0
-      ? [{ label: "Alertas abertos", value: data.openAlerts, color: "text-red-400" }]
+      ? [{ label: "Registros", value: data.openAlerts, color: "text-orange-400" }]
       : []),
     ...(data.pendingRequests > 0
       ? [{ label: "Solicitações pendentes", value: data.pendingRequests, color: "text-amber-400" }]

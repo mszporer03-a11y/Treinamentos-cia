@@ -48,28 +48,14 @@ export async function GET() {
 
 export async function POST(req: Request) {
   const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
-  }
-
-  const isAdmin = session.user.role === "ADMIN";
-  const isFranchisee = session.user.role === "FRANCHISEE";
-
-  // Franqueados só podem criar gerentes; gerentes não criam ninguém
-  if (!isAdmin && !isFranchisee) {
+  // Apenas administradores criam contas. Franqueados solicitam gerentes via "Solicitações".
+  if (!session?.user || session.user.role !== "ADMIN") {
     return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
   }
 
   try {
     const body = await req.json();
     const data = userSchema.parse(body);
-
-    if (isFranchisee && data.role !== "MANAGER") {
-      return NextResponse.json(
-        { error: "Você só pode criar contas de gerente" },
-        { status: 403 }
-      );
-    }
 
     if (data.role === "MANAGER") {
       if (!data.phone?.trim()) {
@@ -86,22 +72,7 @@ export async function POST(req: Request) {
       }
     }
 
-    // Franqueado só pode vincular às próprias lojas
-    let storeIds = data.storeIds ?? [];
-    if (isFranchisee && storeIds.length > 0) {
-      const myStores = await db.userStore.findMany({
-        where: { userId: session.user.id },
-        select: { storeId: true },
-      });
-      const myStoreIds = new Set(myStores.map((s) => s.storeId));
-      const invalid = storeIds.filter((id) => !myStoreIds.has(id));
-      if (invalid.length > 0) {
-        return NextResponse.json(
-          { error: "Você só pode vincular gerentes às suas próprias lojas" },
-          { status: 403 }
-        );
-      }
-    }
+    const storeIds = data.storeIds ?? [];
 
     const existing = await db.user.findUnique({
       where: { email: data.email },

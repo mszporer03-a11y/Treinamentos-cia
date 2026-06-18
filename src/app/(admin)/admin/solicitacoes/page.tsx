@@ -3,7 +3,6 @@
 export const dynamic = "force-dynamic";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import Link from "next/link";
 import {
   Inbox, Store, Tag, Clock, ChevronDown, ChevronUp,
   CheckCircle2, Eye, Loader2, Send, X, Paperclip,
@@ -37,14 +36,15 @@ type Solicitacao = {
 
 const CATEGORY_LABEL: Record<string, string> = {
   solicitacoes: "Solicitações (Geral)", marketing: "Mídia",
-  "senhas-usuarios": "Senhas e usuários", "suporte-sistema": "Suporte Sistema", outros: "Outros",
+  "senhas-usuarios": "Senhas e usuários", "suporte-sistema": "Suporte Sistema",
+  "conta-gerente": "Conta de gerente", outros: "Outros",
   Solicitacoes: "Solicitações (Geral)", Marketing: "Mídia",
   SenhasUsuarios: "Senhas e usuários", SuporteSistema: "Suporte Sistema",
 };
 const CATEGORY_COLOR: Record<string, string> = {
   solicitacoes: "bg-blue-100 text-blue-700", marketing: "bg-purple-100 text-purple-700",
   "senhas-usuarios": "bg-orange-100 text-orange-700", "suporte-sistema": "bg-cyan-100 text-cyan-700",
-  outros: "bg-gray-100 text-gray-600",
+  "conta-gerente": "bg-violet-100 text-violet-700", outros: "bg-gray-100 text-gray-600",
   Solicitacoes: "bg-blue-100 text-blue-700", Marketing: "bg-purple-100 text-purple-700",
   SenhasUsuarios: "bg-orange-100 text-orange-700", SuporteSistema: "bg-cyan-100 text-cyan-700",
 };
@@ -394,11 +394,6 @@ export default function AdminSolicitacoesPage() {
                         </div>
                       </div>
                     )}
-
-                    <Link href="/admin/chat"
-                      className="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-800 border border-indigo-200 rounded-lg px-3 py-1.5 transition hover:bg-indigo-50">
-                      Abrir Chat com {item.conversation.franchisee.name} →
-                    </Link>
                   </div>
                 )}
               </div>

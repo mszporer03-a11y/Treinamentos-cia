@@ -1,0 +1,425 @@
+"use client";
+
+export const dynamic = "force-dynamic";
+
+import { useState, useEffect, useCallback, useRef } from "react";
+import { Newspaper, Plus, Trash2, Loader2, FileText, Play, X, Search, Eye, EyeOff } from "lucide-react";
+import { useUploadThing } from "@/lib/uploadthing-components";
+import { formatDate } from "@/lib/utils";
+
+interface Category {
+  id: string;
+  name: string;
+  slug: string;
+}
+
+interface Material {
+  id: string;
+  title: string;
+  description?: string | null;
+  fileUrl: string | null;
+  fileType: string;
+  published: boolean;
+  createdAt: string;
+  category: Category;
+}
+
+function isCiaNewsCategory(cat: { name: string; slug: string }) {
+  return (
+    cat.slug === "cia-news" ||
+    cat.name.toLowerCase().includes("cia news")
+  );
+}
+
+export default function AdminCiaNewsPage() {
+  const [materials, setMaterials] = useState<Material[]>([]);
+  const [category, setCategory] = useState<Category | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [showModal, setShowModal] = useState(false);
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [pendingFile, setPendingFile] = useState<{
+    url: string; key: string; name: string; size: number; mime: string;
+  } | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const { startUpload } = useUploadThing("materialUploader", {
+    onClientUploadComplete: (res) => {
+      const file = res?.[0];
+      if (file) {
+        setPendingFile({
+          url: file.url,
+          key: file.key,
+          name: file.name,
+          size: file.size,
+          mime: file.type ?? "",
+        });
+      }
+      setUploading(false);
+    },
+    onUploadError: () => {
+      setUploading(false);
+      setError("Falha no upload do arquivo");
+    },
+  });
+
+  const fetchData = useCallback(async () => {
+    const [matRes, catRes] = await Promise.all([
+      fetch("/api/materials"),
+      fetch("/api/categories"),
+    ]);
+    const [mats, cats] = await Promise.all([matRes.json(), catRes.json()]);
+
+    const ciaCat = Array.isArray(cats) ? cats.find(isCiaNewsCategory) : null;
+    setCategory(ciaCat ?? null);
+
+    if (Array.isArray(mats)) {
+      setMaterials(mats.filter((m: Material) => isCiaNewsCategory(m.category)));
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // Garante que a categoria CIA News exista antes de salvar
+  async function ensureCategory(): Promise<Category | null> {
+    if (category) return category;
+    const res = await fetch("/api/categories", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: "CIA News",
+        description: "Notícias e novidades da Companhia do Churrasco",
+        icon: "📰",
+      }),
+    });
+    if (!res.ok) return null;
+    const cat = await res.json();
+    setCategory(cat);
+    return cat;
+  }
+
+  function openCreate() {
+    setTitle("");
+    setDescription("");
+    setPendingFile(null);
+    setError("");
+    setShowModal(true);
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!title.trim() || !pendingFile) return;
+    setSaving(true);
+    setError("");
+
+    const cat = await ensureCategory();
+    if (!cat) {
+      setError("Não foi possível criar a categoria CIA News");
+      setSaving(false);
+      return;
+    }
+
+    const ext = pendingFile.name.split(".").pop()?.toLowerCase() ?? "";
+    const fileType = ["mp4", "mov", "avi", "webm", "mkv"].includes(ext)
+      ? "VIDEO"
+      : ext === "pdf"
+      ? "PDF"
+      : ["jpg", "jpeg", "png", "gif", "webp"].includes(ext)
+      ? "IMAGE"
+      : "DOCUMENT";
+
+    const res = await fetch("/api/materials", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: title.trim(),
+        description: description.trim() || undefined,
+        fileUrl: pendingFile.url,
+        fileKey: pendingFile.key,
+        fileType,
+        mimeType: pendingFile.mime || undefined,
+        fileSize: pendingFile.size,
+        categoryId: cat.id,
+        published: true,
+      }),
+    });
+
+    setSaving(false);
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setError(data.error ?? "Erro ao salvar publicação");
+      return;
+    }
+
+    setShowModal(false);
+    await fetchData();
+  }
+
+  async function handleDelete(material: Material) {
+    if (!confirm(`Excluir a publicação "${material.title}"?`)) return;
+    const res = await fetch(`/api/materials/${material.id}`, { method: "DELETE" });
+    if (res.ok) {
+      setMaterials((prev) => prev.filter((m) => m.id !== material.id));
+    } else {
+      alert("Erro ao excluir publicação");
+    }
+  }
+
+  async function toggleVisibility(material: Material) {
+    const next = !material.published;
+    setMaterials((prev) =>
+      prev.map((m) => (m.id === material.id ? { ...m, published: next } : m))
+    );
+    const res = await fetch(`/api/materials/${material.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ published: next }),
+    });
+    if (!res.ok) {
+      setMaterials((prev) =>
+        prev.map((m) => (m.id === material.id ? { ...m, published: !next } : m))
+      );
+      alert("Erro ao alterar a visibilidade da publicação");
+    }
+  }
+
+  const filtered = materials.filter((m) =>
+    m.title.toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <div className="p-4 sm:p-6 md:p-8">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-xl md:text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <Newspaper className="h-6 w-6 text-rose-500" /> CIA News
+          </h1>
+          <p className="text-gray-500 text-sm mt-1">
+            Publique notícias e novidades da Companhia do Churrasco para a rede
+          </p>
+        </div>
+        <button
+          onClick={openCreate}
+          className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-medium rounded-lg transition text-sm"
+        >
+          <Plus className="h-4 w-4" />
+          <span className="hidden sm:inline">Nova publicação</span>
+          <span className="sm:hidden">Nova</span>
+        </button>
+      </div>
+
+      {/* Search */}
+      <div className="relative max-w-sm mb-6">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Buscar publicação..."
+          className="w-full pl-9 pr-3 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-500"
+        />
+      </div>
+
+      {loading ? (
+        <div className="text-center py-16 text-gray-400">Carregando...</div>
+      ) : filtered.length === 0 ? (
+        <div className="text-center py-20">
+          <Newspaper className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+          <p className="text-gray-500">
+            {search ? "Nenhuma publicação encontrada" : "Nenhuma publicação ainda"}
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filtered.map((material) => (
+            <div
+              key={material.id}
+              className={`bg-white rounded-2xl border shadow-sm overflow-hidden transition ${
+                material.published ? "border-gray-100" : "border-gray-200 ring-1 ring-gray-200"
+              }`}
+            >
+              <div className="relative">
+                {material.fileType === "IMAGE" && material.fileUrl ? (
+                  <div className={`aspect-video bg-gray-100 ${material.published ? "" : "opacity-50 grayscale"}`}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={material.fileUrl}
+                      alt={material.title}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                ) : (
+                  <div className={`aspect-video bg-rose-50 flex flex-col items-center justify-center gap-2 text-rose-500 ${material.published ? "" : "opacity-50 grayscale"}`}>
+                    {material.fileType === "VIDEO" ? (
+                      <Play className="h-10 w-10 opacity-70" />
+                    ) : (
+                      <FileText className="h-10 w-10 opacity-70" />
+                    )}
+                    <span className="text-xs font-medium opacity-70">{material.fileType}</span>
+                  </div>
+                )}
+                {!material.published && (
+                  <span className="absolute top-2 left-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-gray-900/80 text-white">
+                    <EyeOff className="h-3 w-3" /> Oculto
+                  </span>
+                )}
+              </div>
+              <div className="p-4">
+                <p className="font-semibold text-gray-900 text-sm leading-snug line-clamp-2">
+                  {material.title}
+                </p>
+                {material.description && (
+                  <p className="text-xs text-gray-500 mt-1 line-clamp-2">{material.description}</p>
+                )}
+                <div className="flex items-center justify-between mt-3">
+                  <span className="text-xs text-gray-400">{formatDate(material.createdAt)}</span>
+                  <div className="flex items-center gap-1">
+                    {material.fileUrl && (
+                      <a
+                        href={material.fileUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-2.5 py-1 text-xs font-medium text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-lg transition"
+                      >
+                        Abrir
+                      </a>
+                    )}
+                    <button
+                      onClick={() => toggleVisibility(material)}
+                      className={`p-1.5 rounded-lg transition ${
+                        material.published
+                          ? "text-gray-400 hover:text-gray-700 hover:bg-gray-100"
+                          : "text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+                      }`}
+                      title={material.published ? "Ocultar para franqueados e gerentes" : "Tornar visível"}
+                    >
+                      {material.published ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                    </button>
+                    <button
+                      onClick={() => handleDelete(material)}
+                      className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                      title="Excluir"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Create Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full sm:max-w-md p-6 max-h-[95vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-xl font-bold text-gray-900">Nova publicação</h2>
+              <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Título *</label>
+                <input
+                  required
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 text-sm"
+                  placeholder="Novidade da rede"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Descrição <span className="text-gray-400 font-normal">(opcional)</span>
+                </label>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  rows={2}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 text-sm resize-none"
+                  placeholder="Breve resumo da notícia"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Imagem, vídeo ou arquivo *</label>
+                {pendingFile ? (
+                  <div className="flex items-center gap-3 p-3 bg-rose-50 rounded-xl border border-rose-200">
+                    {/\.(mp4|mov|avi|webm|mkv)$/i.test(pendingFile.name) ? (
+                      <Play className="h-4 w-4 text-rose-600 flex-shrink-0" />
+                    ) : (
+                      <FileText className="h-4 w-4 text-rose-600 flex-shrink-0" />
+                    )}
+                    <span className="text-sm text-gray-700 truncate flex-1">{pendingFile.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => setPendingFile(null)}
+                      className="text-gray-400 hover:text-red-500 transition"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                    className="flex items-center gap-2 px-4 py-2.5 border border-dashed border-gray-300 rounded-xl text-sm text-gray-500 hover:border-rose-400 hover:text-rose-600 transition w-full justify-center"
+                  >
+                    {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                    {uploading ? "Enviando arquivo…" : "Anexar imagem, vídeo ou PDF"}
+                  </button>
+                )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  className="hidden"
+                  accept="image/*,video/*,.pdf,.ppt,.pptx"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setUploading(true);
+                      startUpload([file]);
+                    }
+                    e.target.value = "";
+                  }}
+                />
+                <p className="text-xs text-gray-400 mt-1.5">Imagens, vídeos (até 2GB) ou PDF.</p>
+              </div>
+
+              {error && (
+                <p className="text-sm text-red-600 bg-red-50 rounded-lg p-3">{error}</p>
+              )}
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  className="flex-1 py-2.5 border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition text-sm font-medium"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving || uploading || !pendingFile || !title.trim()}
+                  className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white font-medium rounded-lg transition text-sm"
+                >
+                  {saving ? "Salvando..." : "Publicar"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

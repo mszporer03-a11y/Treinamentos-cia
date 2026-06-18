@@ -3,28 +3,26 @@
 import { useState, useEffect, useCallback } from "react";
 
 export type BadgeCounts = Partial<{
-  chat: number;
   solicitacoes: number;
+  comunicados: number;
+  registros: number;
+  cianews: number;
   materiais: number;
   cardapios: number;
   universidade: number;
-  documentos: number;
-  notificacoes: number;
 }>;
 
 /** Maps href paths to badge keys returned by /api/badges */
 export const BADGE_KEY: Record<string, keyof BadgeCounts> = {
-  "/chat":          "chat",
   "/solicitacoes":  "solicitacoes",
+  "/comunicados":   "comunicados",
+  "/registros":     "registros",
+  "/cia-news":      "cianews",
   "/materiais":     "materiais",
   "/cardapios":     "cardapios",
   "/universidade":  "universidade",
-  "/documents":     "documentos",
-  "/notificacoes":  "notificacoes",
   // Admin routes
-  "/admin/chat":           "chat",
   "/admin/solicitacoes":   "solicitacoes",
-  "/admin/notificacoes":   "notificacoes",
 };
 
 /** Fetch badge counts, refresh every 60 s */

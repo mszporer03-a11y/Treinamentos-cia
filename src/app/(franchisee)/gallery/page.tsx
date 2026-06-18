@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useSession } from "next-auth/react";
 import { MaterialViewer } from "@/components/franchisee/MaterialViewer";
-import { Play, FileText, Image as ImageIcon, File, MessageSquare, ClipboardList, BookOpen, ChevronRight, SlidersHorizontal, Megaphone, Inbox, UtensilsCrossed, Bell, Users, GraduationCap } from "lucide-react";
+import { Play, FileText, Image as ImageIcon, File, ClipboardList, BookOpen, ChevronRight, SlidersHorizontal, Megaphone, Inbox, UtensilsCrossed, Newspaper, GraduationCap, Send } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { useBadges, BADGE_KEY } from "@/hooks/useBadges";
 
@@ -122,33 +122,49 @@ type GalleryNavItem = {
 
 const NAV_ITEMS: GalleryNavItem[] = [
   {
-    href: "/checklists",
-    icon: ClipboardList,
-    label: "Planilhas de controle",
-    desc: "Visualize e preencha as planilhas operacionais",
-    bg: "from-orange-600 to-orange-500",
-    tutorialId: "nav-checklists",
-  },
-  {
-    href: "/chat",
-    icon: MessageSquare,
-    label: "Suporte",
-    desc: "Canal direto com a Companhia do Churrasco",
-    bg: "from-sky-600 to-sky-500",
-    tutorialId: "nav-chat",
-  },
-  {
     href: "/solicitacoes",
     icon: Inbox,
-    label: "Minhas Solicitações",
+    label: "Acompanhamento de solicitações",
     desc: "Acompanhe o andamento das suas solicitações",
     bg: "from-indigo-600 to-indigo-500",
     tutorialId: "nav-solicitacoes",
   },
   {
+    href: "/solicitar",
+    icon: Send,
+    label: "Solicitações",
+    desc: "Envie uma nova solicitação à Companhia do Churrasco",
+    bg: "from-blue-600 to-blue-500",
+    tutorialId: "nav-solicitar",
+  },
+  {
+    href: "/comunicados",
+    icon: Megaphone,
+    label: "Comunicados",
+    desc: "Avisos da Companhia do Churrasco",
+    bg: "from-sky-600 to-sky-500",
+    tutorialId: "nav-comunicados",
+  },
+  {
+    href: "/registros",
+    icon: ClipboardList,
+    label: "Registros",
+    desc: "Ocorrências registradas para a sua loja",
+    bg: "from-orange-600 to-orange-500",
+    tutorialId: "nav-registros",
+  },
+  {
+    href: "/cia-news",
+    icon: Newspaper,
+    label: "CIA News",
+    desc: "Notícias e novidades da rede",
+    bg: "from-rose-600 to-rose-500",
+    tutorialId: "nav-cia-news",
+  },
+  {
     href: "/materiais",
     icon: BookOpen,
-    label: "Todos os Treinamentos",
+    label: "Treinamentos",
     desc: "Acesse todos os materiais e conteúdos da rede",
     bg: "from-teal-600 to-teal-500",
     tutorialId: "nav-materiais",
@@ -166,34 +182,8 @@ const NAV_ITEMS: GalleryNavItem[] = [
     icon: GraduationCap,
     label: "Universidade",
     desc: "Vídeos e tutoriais de uso da plataforma",
-    bg: "from-indigo-600 to-indigo-500",
-    tutorialId: "nav-universidade",
-  },
-  {
-    href: "/documents",
-    icon: FileText,
-    label: "Documentos",
-    desc: "Acesse seus documentos contratuais",
-    bg: "from-slate-600 to-slate-500",
-    tutorialId: "nav-documentos",
-    roles: ["FRANCHISEE"],
-  },
-  {
-    href: "/notificacoes",
-    icon: Bell,
-    label: "Notificações",
-    desc: "Alertas da sua loja e campanhas",
-    bg: "from-rose-600 to-rose-500",
-    tutorialId: "nav-notificacoes",
-  },
-  {
-    href: "/gerentes",
-    icon: Users,
-    label: "Gerentes",
-    desc: "Crie e gerencie as contas de gerente das suas lojas",
     bg: "from-violet-600 to-violet-500",
-    tutorialId: "nav-gerentes",
-    roles: ["FRANCHISEE"],
+    tutorialId: "nav-universidade",
   },
 ];
 

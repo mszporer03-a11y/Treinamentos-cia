@@ -12,6 +12,7 @@ import {
   HelpCircle,
   KeyRound,
   MonitorCog,
+  UserPlus,
   Paperclip,
   X,
   Send,
@@ -47,6 +48,12 @@ const CATEGORIES: Record<string, { label: string; Icon: React.ElementType; color
     Icon: MonitorCog,
     color: "from-cyan-500 to-teal-500",
     description: "Relate problemas técnicos, erros no sistema, lentidão ou dificuldades com equipamentos e softwares utilizados na operação da sua loja. Descreva o problema com o máximo de detalhes.",
+  },
+  "conta-gerente": {
+    label: "Conta de gerente",
+    Icon: UserPlus,
+    color: "from-violet-500 to-fuchsia-500",
+    description: "Solicite a criação de uma conta de gerente para a sua loja. Informe o nome completo do gerente, o e-mail que ele usará para acessar, o telefone e a loja a que ele ficará vinculado. A equipe criará a conta e enviará os dados de acesso.",
   },
   outros: {
     label: "Outros",
@@ -107,8 +114,8 @@ export default function SupporteCategoryPage() {
     return (
       <div className="p-4 sm:p-6">
         <p className="text-gray-500">Categoria não encontrada.</p>
-        <Link href="/chat" className="text-orange-600 text-sm mt-2 inline-block hover:underline">
-          Voltar ao Suporte
+        <Link href="/solicitar" className="text-orange-600 text-sm mt-2 inline-block hover:underline">
+          Voltar às Solicitações
         </Link>
       </div>
     );
@@ -187,11 +194,11 @@ export default function SupporteCategoryPage() {
     <div className="p-4 sm:p-6 max-w-xl">
       {/* Back */}
       <Link
-        href="/chat"
+        href="/solicitar"
         className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition mb-5"
       >
         <ChevronLeft className="h-4 w-4" />
-        Voltar ao Suporte
+        Voltar às Solicitações
       </Link>
 
       {/* Header */}

@@ -7,13 +7,12 @@ import { AdminSidebar } from "./AdminSidebar";
 import { PwaInstallPrompt } from "@/components/PwaInstallPrompt";
 import {
   LayoutDashboard,
-  FolderOpen,
-  FileText,
-  Users,
+  Inbox,
+  Megaphone,
+  ClipboardList,
   LogOut,
   BookOpen,
   UserCircle2,
-  MessageSquare,
 } from "lucide-react";
 
 interface AdminShellProps {
@@ -23,10 +22,9 @@ interface AdminShellProps {
 
 const navItems = [
   { href: "/admin", label: "Início", icon: LayoutDashboard, exact: true },
-  { href: "/admin/categories", label: "Categorias", icon: FolderOpen },
-  { href: "/admin/materials", label: "Materiais", icon: FileText },
-  { href: "/admin/users", label: "Usuários", icon: Users },
-  { href: "/admin/chat", label: "Chat", icon: MessageSquare },
+  { href: "/admin/solicitacoes", label: "Solicitações", icon: Inbox },
+  { href: "/admin/comunicados", label: "Comunicados", icon: Megaphone },
+  { href: "/admin/registros", label: "Registros", icon: ClipboardList },
   { href: "/admin/perfil", label: "Perfil", icon: UserCircle2, exact: true },
 ];
 

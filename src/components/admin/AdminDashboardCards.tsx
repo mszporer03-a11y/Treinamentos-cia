@@ -1,23 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronRight, MessageSquare, Inbox, Bell, FileText, ClipboardList, Store, Users, Megaphone, CheckSquare, MapPin, UtensilsCrossed, GraduationCap } from "lucide-react";
+import { ChevronRight, Inbox, Megaphone, ClipboardList, Newspaper, FileText, UtensilsCrossed, GraduationCap } from "lucide-react";
 import { useBadges, BADGE_KEY } from "@/hooks/useBadges";
 
 const ADMIN_NAV = [
-  { href: "/admin/chat",         icon: MessageSquare, label: "Suporte",            desc: "Mensagens de franqueados e gerentes", bg: "from-sky-600 to-sky-500" },
-  { href: "/admin/solicitacoes", icon: Inbox,         label: "Solicitações",       desc: "Solicitações pendentes da rede", bg: "from-indigo-600 to-indigo-500" },
-  { href: "/admin/notificacoes", icon: Bell,          label: "Notificações",       desc: "Alertas e campanhas",            bg: "from-rose-600 to-rose-500" },
-  { href: "/admin/materials",    icon: FileText,      label: "Materiais",          desc: "Publicar e gerenciar conteúdos", bg: "from-purple-600 to-purple-500" },
-  { href: "/admin/universidade", icon: GraduationCap, label: "Universidade",       desc: "Tutoriais em vídeo da plataforma", bg: "from-indigo-600 to-indigo-500" },
-  { href: "/admin/cardapios",    icon: UtensilsCrossed, label: "Cardápios do Mês", desc: "Anexar e gerenciar cardápios",   bg: "from-amber-600 to-amber-500" },
-  { href: "/admin/checklists",   icon: ClipboardList, label: "Planilhas de controle", desc: "Gerenciar planilhas operacionais", bg: "from-orange-600 to-orange-500" },
-  { href: "/admin/stores",       icon: Store,         label: "Lojas",              desc: "Gerenciar lojas da rede",        bg: "from-emerald-600 to-emerald-500" },
-  { href: "/admin/users",        icon: Users,         label: "Usuários",           desc: "Franqueados e administradores",  bg: "from-blue-600 to-blue-500" },
-  { href: "/admin/campaigns",    icon: Megaphone,     label: "Campanhas",          desc: "Campanhas de marketing",         bg: "from-pink-600 to-pink-500" },
-  { href: "/admin/onboarding",   icon: CheckSquare,   label: "Inauguração",        desc: "Onboarding de novas lojas",      bg: "from-cyan-600 to-cyan-500" },
-  { href: "/admin/map",          icon: MapPin,        label: "Mapa de Lojas",      desc: "Visualizar lojas no mapa",       bg: "from-teal-600 to-teal-500" },
-  { href: "/admin/documents",    icon: FileText,      label: "Documentos",         desc: "Documentos dos franqueados",     bg: "from-slate-600 to-slate-500" },
+  { href: "/admin/solicitacoes", icon: Inbox,         label: "Acompanhamento de solicitações", desc: "Solicitações da rede e andamento", bg: "from-indigo-600 to-indigo-500" },
+  { href: "/admin/comunicados",  icon: Megaphone,     label: "Comunicados",        desc: "Avisos gerais para toda a rede",  bg: "from-sky-600 to-sky-500" },
+  { href: "/admin/registros",    icon: ClipboardList, label: "Registros",          desc: "Ocorrências por loja",            bg: "from-orange-600 to-orange-500" },
+  { href: "/admin/cia-news",     icon: Newspaper,     label: "CIA News",           desc: "Notícias e novidades da rede",    bg: "from-rose-600 to-rose-500" },
+  { href: "/admin/materials",    icon: FileText,      label: "Treinamentos",       desc: "Publicar e gerenciar conteúdos",  bg: "from-purple-600 to-purple-500" },
+  { href: "/admin/cardapios",    icon: UtensilsCrossed, label: "Cardápios",        desc: "Anexar e gerenciar cardápios",    bg: "from-amber-600 to-amber-500" },
+  { href: "/admin/universidade", icon: GraduationCap, label: "Universidade",       desc: "Tutoriais em vídeo da plataforma", bg: "from-violet-600 to-violet-500" },
 ];
 
 export function AdminDashboardCards() {

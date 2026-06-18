@@ -7,8 +7,8 @@ export const dynamic = "force-dynamic";
 /**
  * GET /api/badges
  * Returns unread/new counts per section for the current user.
- * Franchisee/Manager: { chat, solicitacoes, materiais, cardapios, documentos, notificacoes }
- * Admin:              { chat, solicitacoes, notificacoes }
+ * Franchisee/Manager: { solicitacoes, comunicados, registros, cianews, materiais, cardapios, universidade }
+ * Admin:              { solicitacoes }
  */
 export async function GET() {
   const session = await auth();
@@ -16,7 +16,6 @@ export async function GET() {
 
   const userId = session.user.id;
   const isAdmin = session.user.role === "ADMIN";
-  const isManager = session.user.role === "MANAGER";
 
   const sevenDaysAgo  = new Date(Date.now() -  7 * 24 * 60 * 60 * 1000);
   const fourteenDays  = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
@@ -26,51 +25,36 @@ export async function GET() {
     // Cada admin vê apenas suas conversas + legadas (adminId null)
     const myConvFilter = { OR: [{ adminId: userId }, { adminId: null }] };
 
-    const [chat, solicitacoes, notificacoes] = await Promise.all([
-      // Conversations with unread non-admin messages
-      db.conversation.count({
-        where: {
-          ...myConvFilter,
-          messages: {
-            some: { readByAdmin: false, sender: { role: { not: "ADMIN" } } },
-          },
-        },
-      }),
-      // Requests awaiting attention (PENDING)
-      db.message.count({
-        where: {
-          category: { not: null },
-          requestStatus: "PENDING",
-          conversation: myConvFilter,
-        },
-      }),
-      // Open non-conformity alerts
-      db.nonComplianceAlert.count({
-        where: { status: { not: "RESOLVED" } },
-      }),
-    ]);
+    const solicitacoes = await db.message.count({
+      where: {
+        category: { not: null },
+        requestStatus: "PENDING",
+        conversation: myConvFilter,
+      },
+    });
 
-    return NextResponse.json({ chat, solicitacoes, notificacoes });
+    return NextResponse.json({ solicitacoes });
   }
 
   // ── FRANCHISEE / MANAGER ──────────────────────────────────────────────
-  // Get user's store IDs for alert filtering
   const userStoreIds = await db.userStore
     .findMany({ where: { userId }, select: { storeId: true } })
     .then((rows) => rows.map((r) => r.storeId));
 
-  const [chat, solicitacoes, materiais, cardapios, universidade, documentos, notificacoes] =
-    await Promise.all([
-      // Unread messages from admin
-      db.message.count({
-        where: {
-          conversation: { franchiseeId: userId },
-          readByFranchisee: false,
-          sender: { role: "ADMIN" },
-        },
-      }),
+  const isCiaCardUni = {
+    OR: [
+      { name: { contains: "cardápio", mode: "insensitive" as const } },
+      { slug: { contains: "cardapio" } },
+      { name: { contains: "universidade", mode: "insensitive" as const } },
+      { slug: { contains: "universidade" } },
+      { name: { contains: "cia news", mode: "insensitive" as const } },
+      { slug: { contains: "cia-news" } },
+    ],
+  };
 
-      // Requests with status update in the last 7 days
+  const [solicitacoes, comunicados, registros, cianews, materiais, cardapios, universidade] =
+    await Promise.all([
+      // Solicitações com atualização de status nos últimos 7 dias
       db.message.count({
         where: {
           conversation: { franchiseeId: userId },
@@ -84,26 +68,42 @@ export async function GET() {
         },
       }),
 
-      // New materials (excluindo cardápio e universidade) nos últimos 14 dias, não vistos
+      // Comunicados publicados ainda não lidos
+      db.comunicado.count({
+        where: { published: true, views: { none: { userId } } },
+      }),
+
+      // Registros das lojas do usuário ainda não vistos
+      db.nonComplianceAlert.count({
+        where: { storeId: { in: userStoreIds }, views: { none: { userId } } },
+      }),
+
+      // Novas publicações CIA News (30 dias) não vistas
+      db.material.count({
+        where: {
+          published: true,
+          createdAt: { gte: thirtyDays },
+          views: { none: { userId } },
+          category: {
+            OR: [
+              { name: { contains: "cia news", mode: "insensitive" } },
+              { slug: { contains: "cia-news" } },
+            ],
+          },
+        },
+      }),
+
+      // Novos materiais (exceto cardápio/universidade/cia news) 14 dias, não vistos
       db.material.count({
         where: {
           published: true,
           createdAt: { gte: fourteenDays },
           views: { none: { userId } },
-          NOT: {
-            category: {
-              OR: [
-                { name: { contains: "cardápio", mode: "insensitive" } },
-                { slug: { contains: "cardapio" } },
-                { name: { contains: "universidade", mode: "insensitive" } },
-                { slug: { contains: "universidade" } },
-              ],
-            },
-          },
+          NOT: { category: isCiaCardUni },
         },
       }),
 
-      // New cardápio materials published in last 30 days, not yet viewed
+      // Novos cardápios (30 dias) não vistos
       db.material.count({
         where: {
           published: true,
@@ -118,7 +118,7 @@ export async function GET() {
         },
       }),
 
-      // New universidade tutorials published in last 30 days, not yet viewed
+      // Novos tutoriais Universidade (30 dias) não vistos
       db.material.count({
         where: {
           published: true,
@@ -132,34 +132,15 @@ export async function GET() {
           },
         },
       }),
-
-      // New documents uploaded for this franchisee in last 14 days
-      // (gerentes não têm acesso a documentos)
-      isManager
-        ? Promise.resolve(0)
-        : db.franchiseeDocument.count({
-            where: {
-              franchiseeId: userId,
-              createdAt: { gte: fourteenDays },
-            },
-          }),
-
-      // Open non-conformity alerts for this user's stores
-      db.nonComplianceAlert.count({
-        where: {
-          storeId: { in: userStoreIds },
-          status: { not: "RESOLVED" },
-        },
-      }),
     ]);
 
   return NextResponse.json({
-    chat,
     solicitacoes,
+    comunicados,
+    registros,
+    cianews,
     materiais,
     cardapios,
     universidade,
-    documentos,
-    notificacoes,
   });
 }

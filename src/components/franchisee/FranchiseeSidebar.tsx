@@ -8,19 +8,15 @@ import { signOut } from "next-auth/react";
 import { useBadges, BADGE_KEY } from "@/hooks/useBadges";
 import {
   BookOpen,
-  MessageSquare,
   ClipboardList,
-  FileText,
   UserCircle2,
   LogOut,
   Megaphone,
   HelpCircle,
-  KeyRound,
-  MonitorCog,
   Inbox,
+  Send,
   UtensilsCrossed,
-  Bell,
-  Users,
+  Newspaper,
   GraduationCap,
 } from "lucide-react";
 
@@ -50,42 +46,26 @@ const sections: { label: string; items: NavItem[] }[] = [
     ],
   },
   {
-    label: "Treinamentos",
-    items: [
-      { href: "/materiais", label: "Todos os Treinamentos", icon: BookOpen },
-      { href: "/universidade", label: "Universidade", icon: GraduationCap },
-      { href: "/cardapios", label: "Cardápios", icon: UtensilsCrossed },
-    ],
-  },
-  {
-    label: "Suporte",
-    items: [
-      { href: "/chat", label: "Suporte (Chat)", icon: MessageSquare },
-    ],
-  },
-  {
     label: "Solicitações",
     items: [
-      { href: "/solicitacoes", label: "Minhas Solicitações", icon: Inbox },
-      { href: "/suporte/solicitacoes", label: "Solicitações (Geral)", icon: MessageSquare },
-      { href: "/suporte/marketing", label: "Mídia", icon: Megaphone },
-      { href: "/suporte/senhas-usuarios", label: "Senhas e usuários", icon: KeyRound },
-      { href: "/suporte/suporte-sistema", label: "Suporte Sistema", icon: MonitorCog },
-      { href: "/suporte/outros", label: "Outros", icon: HelpCircle },
+      { href: "/solicitacoes", label: "Acompanhamento", icon: Inbox },
+      { href: "/solicitar", label: "Nova solicitação", icon: Send },
     ],
   },
   {
-    label: "Operações",
+    label: "Comunicação",
     items: [
-      { href: "/notificacoes", label: "Notificações", icon: Bell },
-      { href: "/checklists", label: "Planilhas de controle", icon: ClipboardList },
-      { href: "/documents", label: "Documentos", icon: FileText, roles: ["FRANCHISEE"] },
+      { href: "/comunicados", label: "Comunicados", icon: Megaphone },
+      { href: "/registros", label: "Registros", icon: ClipboardList },
+      { href: "/cia-news", label: "CIA News", icon: Newspaper },
     ],
   },
   {
-    label: "Equipe",
+    label: "Treinamentos",
     items: [
-      { href: "/gerentes", label: "Gerentes", icon: Users, roles: ["FRANCHISEE"] },
+      { href: "/materiais", label: "Treinamentos", icon: BookOpen },
+      { href: "/universidade", label: "Universidade", icon: GraduationCap },
+      { href: "/cardapios", label: "Cardápios", icon: UtensilsCrossed },
     ],
   },
   {

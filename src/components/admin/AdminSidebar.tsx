@@ -11,20 +11,17 @@ import {
   FileText,
   Users,
   LogOut,
-  BookOpen,
   UserCircle2,
-  MessageSquare,
   Store,
   Megaphone,
-  AlertTriangle,
   MapPin,
-  ClipboardCheck,
   CheckSquare,
   ClipboardList,
   Inbox,
-  Bell,
+  Newspaper,
   UtensilsCrossed,
   GraduationCap,
+  Tag,
 } from "lucide-react";
 
 interface AdminSidebarProps {
@@ -42,46 +39,34 @@ const sections: {
     label: "Geral",
     items: [
       { href: "/admin", label: "Menu Principal", icon: LayoutDashboard, exact: true },
-      { href: "/admin/chat", label: "Suporte", icon: MessageSquare },
-      { href: "/admin/solicitacoes", label: "Solicitações", icon: Inbox },
-      { href: "/admin/notificacoes", label: "Notificações", icon: Bell },
+      { href: "/admin/solicitacoes", label: "Acompanhamento de solicitações", icon: Inbox },
+      { href: "/admin/comunicados", label: "Comunicados", icon: Megaphone },
+      { href: "/admin/registros", label: "Registros", icon: ClipboardList },
     ],
   },
   {
     label: "Conteúdo",
     items: [
-      { href: "/admin/materials", label: "Materiais", icon: FileText },
-      { href: "/admin/universidade", label: "Universidade", icon: GraduationCap },
+      { href: "/admin/cia-news", label: "CIA News", icon: Newspaper },
+      { href: "/admin/materials", label: "Treinamentos", icon: FileText },
       { href: "/admin/cardapios", label: "Cardápios do Mês", icon: UtensilsCrossed },
+      { href: "/admin/universidade", label: "Universidade", icon: GraduationCap },
       { href: "/admin/categories", label: "Categorias", icon: FolderOpen },
-      { href: "/admin/campaigns", label: "Campanhas", icon: Megaphone },
     ],
   },
   {
-    label: "Operações",
-    items: [
-      { href: "/admin/alerts", label: "Não Conformidades", icon: AlertTriangle },
-    ],
-  },
-  {
-    label: "Lojas",
+    label: "Gestão",
     items: [
       { href: "/admin/stores", label: "Lojas", icon: Store },
       { href: "/admin/map", label: "Mapa de Lojas", icon: MapPin },
       { href: "/admin/onboarding", label: "Inauguração", icon: CheckSquare },
-    ],
-  },
-  {
-    label: "Engajamento",
-    items: [
-      { href: "/admin/documents", label: "Documentos", icon: ClipboardCheck },
-      { href: "/admin/checklists", label: "Planilhas de controle", icon: ClipboardList },
-    ],
-  },
-  {
-    label: "Usuários",
-    items: [
+      { href: "/admin/kilo-price", label: "Preço do Quilo", icon: Tag },
       { href: "/admin/users", label: "Usuários", icon: Users },
+    ],
+  },
+  {
+    label: "Conta",
+    items: [
       { href: "/admin/perfil", label: "Meu Perfil", icon: UserCircle2 },
     ],
   },

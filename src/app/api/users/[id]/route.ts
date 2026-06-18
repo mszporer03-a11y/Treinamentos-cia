@@ -27,15 +27,9 @@ const userSelectFields = {
   stores: { select: { store: { select: { id: true, name: true, code: true } } } },
 };
 
-// Franqueado pode gerenciar apenas gerentes criados por ele
-async function canManage(sessionUserId: string, sessionRole: string, targetId: string) {
-  if (sessionRole === "ADMIN") return true;
-  if (sessionRole !== "FRANCHISEE") return false;
-  const target = await db.user.findUnique({
-    where: { id: targetId },
-    select: { role: true, createdById: true },
-  });
-  return target?.role === "MANAGER" && target.createdById === sessionUserId;
+// Apenas administradores gerenciam contas. Franqueados solicitam via "Solicitações".
+async function canManage(_sessionUserId: string, sessionRole: string, _targetId: string) {
+  return sessionRole === "ADMIN";
 }
 
 export async function PATCH(
