@@ -35,9 +35,31 @@ interface Material {
   fileType: string;
   fileSize?: number | null;
   mimeType?: string | null;
+  color?: string | null;
   createdAt: string;
   category: Category;
   createdBy?: { name: string } | null;
+}
+
+type CardColor = "amber" | "blue";
+
+const COLOR_STYLES: Record<CardColor, { avatar: string; thumb: string; titleHover: string; accent: string }> = {
+  amber: {
+    avatar: "bg-amber-600",
+    thumb: "bg-amber-50 text-amber-500",
+    titleHover: "group-hover:text-amber-600",
+    accent: "text-amber-600",
+  },
+  blue: {
+    avatar: "bg-blue-600",
+    thumb: "bg-blue-50 text-blue-500",
+    titleHover: "group-hover:text-blue-600",
+    accent: "text-blue-600",
+  },
+};
+
+function colorOf(m: { color?: string | null }): CardColor {
+  return m.color === "blue" ? "blue" : "amber";
 }
 
 const typeIcon: Record<string, React.ElementType> = {
@@ -58,15 +80,6 @@ const typeLabel: Record<string, string> = {
   NOTICE: "Aviso",
 };
 
-const typeColor: Record<string, string> = {
-  VIDEO: "bg-red-50 text-red-500",
-  PDF: "bg-orange-50 text-orange-500",
-  IMAGE: "bg-sky-50 text-sky-500",
-  DOCUMENT: "bg-blue-50 text-blue-500",
-  OTHER: "bg-gray-50 text-gray-400",
-  NOTICE: "bg-amber-50 text-amber-600",
-};
-
 function isCardapio(cat: Category) {
   const n = cat.name.toLowerCase();
   const s = cat.slug.toLowerCase();
@@ -80,12 +93,12 @@ function isCardapio(cat: Category) {
 
 function FeedCard({ material, onOpen }: { material: Material; onOpen: () => void }) {
   const Icon = typeIcon[material.fileType] ?? File;
-  const color = typeColor[material.fileType] ?? typeColor.OTHER;
+  const styles = COLOR_STYLES[colorOf(material)];
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden hover:border-gray-200 hover:shadow-md transition-all group">
       <div className="flex items-center gap-2.5 px-4 pt-3 pb-2">
-        <div className="w-8 h-8 rounded-full bg-amber-600 flex items-center justify-center flex-shrink-0">
+        <div className={`w-8 h-8 rounded-full ${styles.avatar} flex items-center justify-center flex-shrink-0`}>
           <span className="text-white text-xs font-bold">
             {(material.createdBy?.name ?? "A").charAt(0).toUpperCase()}
           </span>
@@ -112,7 +125,7 @@ function FeedCard({ material, onOpen }: { material: Material; onOpen: () => void
           </div>
         ) : (
           <div
-            className={`mx-3 rounded-xl aspect-video flex flex-col items-center justify-center gap-2 ${color} group-hover:opacity-80 transition-opacity`}
+            className={`mx-3 rounded-xl aspect-video flex flex-col items-center justify-center gap-2 ${styles.thumb} group-hover:opacity-80 transition-opacity`}
           >
             <Icon className="h-10 w-10 sm:h-14 sm:w-14 opacity-60" />
             <span className="text-xs sm:text-sm font-medium opacity-70">
@@ -121,13 +134,13 @@ function FeedCard({ material, onOpen }: { material: Material; onOpen: () => void
           </div>
         )}
         <div className="px-4 pt-2.5 pb-4">
-          <p className="font-semibold text-gray-900 text-sm leading-snug line-clamp-2 group-hover:text-amber-600 transition-colors">
+          <p className={`font-semibold text-gray-900 text-sm leading-snug line-clamp-2 ${styles.titleHover} transition-colors`}>
             {material.title}
           </p>
           {material.description && (
             <p className="text-xs text-gray-500 mt-1 line-clamp-2">{material.description}</p>
           )}
-          <p className="text-xs text-amber-600 font-medium mt-2 flex items-center gap-0.5">
+          <p className={`text-xs ${styles.accent} font-medium mt-2 flex items-center gap-0.5`}>
             Abrir <ChevronRight className="h-3 w-3" />
           </p>
         </div>

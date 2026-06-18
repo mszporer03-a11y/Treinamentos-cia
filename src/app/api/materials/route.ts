@@ -16,6 +16,7 @@ const materialSchema = z.object({
   fileSize: z.number().optional(),
   categoryId: z.string(),
   published: z.boolean().optional().default(true),
+  color: z.enum(["amber", "blue"]).optional(),
   linkedStoreIds: z.array(z.string()).optional().default([]),
 });
 

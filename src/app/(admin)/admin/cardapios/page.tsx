@@ -20,8 +20,30 @@ interface Material {
   fileUrl: string | null;
   fileType: string;
   published: boolean;
+  color?: string | null;
   createdAt: string;
   category: Category;
+}
+
+type CardColor = "amber" | "blue";
+
+const COLOR_STYLES: Record<CardColor, { thumb: string; chipBtn: string; activeRing: string; swatch: string }> = {
+  amber: {
+    thumb: "bg-amber-50 text-amber-500",
+    chipBtn: "text-amber-700 bg-amber-50 hover:bg-amber-100",
+    activeRing: "ring-amber-500 border-amber-500",
+    swatch: "bg-amber-400",
+  },
+  blue: {
+    thumb: "bg-blue-50 text-blue-500",
+    chipBtn: "text-blue-700 bg-blue-50 hover:bg-blue-100",
+    activeRing: "ring-blue-500 border-blue-500",
+    swatch: "bg-blue-500",
+  },
+};
+
+function colorOf(m: { color?: string | null }): CardColor {
+  return m.color === "blue" ? "blue" : "amber";
 }
 
 function isCardapioCategory(cat: { name: string; slug: string }) {
@@ -40,6 +62,7 @@ export default function AdminCardapiosPage() {
   const [showModal, setShowModal] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [color, setColor] = useState<CardColor>("amber");
   const [pendingFile, setPendingFile] = useState<{
     url: string; key: string; name: string; size: number; mime: string;
   } | null>(null);
@@ -109,6 +132,7 @@ export default function AdminCardapiosPage() {
   function openCreate() {
     setTitle("");
     setDescription("");
+    setColor("amber");
     setPendingFile(null);
     setError("");
     setShowModal(true);
@@ -149,6 +173,7 @@ export default function AdminCardapiosPage() {
         fileSize: pendingFile.size,
         categoryId: cat.id,
         published: true,
+        color,
       }),
     });
 
@@ -241,61 +266,64 @@ export default function AdminCardapiosPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map((material) => (
-            <div
-              key={material.id}
-              className={`bg-white rounded-2xl border shadow-sm overflow-hidden transition ${
-                material.published ? "border-gray-100" : "border-gray-200 ring-1 ring-gray-200"
-              }`}
-            >
-              <div className="relative">
-                {material.fileType === "IMAGE" && material.fileUrl ? (
-                  <div className={`aspect-video bg-gray-100 ${material.published ? "" : "opacity-50 grayscale"}`}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={material.fileUrl}
-                      alt={material.title}
-                      className="w-full h-full object-cover"
-                    />
+          {filtered.map((material) => {
+            const styles = COLOR_STYLES[colorOf(material)];
+            return (
+              <div
+                key={material.id}
+                className={`bg-white rounded-2xl border shadow-sm overflow-hidden transition ${
+                  material.published ? "border-gray-100" : "border-gray-200 ring-1 ring-gray-200"
+                }`}
+              >
+                {/* Card clicável — abre o cardápio */}
+                <a
+                  href={material.fileUrl ?? "#"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block group cursor-pointer hover:bg-gray-50/50 transition"
+                >
+                  <div className="relative">
+                    {material.fileType === "IMAGE" && material.fileUrl ? (
+                      <div className={`aspect-video bg-gray-100 ${material.published ? "" : "opacity-50 grayscale"}`}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={material.fileUrl}
+                          alt={material.title}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    ) : (
+                      <div className={`aspect-video ${styles.thumb} flex flex-col items-center justify-center gap-2 ${material.published ? "" : "opacity-50 grayscale"}`}>
+                        <FileText className="h-10 w-10 opacity-70 group-hover:scale-105 transition-transform" />
+                        <span className="text-xs font-medium opacity-70">{material.fileType}</span>
+                      </div>
+                    )}
+                    {!material.published && (
+                      <span className="absolute top-2 left-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-gray-900/80 text-white">
+                        <EyeOff className="h-3 w-3" /> Oculto
+                      </span>
+                    )}
                   </div>
-                ) : (
-                  <div className={`aspect-video bg-amber-50 flex flex-col items-center justify-center gap-2 text-amber-500 ${material.published ? "" : "opacity-50 grayscale"}`}>
-                    <FileText className="h-10 w-10 opacity-70" />
-                    <span className="text-xs font-medium opacity-70">{material.fileType}</span>
+                  <div className="px-4 pt-4 pb-2">
+                    <p className="font-semibold text-gray-900 text-sm leading-snug line-clamp-2 group-hover:underline">
+                      {material.title}
+                    </p>
+                    {material.description && (
+                      <p className="text-xs text-gray-500 mt-1 line-clamp-2">{material.description}</p>
+                    )}
                   </div>
-                )}
-                {!material.published && (
-                  <span className="absolute top-2 left-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-gray-900/80 text-white">
-                    <EyeOff className="h-3 w-3" /> Oculto
-                  </span>
-                )}
-              </div>
-              <div className="p-4">
-                <p className="font-semibold text-gray-900 text-sm leading-snug line-clamp-2">
-                  {material.title}
-                </p>
-                {material.description && (
-                  <p className="text-xs text-gray-500 mt-1 line-clamp-2">{material.description}</p>
-                )}
-                <div className="flex items-center justify-between mt-3">
+                </a>
+
+                {/* Rodapé de ações (fora do link) */}
+                <div className="px-4 pb-4 flex items-center justify-between">
                   <span className="text-xs text-gray-400">{formatDate(material.createdAt)}</span>
                   <div className="flex items-center gap-1">
-                    {material.fileUrl && (
-                      <a
-                        href={material.fileUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="px-2.5 py-1 text-xs font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-lg transition"
-                      >
-                        Abrir
-                      </a>
-                    )}
                     <button
                       onClick={() => toggleVisibility(material)}
                       className={`p-1.5 rounded-lg transition ${
                         material.published
                           ? "text-gray-400 hover:text-gray-700 hover:bg-gray-100"
-                          : "text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                          : styles.chipBtn
                       }`}
                       title={material.published ? "Ocultar para franqueados e gerentes" : "Tornar visível"}
                     >
@@ -311,8 +339,8 @@ export default function AdminCardapiosPage() {
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -347,6 +375,29 @@ export default function AdminCardapiosPage() {
                   rows={2}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm resize-none"
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Cor do cardápio</label>
+                <div className="flex gap-3">
+                  {(["amber", "blue"] as const).map((c) => {
+                    const active = color === c;
+                    return (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => setColor(c)}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl border-2 text-sm font-medium transition ${
+                          active
+                            ? `${COLOR_STYLES[c].activeRing} ring-2 ring-offset-1`
+                            : "border-gray-200 hover:border-gray-300"
+                        }`}
+                      >
+                        <span className={`w-4 h-4 rounded-full ${COLOR_STYLES[c].swatch}`} />
+                        {c === "amber" ? "Amarelo" : "Azul"}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Arquivo *</label>

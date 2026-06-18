@@ -9,6 +9,7 @@ const updateSchema = z.object({
   title: z.string().min(1).max(200).optional(),
   description: z.string().optional(),
   published: z.boolean().optional(),
+  color: z.enum(["amber", "blue"]).optional(),
   categoryId: z.string().optional(),
 });
 
