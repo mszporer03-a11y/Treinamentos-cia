@@ -24,6 +24,7 @@ import {
   Inbox,
   Bell,
   UtensilsCrossed,
+  GraduationCap,
 } from "lucide-react";
 
 interface AdminSidebarProps {
@@ -50,6 +51,7 @@ const sections: {
     label: "Conteúdo",
     items: [
       { href: "/admin/materials", label: "Materiais", icon: FileText },
+      { href: "/admin/universidade", label: "Universidade", icon: GraduationCap },
       { href: "/admin/cardapios", label: "Cardápios do Mês", icon: UtensilsCrossed },
       { href: "/admin/categories", label: "Categorias", icon: FolderOpen },
       { href: "/admin/campaigns", label: "Campanhas", icon: Megaphone },

@@ -7,6 +7,7 @@ export type BadgeCounts = Partial<{
   solicitacoes: number;
   materiais: number;
   cardapios: number;
+  universidade: number;
   documentos: number;
   notificacoes: number;
 }>;
@@ -17,6 +18,7 @@ export const BADGE_KEY: Record<string, keyof BadgeCounts> = {
   "/solicitacoes":  "solicitacoes",
   "/materiais":     "materiais",
   "/cardapios":     "cardapios",
+  "/universidade":  "universidade",
   "/documents":     "documentos",
   "/notificacoes":  "notificacoes",
   // Admin routes

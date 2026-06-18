@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronRight, MessageSquare, Inbox, Bell, FileText, ClipboardList, Store, Users, Megaphone, CheckSquare, MapPin, UtensilsCrossed } from "lucide-react";
+import { ChevronRight, MessageSquare, Inbox, Bell, FileText, ClipboardList, Store, Users, Megaphone, CheckSquare, MapPin, UtensilsCrossed, GraduationCap } from "lucide-react";
 import { useBadges, BADGE_KEY } from "@/hooks/useBadges";
 
 const ADMIN_NAV = [
@@ -9,6 +9,7 @@ const ADMIN_NAV = [
   { href: "/admin/solicitacoes", icon: Inbox,         label: "Solicitações",       desc: "Solicitações pendentes da rede", bg: "from-indigo-600 to-indigo-500" },
   { href: "/admin/notificacoes", icon: Bell,          label: "Notificações",       desc: "Alertas e campanhas",            bg: "from-rose-600 to-rose-500" },
   { href: "/admin/materials",    icon: FileText,      label: "Materiais",          desc: "Publicar e gerenciar conteúdos", bg: "from-purple-600 to-purple-500" },
+  { href: "/admin/universidade", icon: GraduationCap, label: "Universidade",       desc: "Tutoriais em vídeo da plataforma", bg: "from-indigo-600 to-indigo-500" },
   { href: "/admin/cardapios",    icon: UtensilsCrossed, label: "Cardápios do Mês", desc: "Anexar e gerenciar cardápios",   bg: "from-amber-600 to-amber-500" },
   { href: "/admin/checklists",   icon: ClipboardList, label: "Planilhas de controle", desc: "Gerenciar planilhas operacionais", bg: "from-orange-600 to-orange-500" },
   { href: "/admin/stores",       icon: Store,         label: "Lojas",              desc: "Gerenciar lojas da rede",        bg: "from-emerald-600 to-emerald-500" },

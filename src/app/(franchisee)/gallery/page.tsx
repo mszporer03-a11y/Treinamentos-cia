@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useSession } from "next-auth/react";
 import { MaterialViewer } from "@/components/franchisee/MaterialViewer";
-import { Play, FileText, Image as ImageIcon, File, MessageSquare, ClipboardList, BookOpen, ChevronRight, SlidersHorizontal, Megaphone, Inbox, UtensilsCrossed, Bell, Users } from "lucide-react";
+import { Play, FileText, Image as ImageIcon, File, MessageSquare, ClipboardList, BookOpen, ChevronRight, SlidersHorizontal, Megaphone, Inbox, UtensilsCrossed, Bell, Users, GraduationCap } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { useBadges, BADGE_KEY } from "@/hooks/useBadges";
 
@@ -160,6 +160,14 @@ const NAV_ITEMS: GalleryNavItem[] = [
     desc: "Cardápios do mês disponíveis para a rede",
     bg: "from-amber-600 to-amber-500",
     tutorialId: "nav-cardapios",
+  },
+  {
+    href: "/universidade",
+    icon: GraduationCap,
+    label: "Universidade",
+    desc: "Vídeos e tutoriais de uso da plataforma",
+    bg: "from-indigo-600 to-indigo-500",
+    tutorialId: "nav-universidade",
   },
   {
     href: "/documents",

@@ -21,6 +21,7 @@ import {
   UtensilsCrossed,
   Bell,
   Users,
+  GraduationCap,
 } from "lucide-react";
 
 interface FranchiseeSidebarProps {
@@ -52,6 +53,7 @@ const sections: { label: string; items: NavItem[] }[] = [
     label: "Treinamentos",
     items: [
       { href: "/materiais", label: "Todos os Treinamentos", icon: BookOpen },
+      { href: "/universidade", label: "Universidade", icon: GraduationCap },
       { href: "/cardapios", label: "Cardápios", icon: UtensilsCrossed },
     ],
   },

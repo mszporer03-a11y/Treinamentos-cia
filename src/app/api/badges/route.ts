@@ -59,7 +59,7 @@ export async function GET() {
     .findMany({ where: { userId }, select: { storeId: true } })
     .then((rows) => rows.map((r) => r.storeId));
 
-  const [chat, solicitacoes, materiais, cardapios, documentos, notificacoes] =
+  const [chat, solicitacoes, materiais, cardapios, universidade, documentos, notificacoes] =
     await Promise.all([
       // Unread messages from admin
       db.message.count({
@@ -84,7 +84,7 @@ export async function GET() {
         },
       }),
 
-      // New materials (not cardápio) published in last 14 days, not yet viewed
+      // New materials (excluindo cardápio e universidade) nos últimos 14 dias, não vistos
       db.material.count({
         where: {
           published: true,
@@ -95,6 +95,8 @@ export async function GET() {
               OR: [
                 { name: { contains: "cardápio", mode: "insensitive" } },
                 { slug: { contains: "cardapio" } },
+                { name: { contains: "universidade", mode: "insensitive" } },
+                { slug: { contains: "universidade" } },
               ],
             },
           },
@@ -111,6 +113,21 @@ export async function GET() {
             OR: [
               { name: { contains: "cardápio", mode: "insensitive" } },
               { slug: { contains: "cardapio" } },
+            ],
+          },
+        },
+      }),
+
+      // New universidade tutorials published in last 30 days, not yet viewed
+      db.material.count({
+        where: {
+          published: true,
+          createdAt: { gte: thirtyDays },
+          views: { none: { userId } },
+          category: {
+            OR: [
+              { name: { contains: "universidade", mode: "insensitive" } },
+              { slug: { contains: "universidade" } },
             ],
           },
         },
@@ -141,6 +158,7 @@ export async function GET() {
     solicitacoes,
     materiais,
     cardapios,
+    universidade,
     documentos,
     notificacoes,
   });
