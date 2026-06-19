@@ -67,6 +67,9 @@ export default function SolicitacoesPage() {
     fetch("/api/solicitacoes")
       .then((r) => r.json())
       .then((d) => { setItems(Array.isArray(d) ? d : []); setLoading(false); });
+    // Ao abrir o acompanhamento, marca as atualizações de status como vistas
+    // para remover a notificação (badge).
+    fetch("/api/solicitacoes/seen", { method: "POST" }).catch(() => {});
   }, []);
 
   if (!session?.user) return null;

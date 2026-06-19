@@ -17,7 +17,6 @@ export async function GET() {
   const userId = session.user.id;
   const isAdmin = session.user.role === "ADMIN";
 
-  const sevenDaysAgo  = new Date(Date.now() -  7 * 24 * 60 * 60 * 1000);
   const fourteenDays  = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
   const thirtyDays    = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
@@ -54,17 +53,13 @@ export async function GET() {
 
   const [solicitacoes, comunicados, registros, cianews, materiais, cardapios, universidade] =
     await Promise.all([
-      // Solicitações com atualização de status nos últimos 7 dias
+      // Solicitações com atualização de status ainda não vista pelo franqueado
       db.message.count({
         where: {
           conversation: { franchiseeId: userId },
           category: { not: null },
           requestStatus: { in: ["SEEN", "IN_PROGRESS", "DONE"] },
-          OR: [
-            { seenAt:        { gte: sevenDaysAgo } },
-            { inProgressAt:  { gte: sevenDaysAgo } },
-            { doneAt:        { gte: sevenDaysAgo } },
-          ],
+          readByFranchisee: false,
         },
       }),
 

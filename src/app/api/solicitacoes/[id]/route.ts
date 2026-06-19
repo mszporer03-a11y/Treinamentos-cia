@@ -59,8 +59,10 @@ export async function PATCH(
 
   const now = new Date();
 
-  // Status + timestamps são compartilhados por todas as cópias do grupo
-  const statusData: Record<string, unknown> = { requestStatus: status };
+  // Status + timestamps são compartilhados por todas as cópias do grupo.
+  // readByFranchisee = false reativa a notificação de "atualização" no portal
+  // do franqueado, que some quando ele abre o acompanhamento.
+  const statusData: Record<string, unknown> = { requestStatus: status, readByFranchisee: false };
   if (status === "SEEN")        statusData.seenAt = now;
   if (status === "IN_PROGRESS") statusData.inProgressAt = now;
   if (status === "DONE")        statusData.doneAt = now;
