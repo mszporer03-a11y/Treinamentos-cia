@@ -107,7 +107,6 @@ model Store {
   active         Boolean              @default(true)
   users          UserStore[]
   alerts         NonComplianceAlert[]
-  kiloPrices     KiloPrice[]
   onboarding     StoreOnboarding?
   messageLinks   MessageStore[]
   materialLinks  MaterialStore[]
@@ -299,19 +298,6 @@ model SurveyResponse {
   respondedAt DateTime     @default(now())
 
   @@unique([surveyId, userId])
-}
-
-// ── Preço do Quilo ──────────────────────────────────────────────────────
-model KiloPrice {
-  id            String    @id @default(cuid())
-  storeId       String
-  store         Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  price         Float
-  suggestedById String?
-  suggestedNote String?
-  confirmedAt   DateTime?
-  effectiveFrom DateTime  @default(now())
-  createdAt     DateTime  @default(now())
 }
 
 // ── Onboarding de Loja ──────────────────────────────────────────────────

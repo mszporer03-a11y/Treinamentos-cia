@@ -21,7 +21,6 @@ import {
   Newspaper,
   UtensilsCrossed,
   GraduationCap,
-  Tag,
 } from "lucide-react";
 
 interface AdminSidebarProps {
@@ -60,7 +59,6 @@ const sections: {
       { href: "/admin/stores", label: "Lojas", icon: Store },
       { href: "/admin/map", label: "Mapa de Lojas", icon: MapPin },
       { href: "/admin/onboarding", label: "Inauguração", icon: CheckSquare },
-      { href: "/admin/kilo-price", label: "Preço do Quilo", icon: Tag },
       { href: "/admin/users", label: "Usuários", icon: Users },
     ],
   },
