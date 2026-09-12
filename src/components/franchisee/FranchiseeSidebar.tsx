@@ -18,6 +18,7 @@ import {
   UtensilsCrossed,
   Newspaper,
   GraduationCap,
+  MessageSquare,
 } from "lucide-react";
 
 interface FranchiseeSidebarProps {
@@ -48,6 +49,7 @@ const sections: { label: string; items: NavItem[] }[] = [
   {
     label: "Solicitações",
     items: [
+      { href: "/chat", label: "Chat com a equipe", icon: MessageSquare },
       { href: "/solicitacoes", label: "Acompanhamento", icon: Inbox },
       { href: "/solicitar", label: "Nova solicitação", icon: Send },
     ],

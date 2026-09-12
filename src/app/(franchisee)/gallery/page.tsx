@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useSession } from "next-auth/react";
 import { MaterialViewer } from "@/components/franchisee/MaterialViewer";
-import { Play, FileText, Image as ImageIcon, File, ClipboardList, BookOpen, ChevronRight, SlidersHorizontal, Megaphone, Inbox, UtensilsCrossed, Newspaper, GraduationCap, Send } from "lucide-react";
+import { Play, FileText, Image as ImageIcon, File, ClipboardList, BookOpen, ChevronRight, SlidersHorizontal, Megaphone, Inbox, UtensilsCrossed, Newspaper, GraduationCap, Send, MessageSquare } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { useBadges, BADGE_KEY } from "@/hooks/useBadges";
 
@@ -121,6 +121,14 @@ type GalleryNavItem = {
 };
 
 const NAV_ITEMS: GalleryNavItem[] = [
+  {
+    href: "/chat",
+    icon: MessageSquare,
+    label: "Chat com a equipe",
+    desc: "Converse diretamente com a Companhia do Churrasco",
+    bg: "from-blue-600 to-blue-500",
+    tutorialId: "nav-chat",
+  },
   {
     href: "/solicitacoes",
     icon: Inbox,

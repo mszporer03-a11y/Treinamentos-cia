@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronRight, Inbox, Megaphone, ClipboardList, Newspaper, FileText, UtensilsCrossed, GraduationCap } from "lucide-react";
+import { ChevronRight, Inbox, Megaphone, ClipboardList, Newspaper, FileText, UtensilsCrossed, GraduationCap, MessageSquare } from "lucide-react";
 import { useBadges, BADGE_KEY } from "@/hooks/useBadges";
 
 const ADMIN_NAV = [
+  { href: "/admin/chat",         icon: MessageSquare, label: "Chat",               desc: "Converse com franqueados e gerentes", bg: "from-blue-600 to-blue-500" },
   { href: "/admin/solicitacoes", icon: Inbox,         label: "Acompanhamento de solicitações", desc: "Solicitações da rede e andamento", bg: "from-indigo-600 to-indigo-500" },
   { href: "/admin/comunicados",  icon: Megaphone,     label: "Comunicados",        desc: "Avisos gerais para toda a rede",  bg: "from-sky-600 to-sky-500" },
   { href: "/admin/registros",    icon: ClipboardList, label: "Registros",          desc: "Ocorrências por loja",            bg: "from-orange-600 to-orange-500" },
