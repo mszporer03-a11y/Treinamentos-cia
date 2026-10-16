@@ -1,6 +1,8 @@
 ﻿"use client";
 
 import { useState, useEffect } from "react";
+import { PdfThumbnail } from "@/components/PdfPreview";
+import { ComunicadoCard, comunicadoToViewer, type ComunicadoItem } from "@/components/franchisee/ComunicadoCard";
 import Link from "next/link";
 import Image from "next/image";
 import { useSession } from "next-auth/react";
@@ -81,7 +83,9 @@ function FeedCard({ material, onOpen }: { material: Material; onOpen: () => void
       </div>
 
       <button onClick={onOpen} className="w-full text-left focus:outline-none">
-        {material.fileType === "IMAGE" ? (
+        {material.fileType === "PDF" && material.fileUrl ? (
+          <PdfThumbnail url={material.fileUrl} className="mx-3 rounded-xl aspect-video group-hover:opacity-90 transition-opacity" />
+        ) : material.fileType === "IMAGE" ? (
           <div className="mx-3 rounded-xl overflow-hidden bg-gray-100 aspect-video">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={material.fileUrl ?? ""} alt={material.title}
@@ -203,6 +207,8 @@ export default function GalleryPage() {
   const [activeCategory, setActiveCategory] = useState<string>("all");
   const [showFilters, setShowFilters] = useState(false);
   const [viewing, setViewing] = useState<Material | null>(null);
+  const [novidades, setNovidades] = useState<ComunicadoItem[]>([]);
+  const [viewingNovidade, setViewingNovidade] = useState<ComunicadoItem | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -217,6 +223,10 @@ export default function GalleryPage() {
       setLoading(false);
     }
     load();
+    fetch("/api/comunicados")
+      .then((r) => r.json())
+      .then((list) => setNovidades(Array.isArray(list) ? list.slice(0, 3) : []))
+      .catch(() => {});
   }, []);
 
   const filtered =
@@ -288,6 +298,33 @@ export default function GalleryPage() {
           );
         })}
       </div>
+
+      {/* Novidades em destaque */}
+      {novidades.length > 0 && (
+        <div className="mb-10">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold text-gray-900">Novidades</h2>
+            <Link href="/comunicados" className="text-xs font-medium text-sky-600 hover:underline">
+              Ver todas
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {novidades.map((item, i) => (
+              <ComunicadoCard
+                key={item.id}
+                item={item}
+                featured={i === 0}
+                isNew={!item.views || item.views.length === 0}
+                onOpen={() => {
+                  setViewingNovidade(item);
+                  if (!item.views || item.views.length === 0)
+                    fetch(`/api/comunicados/${item.id}/view`, { method: "POST" });
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Materials section */}
       <div data-tutorial="materials-section" className="flex items-center justify-between mb-4">
@@ -362,6 +399,9 @@ export default function GalleryPage() {
       )}
 
       {viewing && <MaterialViewer material={viewing} onClose={() => setViewing(null)} />}
+      {viewingNovidade && (
+        <MaterialViewer material={comunicadoToViewer(viewingNovidade)} onClose={() => setViewingNovidade(null)} />
+      )}
     </div>
   );
 }

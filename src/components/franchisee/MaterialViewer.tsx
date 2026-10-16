@@ -1,6 +1,7 @@
 "use client";
 
-import { X } from "lucide-react";
+import { X, Download } from "lucide-react";
+import { PdfPages } from "@/components/PdfPreview";
 
 interface Material {
   id: string;
@@ -9,6 +10,9 @@ interface Material {
   fileUrl: string | null;
   fileType: string;
   mimeType?: string | null;
+  fileName?: string | null;
+  /** Texto completo exibido acima do arquivo (ex.: corpo do comunicado) */
+  body?: string | null;
 }
 
 interface MaterialViewerProps {
@@ -47,13 +51,7 @@ export function MaterialViewer({ material, onClose }: MaterialViewerProps) {
         );
 
       case "PDF":
-        return (
-          <iframe
-            src={material.fileUrl ?? ""}
-            className="w-full h-[calc(100svh-120px)] sm:h-[70vh] rounded-lg border-0"
-            title={material.title}
-          />
-        );
+        return <PdfPages url={material.fileUrl ?? ""} />;
 
       case "IMAGE":
         return (
@@ -108,6 +106,18 @@ export function MaterialViewer({ material, onClose }: MaterialViewerProps) {
             )}
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
+            {material.fileUrl && material.fileType !== "NOTICE" && (
+              <a
+                href={`/api/file-proxy?url=${encodeURIComponent(material.fileUrl)}&download=${encodeURIComponent(
+                  material.fileName || material.title
+                )}`}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white text-xs font-medium rounded-lg transition"
+                title="Baixar arquivo"
+              >
+                <Download className="h-4 w-4" />
+                <span className="hidden sm:inline">Baixar</span>
+              </a>
+            )}
             <button
               onClick={onClose}
               className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition"
@@ -119,7 +129,14 @@ export function MaterialViewer({ material, onClose }: MaterialViewerProps) {
         </div>
 
         {/* Content */}
-        <div className="p-4 overflow-auto flex-1">{renderContent()}</div>
+        <div className="p-4 overflow-auto flex-1">
+          {material.body && (
+            <p className="text-gray-800 text-sm sm:text-base leading-relaxed whitespace-pre-wrap mb-4">
+              {material.body}
+            </p>
+          )}
+          {renderContent()}
+        </div>
       </div>
     </div>
   );

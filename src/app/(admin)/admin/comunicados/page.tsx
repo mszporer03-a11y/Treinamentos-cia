@@ -6,6 +6,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { Megaphone, Plus, Trash2, Loader2, Paperclip, X, Eye } from "lucide-react";
 import { useUploadThing } from "@/lib/uploadthing-components";
 import { formatDate } from "@/lib/utils";
+import { PdfThumbnail } from "@/components/PdfPreview";
 
 interface Comunicado {
   id: string;
@@ -69,7 +70,13 @@ export default function AdminComunicadosPage() {
     setError("");
 
     const ext = pendingFile?.name.split(".").pop()?.toLowerCase() ?? "";
-    const isImg = ["jpg", "jpeg", "png", "gif", "webp"].includes(ext);
+    const kind = ["jpg", "jpeg", "png", "gif", "webp"].includes(ext)
+      ? "image"
+      : ext === "pdf"
+        ? "pdf"
+        : ["mp4", "mov", "webm", "m4v"].includes(ext)
+          ? "video"
+          : "document";
 
     const res = await fetch("/api/comunicados", {
       method: "POST",
@@ -80,7 +87,7 @@ export default function AdminComunicadosPage() {
         fileUrl: pendingFile?.url,
         fileKey: pendingFile?.key,
         fileName: pendingFile?.name,
-        fileType: pendingFile ? (isImg ? "image" : "document") : undefined,
+        fileType: pendingFile ? kind : undefined,
         published: true,
       }),
     });
@@ -107,10 +114,10 @@ export default function AdminComunicadosPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl md:text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Megaphone className="h-6 w-6 text-sky-500" /> Comunicados
+            <Megaphone className="h-6 w-6 text-sky-500" /> Novidades e Comunicados
           </h1>
           <p className="text-gray-500 text-sm mt-1">
-            Avisos gerais enviados para toda a rede (com notificação push)
+            Publique novidades para toda a rede: aparecem como card em destaque (com título e a 1ª página do PDF) e enviam notificação push
           </p>
         </div>
         <button
@@ -138,6 +145,9 @@ export default function AdminComunicadosPage() {
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold text-gray-900">{item.title}</p>
                   <p className="text-sm text-gray-600 mt-1 whitespace-pre-wrap leading-relaxed">{item.body}</p>
+                  {item.fileUrl && /.pdf$/i.test(item.fileName ?? item.fileUrl) && (
+                    <PdfThumbnail url={item.fileUrl} className="mt-2 w-40 h-28 rounded-lg border border-gray-100" />
+                  )}
                   {item.fileUrl && (
                     <a
                       href={item.fileUrl}
@@ -185,7 +195,7 @@ export default function AdminComunicadosPage() {
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm"
-                  placeholder="Aviso importante"
+                  placeholder="Ex.: Nova campanha de verão"
                 />
               </div>
               <div>
@@ -219,14 +229,14 @@ export default function AdminComunicadosPage() {
                     className="flex items-center gap-2 px-4 py-2.5 border border-dashed border-gray-300 rounded-xl text-sm text-gray-500 hover:border-sky-400 hover:text-sky-600 transition w-full justify-center"
                   >
                     {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Paperclip className="h-4 w-4" />}
-                    {uploading ? "Enviando arquivo…" : "Anexar imagem ou documento"}
+                    {uploading ? "Enviando arquivo…" : "Anexar imagem, PDF, vídeo ou documento"}
                   </button>
                 )}
                 <input
                   ref={fileInputRef}
                   type="file"
                   className="hidden"
-                  accept="image/*,.pdf,.doc,.docx"
+                  accept="image/*,video/*,.pdf,.doc,.docx,.ppt,.pptx"
                   onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (file) {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { PdfThumbnail } from "@/components/PdfPreview";
 import { Play, FileText, Image, File, Megaphone } from "lucide-react";
 import { formatFileSize, formatDate } from "@/lib/utils";
 import { MaterialViewer } from "./MaterialViewer";
@@ -50,7 +51,11 @@ export function MaterialCard({ material }: MaterialCardProps) {
     <>
       <div className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-all border border-transparent hover:border-blue-100 flex flex-col">
         {/* Thumbnail / Icon area */}
-        {material.fileType === "IMAGE" ? (
+        {material.fileType === "PDF" && material.fileUrl ? (
+          <div className="h-36 rounded-t-2xl overflow-hidden cursor-pointer" onClick={() => setShowViewer(true)}>
+            <PdfThumbnail url={material.fileUrl} className="h-36" />
+          </div>
+        ) : material.fileType === "IMAGE" ? (
           <div
             className="h-36 rounded-t-2xl bg-gray-100 overflow-hidden cursor-pointer"
             onClick={() => setShowViewer(true)}

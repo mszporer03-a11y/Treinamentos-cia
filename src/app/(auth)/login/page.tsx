@@ -4,6 +4,7 @@ export const dynamic = "force-dynamic";
 
 import { useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Lock, Mail } from "lucide-react";
@@ -126,6 +127,11 @@ export default function LoginPage() {
 
         <p className="text-center text-xs text-gray-400 mt-6">
           Problemas com acesso? Fale com o administrador.
+        </p>
+        <p className="text-center text-sm mt-3">
+          <Link href="/instalar" className="text-blue-600 hover:underline font-medium">
+            📱 Instalar o app (Android e iPhone)
+          </Link>
         </p>
       </div>
     </div>

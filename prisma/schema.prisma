@@ -102,6 +102,9 @@ model Store {
   name           String
   code           String               @unique
   city           String?
+  // Contato individual da loja (gerente/responsável direto)
+  contactName    String?
+  contactPhone   String?
   lat            Float?
   lng            Float?
   active         Boolean              @default(true)

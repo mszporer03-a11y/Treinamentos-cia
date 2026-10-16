@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { PdfThumbnail } from "@/components/PdfPreview";
 import { Play, FileText, Image as ImageIcon, File, Megaphone } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { MaterialViewer } from "@/components/franchisee/MaterialViewer";
@@ -78,7 +79,9 @@ function FeedCard({ material, onOpen }: { material: Material; onOpen: () => void
 
       {/* Preview */}
       <button onClick={onOpen} className="w-full text-left focus:outline-none group">
-        {material.fileType === "IMAGE" ? (
+        {material.fileType === "PDF" && material.fileUrl ? (
+          <PdfThumbnail url={material.fileUrl} className="mx-3 rounded-xl aspect-video group-hover:opacity-90 transition-opacity" />
+        ) : material.fileType === "IMAGE" ? (
           <div className="mx-3 rounded-xl overflow-hidden bg-gray-100 aspect-video">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img

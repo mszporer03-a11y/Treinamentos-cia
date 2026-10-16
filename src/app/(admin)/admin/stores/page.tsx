@@ -3,7 +3,7 @@
 export const dynamic = "force-dynamic";
 
 import { useState, useEffect, useCallback } from "react";
-import { Plus, Pencil, Trash2, Store as StoreIcon, Users, X, UserPlus } from "lucide-react";
+import { Plus, Pencil, Trash2, Store as StoreIcon, Users, X, UserPlus, Phone } from "lucide-react";
 
 interface UserRef {
   id: string;
@@ -20,6 +20,8 @@ interface StoreData {
   name: string;
   code: string;
   city: string | null;
+  contactName: string | null;
+  contactPhone: string | null;
   active: boolean;
   users: StoreUser[];
 }
@@ -31,7 +33,22 @@ interface AllUser {
   role: string;
 }
 
-const DEFAULT_FORM = { name: "", code: "", city: "", active: true };
+const DEFAULT_FORM = { name: "", code: "", city: "", contactName: "", contactPhone: "", active: true };
+
+// Payload da API: campos de contato vazios viram null
+function toPayload(f: typeof DEFAULT_FORM) {
+  return {
+    ...f,
+    city: f.city || undefined,
+    contactName: f.contactName.trim() || null,
+    contactPhone: f.contactPhone.trim() || null,
+  };
+}
+
+function whatsappLink(phone: string) {
+  const digits = phone.replace(/\D/g, "");
+  return `https://wa.me/${digits.length <= 11 ? "55" + digits : digits}`;
+}
 
 export default function StoresPage() {
   const [stores, setStores] = useState<StoreData[]>([]);
@@ -66,7 +83,14 @@ export default function StoresPage() {
 
   function openEdit(s: StoreData) {
     setEditing(s);
-    setForm({ name: s.name, code: s.code, city: s.city ?? "", active: s.active });
+    setForm({
+      name: s.name,
+      code: s.code,
+      city: s.city ?? "",
+      contactName: s.contactName ?? "",
+      contactPhone: s.contactPhone ?? "",
+      active: s.active,
+    });
     setError("");
     setShowEdit(true);
   }
@@ -78,7 +102,7 @@ export default function StoresPage() {
     const res = await fetch("/api/stores", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...form, city: form.city || undefined }),
+      body: JSON.stringify(toPayload(form)),
     });
     setSaving(false);
     if (!res.ok) { const d = await res.json(); setError(d.error ?? "Erro"); return; }
@@ -94,7 +118,7 @@ export default function StoresPage() {
     const res = await fetch(`/api/stores/${editing.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...form, city: form.city || undefined }),
+      body: JSON.stringify(toPayload(form)),
     });
     setSaving(false);
     if (!res.ok) { const d = await res.json(); setError(d.error ?? "Erro"); return; }
@@ -149,6 +173,15 @@ export default function StoresPage() {
         <input value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })}
           className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
       </div>
+      <div className="rounded-xl border border-gray-200 p-3 space-y-3 bg-gray-50">
+        <p className="text-xs font-semibold text-gray-500 uppercase">Contato individual da loja</p>
+        <input value={form.contactName} onChange={(e) => setForm({ ...form, contactName: e.target.value })}
+          placeholder="Nome do responsável"
+          className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        <input value={form.contactPhone} onChange={(e) => setForm({ ...form, contactPhone: e.target.value })}
+          placeholder="Telefone / WhatsApp com DDD" inputMode="tel"
+          className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
+      </div>
       <label className="flex items-center gap-2 cursor-pointer">
         <input type="checkbox" checked={form.active} onChange={(e) => setForm({ ...form, active: e.target.checked })}
           className="rounded" />
@@ -193,6 +226,21 @@ export default function StoresPage() {
                   {store.active ? "Ativa" : "Inativa"}
                 </span>
               </div>
+
+              {store.contactPhone ? (
+                <div className="flex items-center gap-2 text-sm text-gray-700 mb-3">
+                  <Phone className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                  <span className="truncate">
+                    {store.contactName ? `${store.contactName} · ` : ""}{store.contactPhone}
+                  </span>
+                  <a href={whatsappLink(store.contactPhone)} target="_blank" rel="noopener noreferrer"
+                    className="ml-auto text-xs font-medium text-green-600 hover:underline flex-shrink-0">
+                    WhatsApp
+                  </a>
+                </div>
+              ) : (
+                <p className="text-xs text-gray-400 mb-3">Sem contato cadastrado</p>
+              )}
 
               <div className="flex items-center gap-1.5 text-sm text-gray-500 mb-4">
                 <Users className="h-4 w-4" />
