@@ -72,7 +72,8 @@ export async function POST(req: Request) {
       }
     }
 
-    const storeIds = data.storeIds ?? [];
+    // Administradores não ficam vinculados a lojas
+    const storeIds = data.role === "ADMIN" ? [] : data.storeIds ?? [];
 
     const existing = await db.user.findUnique({
       where: { email: data.email },

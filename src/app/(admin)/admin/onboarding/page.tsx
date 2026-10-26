@@ -1,11 +1,18 @@
 ﻿"use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
-import { CheckSquare, Plus, X, CheckCircle2, Circle } from "lucide-react";
+import { CheckSquare, Plus, X, CheckCircle2, Circle, Paperclip, Loader2 } from "lucide-react";
+import { useUploadThing } from "@/lib/uploadthing-components";
+import { PdfThumbnail } from "@/components/PdfPreview";
+import { MaterialViewer } from "@/components/franchisee/MaterialViewer";
+import { comunicadoFileKind, comunicadoToViewer } from "@/components/franchisee/ComunicadoCard";
 
 type Store = { id: string; name: string; code: string };
-type Step = { id: string; title: string; description: string | null; phase: string; responsible: string | null; order: number; completedAt: string | null };
+type Step = {
+  id: string; title: string; description: string | null; phase: string; responsible: string | null; order: number; completedAt: string | null;
+  fileUrl: string | null; fileName: string | null; fileType: string | null;
+};
 type Onboarding = {
   id: string;
   isNewStore: boolean;
@@ -30,6 +37,25 @@ export default function OnboardingPage() {
   const [form, setForm] = useState({ storeId: "", isNewStore: true });
   const [saving, setSaving] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [viewing, setViewing] = useState<Step | null>(null);
+  const [uploadingStep, setUploadingStep] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  // Etapa que receberá o próximo arquivo escolhido (guardada em ref para o callback do upload)
+  const targetRef = useRef<{ onboardingId: string; stepId: string } | null>(null);
+
+  const { startUpload } = useUploadThing("chatAttachment", {
+    onClientUploadComplete: async (res) => {
+      const file = res?.[0];
+      const target = targetRef.current;
+      if (file && target) {
+        const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+        const type = ["jpg", "jpeg", "png", "gif", "webp"].includes(ext) ? "image" : ext === "pdf" ? "pdf" : "document";
+        await patchStep(target.onboardingId, { stepId: target.stepId, file: { url: file.url, key: file.key, name: file.name, type } });
+      }
+      setUploadingStep(null);
+    },
+    onUploadError: () => setUploadingStep(null),
+  });
 
   useEffect(() => {
     Promise.all([
@@ -52,13 +78,23 @@ export default function OnboardingPage() {
     setSaving(false);
   }
 
-  async function toggleStep(onboardingId: string, stepId: string, completed: boolean) {
+  async function patchStep(onboardingId: string, body: Record<string, unknown>) {
     const res = await fetch(`/api/onboarding/${onboardingId}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ stepId, completed }),
+      body: JSON.stringify(body),
     });
+    if (!res.ok) return;
     const updated = await res.json();
     setOnboardings((prev) => prev.map((o) => (o.id === onboardingId ? updated : o)));
+  }
+
+  function toggleStep(onboardingId: string, stepId: string, completed: boolean) {
+    return patchStep(onboardingId, { stepId, completed });
+  }
+
+  function pickFile(onboardingId: string, stepId: string) {
+    targetRef.current = { onboardingId, stepId };
+    fileInputRef.current?.click();
   }
 
   const existingStoreIds = new Set(onboardings.map((o) => o.store.id));
@@ -150,7 +186,32 @@ export default function OnboardingPage() {
                             </div>
                             {step.description && <p className="text-xs text-gray-500 mt-0.5">{step.description}</p>}
                             {step.responsible && <p className="text-xs text-teal-600 mt-0.5">Responsável: {step.responsible}</p>}
+                            {step.fileUrl && (() => {
+                              const kind = comunicadoFileKind(step);
+                              return (
+                                <div className="mt-2 flex items-start gap-2">
+                                  <button type="button" onClick={() => setViewing(step)} className="block w-40 rounded-lg overflow-hidden border border-gray-200 bg-gray-50 hover:shadow transition text-left">
+                                    {kind === "IMAGE" ? (
+                                      // eslint-disable-next-line @next/next/no-img-element
+                                      <img src={step.fileUrl} alt={step.title} className="w-full aspect-video object-cover" />
+                                    ) : kind === "PDF" ? (
+                                      <PdfThumbnail url={step.fileUrl} className="aspect-video" />
+                                    ) : (
+                                      <span className="flex items-center gap-1.5 px-2 py-3 text-xs text-teal-700"><Paperclip className="h-3.5 w-3.5" />{step.fileName ?? "Anexo"}</span>
+                                    )}
+                                  </button>
+                                  <button type="button" title="Remover anexo" onClick={() => patchStep(o.id, { stepId: step.id, file: null })} className="p-1 text-gray-400 hover:text-red-500"><X className="h-4 w-4" /></button>
+                                </div>
+                              );
+                            })()}
                           </div>
+                          {!step.fileUrl && (
+                            <button type="button" disabled={uploadingStep === step.id} onClick={() => pickFile(o.id, step.id)}
+                              className="shrink-0 inline-flex items-center gap-1 text-xs text-gray-500 hover:text-teal-600 disabled:opacity-50" title="Anexar imagem ou PDF">
+                              {uploadingStep === step.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Paperclip className="h-3.5 w-3.5" />}
+                              Anexar
+                            </button>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -161,6 +222,30 @@ export default function OnboardingPage() {
           </div>
         )}
       </div>
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        className="hidden"
+        accept="image/*,.pdf,.doc,.docx"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file && targetRef.current) {
+            setUploadingStep(targetRef.current.stepId);
+            startUpload([file]);
+          }
+          e.target.value = "";
+        }}
+      />
+      {viewing && (
+        <MaterialViewer
+          material={comunicadoToViewer({
+            id: viewing.id, title: viewing.title, body: viewing.description ?? "", fileUrl: viewing.fileUrl,
+            fileName: viewing.fileName, fileType: viewing.fileType, createdAt: "",
+          })}
+          onClose={() => setViewing(null)}
+        />
+      )}
     </>
   );
 }

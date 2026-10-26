@@ -323,6 +323,11 @@ model OnboardingStep {
   description  String?
   phase        OnboardingPhase
   responsible  String?
+  // Anexo da etapa (imagem, PDF...) exibido no formato post-card
+  fileUrl      String?
+  fileKey      String?
+  fileName     String?
+  fileType     String?
   order        Int             @default(0)
   completedAt  DateTime?
 }
