@@ -6,6 +6,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { UtensilsCrossed, Plus, Trash2, Loader2, FileText, Image as ImageIcon, X, Search, Eye, EyeOff } from "lucide-react";
 import { useUploadThing } from "@/lib/uploadthing-components";
 import { formatDate } from "@/lib/utils";
+import { PdfThumbnail } from "@/components/PdfPreview";
 
 interface Category {
   id: string;
@@ -283,7 +284,12 @@ export default function AdminCardapiosPage() {
                   className="block group cursor-pointer hover:bg-gray-50/50 transition"
                 >
                   <div className="relative">
-                    {material.fileType === "IMAGE" && material.fileUrl ? (
+                    {material.fileType === "PDF" && material.fileUrl ? (
+                      <PdfThumbnail
+                        url={material.fileUrl}
+                        className={`aspect-video ${material.published ? "" : "opacity-50 grayscale"}`}
+                      />
+                    ) : material.fileType === "IMAGE" && material.fileUrl ? (
                       <div className={`aspect-video bg-gray-100 ${material.published ? "" : "opacity-50 grayscale"}`}>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img

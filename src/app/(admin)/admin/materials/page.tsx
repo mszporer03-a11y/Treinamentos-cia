@@ -3,11 +3,12 @@
 export const dynamic = "force-dynamic";
 
 import { useState, useEffect, useCallback } from "react";
-import { Plus, Pencil, Trash2, Eye, EyeOff, FileText, Upload, CheckCircle, ExternalLink, Users } from "lucide-react";
+import { Plus, Pencil, Trash2, Eye, EyeOff, FileText, Upload, CheckCircle, ExternalLink, Users, Play, Image as ImageIcon, File, Megaphone } from "lucide-react";
 import { UploadButton } from "@/lib/uploadthing-components";
-import { getFileType, formatFileSize, formatDate, fileTypeIcon } from "@/lib/utils";
+import { getFileType, formatFileSize, formatDate } from "@/lib/utils";
 import { MaterialViewer } from "@/components/franchisee/MaterialViewer";
 import { MaterialViewsModal } from "@/components/admin/MaterialViewsModal";
+import { PdfThumbnail } from "@/components/PdfPreview";
 
 interface Category {
   id: string;
@@ -34,6 +35,7 @@ interface Material {
   category: Category;
   linkedStores: { store: StoreRef }[];
   createdAt: string;
+  createdBy?: { name: string } | null;
 }
 
 interface UploadedFile {
@@ -43,6 +45,33 @@ interface UploadedFile {
   size: number;
   type: string;
 }
+
+const typeIcon: Record<string, React.ElementType> = {
+  VIDEO: Play,
+  PDF: FileText,
+  IMAGE: ImageIcon,
+  DOCUMENT: FileText,
+  OTHER: File,
+  NOTICE: Megaphone,
+};
+
+const typeColor: Record<string, string> = {
+  VIDEO: "bg-red-100 text-red-500",
+  PDF: "bg-orange-100 text-orange-500",
+  IMAGE: "bg-green-100 text-green-500",
+  DOCUMENT: "bg-blue-100 text-blue-500",
+  OTHER: "bg-gray-100 text-gray-500",
+  NOTICE: "bg-amber-100 text-amber-600",
+};
+
+const typeLabel: Record<string, string> = {
+  VIDEO: "Vídeo",
+  PDF: "PDF",
+  IMAGE: "Imagem",
+  DOCUMENT: "Documento",
+  OTHER: "Arquivo",
+  NOTICE: "Aviso",
+};
 
 const DEFAULT_FORM = {
   title: "",
@@ -272,146 +301,99 @@ export default function MaterialsPage() {
         </div>
       ) : (
         <>
-          {/* Mobile card list */}
-          <div className="md:hidden space-y-3">
-            {filtered.map((mat) => (
-              <div key={mat.id} className="bg-white rounded-xl shadow-sm p-4 flex items-start gap-3">
-                <span className="text-2xl flex-shrink-0 mt-0.5">{fileTypeIcon(mat.fileType)}</span>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-gray-900 text-sm leading-snug">{mat.title}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    {mat.category.icon} {mat.category.name}
-                    {mat.fileSize ? ` · ${formatFileSize(mat.fileSize)}` : ""}
-                  </p>
-                  <div className="flex items-center gap-2 mt-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {filtered.map((mat) => {
+              const TypeIcon = typeIcon[mat.fileType] ?? File;
+              const color = typeColor[mat.fileType] ?? typeColor.OTHER;
+              return (
+                <div
+                  key={mat.id}
+                  className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all flex flex-col"
+                >
+                  {/* Cabeçalho do post */}
+                  <div className="flex items-center gap-2.5 px-4 pt-3 pb-2">
+                    <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
+                      <span className="text-white text-xs font-bold">
+                        {(mat.createdBy?.name ?? "A").charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-gray-900 truncate">
+                        {mat.createdBy?.name ?? "Admin"}
+                      </p>
+                      <p className="text-xs text-gray-400 truncate">
+                        {mat.category.icon} {mat.category.name} · {formatDate(mat.createdAt)}
+                      </p>
+                    </div>
                     <button
                       onClick={() => togglePublish(mat)}
-                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium transition ${
+                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium transition flex-shrink-0 ${
                         mat.published
-                          ? "bg-green-100 text-green-700"
-                          : "bg-gray-100 text-gray-600"
+                          ? "bg-green-100 text-green-700 hover:bg-green-200"
+                          : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                       }`}
+                      title={mat.published ? "Clique para despublicar" : "Clique para publicar"}
                     >
                       {mat.published ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
                       {mat.published ? "Publicado" : "Rascunho"}
                     </button>
                   </div>
-                </div>
-                <div className="flex gap-1 flex-shrink-0">
-                  <button
-                    onClick={() => setViewing(mat)}
-                    className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition"
-                    title="Abrir arquivo"
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={() => setViewingViews(mat)}
-                    className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition"
-                    title="Ver visualizações"
-                  >
-                    <Users className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={() => openEdit(mat)}
-                    className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(mat.id, mat.title)}
-                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
 
-          {/* Desktop table */}
-          <div className="hidden md:block bg-white rounded-xl shadow-sm overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-100">
-              <tr>
-                <th className="px-5 py-3 text-left font-medium text-gray-500">
-                  Material
-                </th>
-                <th className="px-5 py-3 text-left font-medium text-gray-500">
-                  Categoria
-                </th>
-                <th className="px-5 py-3 text-left font-medium text-gray-500">
-                  Tamanho
-                </th>
-                <th className="px-5 py-3 text-left font-medium text-gray-500">
-                  Status
-                </th>
-                <th className="px-5 py-3 text-left font-medium text-gray-500">
-                  Data
-                </th>
-                <th className="px-5 py-3 text-right font-medium text-gray-500">
-                  Ações
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {filtered.map((mat) => (
-                <tr key={mat.id} className="hover:bg-gray-50 transition">
-                  <td className="px-5 py-4">
-                    <div className="flex items-center gap-3">
-                      <span className="text-xl">{fileTypeIcon(mat.fileType)}</span>
-                      <div className="min-w-0">
-                        <p className="font-medium text-gray-900 truncate max-w-xs">
-                          {mat.title}
-                        </p>
-                        {mat.description && (
-                          <p className="text-xs text-gray-400 truncate max-w-xs">
-                            {mat.description}
-                          </p>
-                        )}
-                        {mat.linkedStores && mat.linkedStores.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-1">
-                            {mat.linkedStores.map(({ store }) => (
-                              <span key={store.id} className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-100 text-emerald-700">
-                                {store.name}
-                              </span>
-                            ))}
-                          </div>
-                        )}
+                  {/* Capa */}
+                  <button onClick={() => setViewing(mat)} className="w-full text-left focus:outline-none group">
+                    {mat.fileType === "PDF" && mat.fileUrl ? (
+                      <PdfThumbnail
+                        url={mat.fileUrl}
+                        className="mx-3 rounded-xl aspect-video group-hover:opacity-90 transition-opacity"
+                      />
+                    ) : mat.fileType === "IMAGE" && mat.fileUrl ? (
+                      <div className="mx-3 rounded-xl overflow-hidden bg-gray-100 aspect-video">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={mat.fileUrl}
+                          alt={mat.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-5 py-4 text-gray-600">
-                    {mat.category.icon} {mat.category.name}
-                  </td>
-                  <td className="px-5 py-4 text-gray-500">
-                    {mat.fileSize ? formatFileSize(mat.fileSize) : "—"}
-                  </td>
-                  <td className="px-5 py-4">
-                    <button
-                      onClick={() => togglePublish(mat)}
-                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition ${
-                        mat.published
-                          ? "bg-green-100 text-green-700 hover:bg-green-200"
-                          : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                      }`}
-                    >
-                      {mat.published ? (
-                        <>
-                          <Eye className="h-3 w-3" /> Publicado
-                        </>
-                      ) : (
-                        <>
-                          <EyeOff className="h-3 w-3" /> Rascunho
-                        </>
+                    ) : (
+                      <div
+                        className={`mx-3 rounded-xl aspect-video flex flex-col items-center justify-center gap-2 ${color} group-hover:opacity-80 transition-opacity`}
+                      >
+                        <TypeIcon className="h-10 w-10 sm:h-14 sm:w-14 opacity-70" />
+                        <span className="text-xs sm:text-sm font-medium opacity-80">
+                          {typeLabel[mat.fileType] ?? "Arquivo"}
+                        </span>
+                      </div>
+                    )}
+                    <div className="px-4 pt-2.5 pb-2">
+                      <p className="font-semibold text-gray-900 text-sm leading-snug line-clamp-2 group-hover:text-blue-600 transition-colors">
+                        {mat.title}
+                      </p>
+                      {mat.description && (
+                        <p className="text-xs text-gray-500 mt-1 line-clamp-2">{mat.description}</p>
                       )}
-                    </button>
-                  </td>
-                  <td className="px-5 py-4 text-gray-500">
-                    {formatDate(mat.createdAt)}
-                  </td>
-                  <td className="px-5 py-4 text-right">
-                    <div className="flex items-center justify-end gap-1">
+                    </div>
+                  </button>
+
+                  {mat.linkedStores && mat.linkedStores.length > 0 && (
+                    <div className="flex flex-wrap gap-1 px-4 pb-2">
+                      {mat.linkedStores.map(({ store }) => (
+                        <span
+                          key={store.id}
+                          className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-100 text-emerald-700"
+                        >
+                          {store.name}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Rodapé: tamanho e ações */}
+                  <div className="mt-auto px-4 pb-3 pt-1 flex items-center justify-between border-t border-gray-50">
+                    <span className="text-xs text-gray-400">
+                      {mat.fileSize ? formatFileSize(mat.fileSize) : "—"}
+                    </span>
+                    <div className="flex items-center gap-0.5">
                       <button
                         onClick={() => setViewing(mat)}
                         className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition"
@@ -429,22 +411,23 @@ export default function MaterialsPage() {
                       <button
                         onClick={() => openEdit(mat)}
                         className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                        title="Editar"
                       >
                         <Pencil className="h-4 w-4" />
                       </button>
                       <button
                         onClick={() => handleDelete(mat.id, mat.title)}
                         className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                        title="Excluir"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </>
       )}
 
