@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { PdfThumbnail } from "@/components/PdfPreview";
+import { materialAttachments } from "@/lib/attachments";
+import { AttachmentMosaic } from "@/components/attachments/AttachmentMosaic";
+import { materialUsesMosaic } from "@/components/attachments/MaterialFeedMedia";
 import { Play, FileText, Image, File, Megaphone } from "lucide-react";
 import { formatFileSize, formatDate } from "@/lib/utils";
 import { MaterialViewer } from "./MaterialViewer";
-import { MaterialFeedMedia } from "@/components/attachments/MaterialFeedMedia";
-import { materialAttachments } from "@/lib/attachments";
 
 interface Material {
   id: string;
@@ -48,8 +50,8 @@ export function MaterialCard({ material }: MaterialCardProps) {
 
   const config = fileTypeConfig[material.fileType] ?? fileTypeConfig.OTHER;
   const Icon = config.icon;
-  const attachmentCount = materialAttachments(material).length;
 
+  // Abrir já registra a visualização (recibo de leitura automático)
   function openViewer() {
     setShowViewer(true);
     fetch(`/api/materials/${material.id}/view`, { method: "POST" });
@@ -58,10 +60,35 @@ export function MaterialCard({ material }: MaterialCardProps) {
   return (
     <>
       <div className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-all border border-transparent hover:border-blue-100 flex flex-col">
-        {/* Mosaico de anexos / ícone */}
-        <div className="p-2 pb-0">
-          <MaterialFeedMedia material={material} onOpen={openViewer} />
-        </div>
+        {/* Thumbnail / Icon area — mosaico quando há vários anexos */}
+        {materialUsesMosaic(material) ? (
+          <div className="p-2 pb-0">
+            <AttachmentMosaic attachments={materialAttachments(material)} onOpen={() => openViewer()} />
+          </div>
+        ) : material.fileType === "PDF" && material.fileUrl ? (
+          <div className="h-36 rounded-t-2xl overflow-hidden cursor-pointer" onClick={openViewer}>
+            <PdfThumbnail url={material.fileUrl} className="h-36" />
+          </div>
+        ) : material.fileType === "IMAGE" ? (
+          <div
+            className="h-36 rounded-t-2xl bg-gray-100 overflow-hidden cursor-pointer"
+            onClick={openViewer}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={material.fileUrl ?? ""}
+              alt={material.title}
+              className="w-full h-full object-cover hover:scale-105 transition-transform"
+            />
+          </div>
+        ) : (
+          <div
+            className={`h-36 rounded-t-2xl flex items-center justify-center cursor-pointer ${config.color}`}
+            onClick={openViewer}
+          >
+            <Icon className="h-14 w-14 opacity-60" />
+          </div>
+        )}
 
         {/* Content */}
         <div className="p-4 flex flex-col flex-1">
@@ -69,7 +96,7 @@ export function MaterialCard({ material }: MaterialCardProps) {
             className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full w-fit mb-2 ${config.color}`}
           >
             <Icon className="h-3 w-3" />
-            {attachmentCount > 1 ? `${attachmentCount} anexos` : config.label}
+            {config.label}
           </span>
 
           <h3

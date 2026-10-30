@@ -52,7 +52,7 @@ export async function POST(req: Request) {
   const { franchiseeId, storeId, message, attachments } = parsed.data;
 
   const franchisee = await db.user.findFirst({
-    where: { id: franchiseeId, role: "FRANCHISEE" },
+    where: { id: franchiseeId, role: { not: "ADMIN" } },
     select: { id: true, name: true, email: true },
   });
   if (!franchisee) return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });

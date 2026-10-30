@@ -3,9 +3,9 @@ import { auth } from "@/lib/auth";
 export const dynamic = "force-dynamic";
 import { db } from "@/lib/db";
 import { notifyMaterialPublished } from "@/lib/notify";
+import { attachmentsSchema, attachmentsSummary, legacyFileFields } from "@/lib/attachments";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { attachmentsSchema, attachmentsSummary, legacyFileFields } from "@/lib/attachments";
 
 const materialSchema = z.object({
   title: z.string().min(1).max(200),
@@ -17,6 +17,7 @@ const materialSchema = z.object({
   fileSize: z.number().optional(),
   categoryId: z.string(),
   published: z.boolean().optional().default(true),
+  color: z.enum(["amber", "blue"]).optional(),
   linkedStoreIds: z.array(z.string()).optional().default([]),
   attachments: attachmentsSchema.optional(),
 });
@@ -89,7 +90,7 @@ export async function POST(req: Request) {
     const attachments =
       rawAttachments ??
       (rest.fileUrl
-        ? [{ url: rest.fileUrl, key: rest.fileKey, name: rest.title, kind: rest.fileType === "NOTICE" ? "OTHER" as const : rest.fileType, mimeType: rest.mimeType, size: rest.fileSize }]
+        ? [{ url: rest.fileUrl, key: rest.fileKey, name: rest.title, kind: rest.fileType === "NOTICE" ? ("OTHER" as const) : rest.fileType, mimeType: rest.mimeType, size: rest.fileSize }]
         : []);
     if (rest.fileType !== "NOTICE" && attachments.length === 0) {
       return NextResponse.json({ error: "Anexe pelo menos um arquivo" }, { status: 400 });
@@ -114,7 +115,7 @@ export async function POST(req: Request) {
     });
 
     if (data.published) {
-      // Push + e-mail para os franqueados das lojas selecionadas (sem bloquear a resposta)
+      // Push + e-mail só para quem tem acesso (lojas selecionadas), sem bloquear a resposta
       notifyMaterialPublished({
         id: material.id,
         title: material.title,

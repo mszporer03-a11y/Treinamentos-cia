@@ -4,24 +4,27 @@ import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
+const userSelect = {
+  id: true,
+  name: true,
+  email: true,
+  role: true,
+  phone: true,
+  stores: { include: { store: { select: { id: true, name: true, code: true } } } },
+} as const;
+
 // GET /api/conversations
-// Admin  → lista todas as conversas (com último mensagem + unread)
-// Franqueado → retorna/cria sua própria conversa
+// Admin     → suas conversas (adminId = ele) + conversas legadas (adminId null)
+// Não-admin → suas conversas (uma por admin) + legada, se houver
 export async function GET() {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   if (session.user.role === "ADMIN") {
     const conversations = await db.conversation.findMany({
+      where: { OR: [{ adminId: session.user.id }, { adminId: null }] },
       include: {
-        franchisee: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            stores: { include: { store: { select: { id: true, name: true, code: true } } } },
-          },
-        },
+        franchisee: { select: userSelect },
         messages: {
           orderBy: { createdAt: "desc" },
           take: 1,
@@ -66,6 +69,8 @@ export async function GET() {
     return NextResponse.json(
       conversations.map((c) => ({
         id: c.id,
+        adminId: c.adminId,
+        isLegacy: c.adminId === null,
         franchisee: c.franchisee,
         lastMessage: c.messages[0] ?? null,
         unreadCount: 0,
@@ -75,52 +80,113 @@ export async function GET() {
     );
   }
 
-  // Franqueado — criar ou buscar conversa própria
-  const conv = await db.conversation.upsert({
+  // Franqueado / gerente — lista das suas conversas (uma por admin)
+  const conversations = await db.conversation.findMany({
     where: { franchiseeId: session.user.id },
-    create: { franchiseeId: session.user.id },
-    update: {},
-    select: { id: true },
+    include: {
+      admin: { select: { id: true, name: true, email: true } },
+      messages: {
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        select: {
+          content: true,
+          fileName: true,
+          createdAt: true,
+          senderId: true,
+          readByFranchisee: true,
+        },
+      },
+    },
+    orderBy: { updatedAt: "desc" },
   });
 
-  return NextResponse.json(conv);
+  return NextResponse.json(
+    conversations.map((c) => ({
+      id: c.id,
+      admin: c.admin,
+      isLegacy: c.adminId === null,
+      lastMessage: c.messages[0] ?? null,
+      updatedAt: c.updatedAt,
+    }))
+  );
 }
 
-// POST /api/conversations  — Admin inicia conversa com um franqueado
+// POST /api/conversations
+// Admin     → { franchiseeId } inicia conversa própria com franqueado/gerente
+// Não-admin → { adminId } inicia conversa com um admin
 export async function POST(req: Request) {
   const session = await auth();
-  if (!session || session.user.role !== "ADMIN") {
+  if (!session?.user) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   }
 
-  const { franchiseeId } = await req.json();
-  if (!franchiseeId) {
-    return NextResponse.json({ error: "franchiseeId obrigatório" }, { status: 400 });
+  const body = await req.json();
+
+  if (session.user.role === "ADMIN") {
+    const { franchiseeId } = body;
+    if (!franchiseeId) {
+      return NextResponse.json({ error: "franchiseeId obrigatório" }, { status: 400 });
+    }
+
+    const franchisee = await db.user.findFirst({
+      where: { id: franchiseeId, role: { in: ["FRANCHISEE", "MANAGER"] } },
+      select: userSelect,
+    });
+    if (!franchisee) {
+      return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
+    }
+
+    const existing = await db.conversation.findFirst({
+      where: { franchiseeId, adminId: session.user.id },
+      select: { id: true, updatedAt: true },
+    });
+    const conv =
+      existing ??
+      (await db.conversation.create({
+        data: { franchiseeId, adminId: session.user.id },
+        select: { id: true, updatedAt: true },
+      }));
+
+    return NextResponse.json({
+      id: conv.id,
+      adminId: session.user.id,
+      isLegacy: false,
+      franchisee,
+      lastMessage: null,
+      pendingStores: [],
+      updatedAt: conv.updatedAt,
+    });
   }
 
-  const franchisee = await db.user.findUnique({
-    where: { id: franchiseeId, role: "FRANCHISEE" },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      stores: { include: { store: { select: { name: true, code: true } } } },
-    },
+  // Franqueado / gerente
+  const { adminId } = body;
+  if (!adminId) {
+    return NextResponse.json({ error: "adminId obrigatório" }, { status: 400 });
+  }
+
+  const admin = await db.user.findFirst({
+    where: { id: adminId, role: "ADMIN", active: true },
+    select: { id: true, name: true, email: true },
   });
-  if (!franchisee) {
-    return NextResponse.json({ error: "Franqueado não encontrado" }, { status: 404 });
+  if (!admin) {
+    return NextResponse.json({ error: "Admin não encontrado" }, { status: 404 });
   }
 
-  const conv = await db.conversation.upsert({
-    where: { franchiseeId },
-    create: { franchiseeId },
-    update: {},
+  const existing = await db.conversation.findFirst({
+    where: { franchiseeId: session.user.id, adminId },
     select: { id: true, updatedAt: true },
   });
+  const conv =
+    existing ??
+    (await db.conversation.create({
+      data: { franchiseeId: session.user.id, adminId },
+      select: { id: true, updatedAt: true },
+    }));
 
   return NextResponse.json({
     id: conv.id,
-    franchisee,
+    admin,
+    isLegacy: false,
     lastMessage: null,
     updatedAt: conv.updatedAt,
   });

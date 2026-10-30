@@ -3,6 +3,7 @@
 import { Play, FileText, File, Image as ImageIcon, Presentation } from "lucide-react";
 import { type Attachment, attachmentLabel, videoAtSecond } from "@/lib/attachments";
 import { cn } from "@/lib/utils";
+import { PdfThumbnail } from "@/components/PdfPreview";
 
 const tileStyle: Record<string, { icon: React.ElementType; color: string }> = {
   VIDEO: { icon: Play, color: "bg-red-50 text-red-500" },
@@ -59,6 +60,11 @@ export function AttachmentThumb({
     );
   }
 
+  // PDF: 1ª página como miniatura (arquivos já enviados)
+  if (kind === "PDF" && !localUrl) {
+    return <PdfThumbnail url={attachment.url} className={cn("w-full h-full", className)} />;
+  }
+
   const { icon: Icon, color } = tileStyle[kind] ?? tileStyle.OTHER;
   return (
     <div className={cn("w-full h-full flex flex-col items-center justify-center gap-1.5 p-2 text-center", color, className)}>
@@ -71,8 +77,8 @@ export function AttachmentThumb({
 
 interface AttachmentMosaicProps {
   attachments: Attachment[];
-  /** Clique no mosaico (abre a galeria) */
-  onOpen: (index: number) => void;
+  /** Clique no mosaico (abre a galeria); omitir quando o pai já é clicável */
+  onOpen?: (index: number) => void;
   /** "feed" = cartões do feed; "chat" = balão de mensagem */
   variant?: "feed" | "chat";
   className?: string;
@@ -101,21 +107,27 @@ export function AttachmentMosaic({ attachments, onOpen, variant = "feed", classN
           ? "aspect-square grid grid-cols-2 grid-rows-2"
           : "aspect-video grid grid-cols-2 grid-rows-2";
 
+  const interactive = onOpen
+    ? {
+        role: "button",
+        tabIndex: 0,
+        "aria-label": count > 1 ? `Abrir galeria com ${count} anexos` : `Abrir ${attachments[0].name}`,
+        onClick: (e: React.MouseEvent) => {
+          e.stopPropagation();
+          onOpen(0);
+        },
+        onKeyDown: (e: React.KeyboardEvent) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onOpen(0);
+          }
+        },
+      }
+    : {};
+
   return (
     <div
-      role="button"
-      tabIndex={0}
-      aria-label={count > 1 ? `Abrir galeria com ${count} anexos` : `Abrir ${attachments[0].name}`}
-      onClick={(e) => {
-        e.stopPropagation();
-        onOpen(0);
-      }}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onOpen(0);
-        }
-      }}
+      {...interactive}
       className={cn("relative w-full overflow-hidden rounded-xl bg-gray-100 gap-0.5 cursor-pointer group/mosaic", frame, className)}
     >
       {shown.map((att, i) => (

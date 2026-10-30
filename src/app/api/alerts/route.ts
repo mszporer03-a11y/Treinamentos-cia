@@ -1,16 +1,19 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { sendPushToUser } from "@/lib/push";
 import { z } from "zod";
-import { attachmentsSchema } from "@/lib/attachments";
+import { attachmentsSchema, attachmentsSummary, legacyNamedFileFields } from "@/lib/attachments";
 
 const createSchema = z.object({
   storeId: z.string().cuid(),
   title: z.string().min(1).max(200),
   description: z.string().min(1).max(2000),
-  severity: z.enum(["LOW", "MEDIUM", "HIGH", "CRITICAL"]).default("MEDIUM"),
-  dueDate: z.string().optional(),
-  attachments: attachmentsSchema.default([]),
+  fileUrl: z.string().url().optional(),
+  fileKey: z.string().optional(),
+  fileName: z.string().optional(),
+  fileType: z.string().optional(),
+  attachments: attachmentsSchema.optional(),
 });
 
 export async function GET(req: Request) {
@@ -20,7 +23,7 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const storeId = searchParams.get("storeId");
 
-  let where: Record<string, unknown> = {};
+  const where: Record<string, unknown> = {};
 
   if (session.user.role !== "ADMIN") {
     const userStores = await db.userStore.findMany({
@@ -35,7 +38,15 @@ export async function GET(req: Request) {
 
   const alerts = await db.nonComplianceAlert.findMany({
     where,
-    include: { store: { select: { id: true, name: true, code: true } } },
+    include: {
+      store: { select: { id: true, name: true, code: true } },
+      // Admin: conta quantos viram. Não-admin: saber se ele já viu.
+      _count: { select: { views: true } },
+      views:
+        session.user.role === "ADMIN"
+          ? false
+          : { where: { userId: session.user.id }, select: { id: true } },
+    },
     orderBy: { createdAt: "desc" },
   });
   return NextResponse.json(alerts);
@@ -50,12 +61,26 @@ export async function POST(req: Request) {
   const parsed = createSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
 
+  const { attachments, ...data } = parsed.data;
   const alert = await db.nonComplianceAlert.create({
-    data: {
-      ...parsed.data,
-      dueDate: parsed.data.dueDate ? new Date(parsed.data.dueDate) : undefined,
-    },
+    data: { ...data, ...(attachments ? { attachments, ...legacyNamedFileFields(attachments) } : {}) },
     include: { store: { select: { id: true, name: true } } },
   });
+
+  // Notificar franqueados/gerentes vinculados à loja
+  const links = await db.userStore.findMany({
+    where: { storeId: alert.storeId },
+    select: { userId: true },
+  });
+  await Promise.allSettled(
+    links.map((link) =>
+      sendPushToUser(link.userId, {
+        title: `📋 Novo registro — ${alert.store.name}`,
+        body: attachments?.length ? `${alert.title} · ${attachmentsSummary(attachments)}` : alert.title,
+        url: "/registros",
+      })
+    )
+  );
+
   return NextResponse.json(alert, { status: 201 });
 }

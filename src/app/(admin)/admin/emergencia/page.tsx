@@ -22,7 +22,7 @@ interface UserRow {
   id: string;
   name: string;
   email: string;
-  role: "ADMIN" | "FRANCHISEE";
+  role: "ADMIN" | "FRANCHISEE" | "MANAGER";
   active: boolean;
   stores?: { store: StoreRef }[];
 }
@@ -56,7 +56,7 @@ export default function AdminEmergencyChatPage() {
     fetch("/api/users")
       .then((r) => r.json())
       .then((data: UserRow[]) => {
-        const franchisees = Array.isArray(data) ? data.filter((u) => u.role === "FRANCHISEE" && u.active) : [];
+        const franchisees = Array.isArray(data) ? data.filter((u) => u.role !== "ADMIN" && u.active) : [];
         setUsers(franchisees);
         // Link de notificação: /admin/emergencia?user=<id>
         const wanted = new URLSearchParams(window.location.search).get("user");
@@ -191,7 +191,10 @@ export default function AdminEmergencyChatPage() {
                           }`}
                         >
                           <User className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                          <span className="flex-1 truncate">{u.name}</span>
+                          <span className="flex-1 truncate">
+                            {u.name}
+                            <span className="text-[11px] text-gray-400"> ({u.role === "MANAGER" ? "Gerente" : "Franqueado"})</span>
+                          </span>
                           {openByUser.has(u.id) && (
                             <span className="w-2 h-2 rounded-full bg-red-600 flex-shrink-0" title="Sessão aberta" />
                           )}

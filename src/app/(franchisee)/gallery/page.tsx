@@ -1,14 +1,19 @@
 ﻿"use client";
 
 import { useState, useEffect } from "react";
+import { PdfThumbnail } from "@/components/PdfPreview";
+import { ComunicadoCard, comunicadoToViewer, type ComunicadoItem } from "@/components/franchisee/ComunicadoCard";
+import { Support3LMButton } from "@/components/franchisee/Support3LM";
 import Link from "next/link";
 import Image from "next/image";
 import { useSession } from "next-auth/react";
 import { MaterialViewer } from "@/components/franchisee/MaterialViewer";
-import { MessageSquare, BarChart2, ClipboardList, ChevronRight, SlidersHorizontal } from "lucide-react";
+import { AttachmentMosaic } from "@/components/attachments/AttachmentMosaic";
+import { materialUsesMosaic } from "@/components/attachments/MaterialFeedMedia";
+import { materialAttachments } from "@/lib/attachments";
+import { Play, FileText, Image as ImageIcon, File, ClipboardList, BookOpen, ChevronRight, SlidersHorizontal, Megaphone, Inbox, UtensilsCrossed, Newspaper, GraduationCap, Send, MessageSquare } from "lucide-react";
 import { formatDate } from "@/lib/utils";
-import { MaterialFeedMedia } from "@/components/attachments/MaterialFeedMedia";
-import { Support3LMButton } from "@/components/franchisee/Support3LM";
+import { useBadges, BADGE_KEY } from "@/hooks/useBadges";
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +38,37 @@ interface Material {
   createdBy?: { name: string } | null;
 }
 
+const typeIcon: Record<string, React.ElementType> = {
+  VIDEO: Play,
+  PDF: FileText,
+  IMAGE: ImageIcon,
+  DOCUMENT: FileText,
+  OTHER: File,
+  NOTICE: Megaphone,
+};
+
+const typeLabel: Record<string, string> = {
+  VIDEO: "Video",
+  PDF: "PDF",
+  IMAGE: "Imagem",
+  DOCUMENT: "Documento",
+  OTHER: "Arquivo",
+  NOTICE: "Aviso",
+};
+
+const typeColor: Record<string, string> = {
+  VIDEO: "bg-red-50 text-red-500",
+  PDF: "bg-orange-50 text-orange-500",
+  IMAGE: "bg-sky-50 text-sky-500",
+  DOCUMENT: "bg-blue-50 text-blue-500",
+  OTHER: "bg-gray-50 text-gray-400",
+  NOTICE: "bg-amber-50 text-amber-600",
+};
+
 function FeedCard({ material, onOpen }: { material: Material; onOpen: () => void }) {
+  const Icon = typeIcon[material.fileType] ?? File;
+  const color = typeColor[material.fileType] ?? typeColor.OTHER;
+
   return (
     <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden hover:border-gray-200 hover:shadow-md transition-all group">
       <div className="flex items-center gap-2.5 px-4 pt-3 pb-2">
@@ -52,12 +87,25 @@ function FeedCard({ material, onOpen }: { material: Material; onOpen: () => void
         </div>
       </div>
 
-      {/* Mosaico de anexos (estilo WhatsApp) → abre a galeria */}
-      <div className="px-3">
-        <MaterialFeedMedia material={material} onOpen={onOpen} />
-      </div>
-
       <button onClick={onOpen} className="w-full text-left focus:outline-none">
+        {materialUsesMosaic(material) ? (
+          <div className="mx-3">
+            <AttachmentMosaic attachments={materialAttachments(material)} />
+          </div>
+        ) : material.fileType === "PDF" && material.fileUrl ? (
+          <PdfThumbnail url={material.fileUrl} className="mx-3 rounded-xl aspect-video group-hover:opacity-90 transition-opacity" />
+        ) : material.fileType === "IMAGE" ? (
+          <div className="mx-3 rounded-xl overflow-hidden bg-gray-100 aspect-video">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={material.fileUrl ?? ""} alt={material.title}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+          </div>
+        ) : (
+          <div className={`mx-3 rounded-xl aspect-video flex flex-col items-center justify-center gap-2 ${color} group-hover:opacity-80 transition-opacity`}>
+            <Icon className="h-10 w-10 sm:h-14 sm:w-14 opacity-60" />
+            <span className="text-xs sm:text-sm font-medium opacity-70">{typeLabel[material.fileType] ?? "Arquivo"}</span>
+          </div>
+        )}
         <div className="px-4 pt-2.5 pb-4">
           <p className="font-semibold text-gray-900 text-sm leading-snug line-clamp-2 group-hover:text-orange-600 transition-colors">
             {material.title}
@@ -74,40 +122,102 @@ function FeedCard({ material, onOpen }: { material: Material; onOpen: () => void
   );
 }
 
-const NAV_ITEMS = [
-  {
-    href: "/surveys",
-    icon: BarChart2,
-    label: "Pesquisas",
-    desc: "Responda as pesquisas da rede",
-    bg: "from-violet-600 to-violet-500",
-    tutorialId: "nav-surveys",
-  },
-  {
-    href: "/checklists",
-    icon: ClipboardList,
-    label: "Checklists",
-    desc: "Visualize e preencha checklists operacionais",
-    bg: "from-orange-600 to-orange-500",
-    tutorialId: "nav-checklists",
-  },
+type GalleryNavItem = {
+  href: string;
+  icon: React.ElementType;
+  label: string;
+  desc: string;
+  bg: string;
+  tutorialId: string;
+  /** Se definido, o card só aparece para estes papéis */
+  roles?: string[];
+};
+
+const NAV_ITEMS: GalleryNavItem[] = [
   {
     href: "/chat",
     icon: MessageSquare,
-    label: "Suporte",
-    desc: "Canal direto com a Cia do Churrasco",
-    bg: "from-sky-600 to-sky-500",
+    label: "Chat com a equipe",
+    desc: "Converse diretamente com a Companhia do Churrasco",
+    bg: "from-blue-600 to-blue-500",
     tutorialId: "nav-chat",
+  },
+  {
+    href: "/solicitacoes",
+    icon: Inbox,
+    label: "Acompanhamento de solicitações",
+    desc: "Acompanhe o andamento das suas solicitações",
+    bg: "from-indigo-600 to-indigo-500",
+    tutorialId: "nav-solicitacoes",
+  },
+  {
+    href: "/solicitar",
+    icon: Send,
+    label: "Solicitações",
+    desc: "Envie uma nova solicitação à Companhia do Churrasco",
+    bg: "from-blue-600 to-blue-500",
+    tutorialId: "nav-solicitar",
+  },
+  {
+    href: "/comunicados",
+    icon: Megaphone,
+    label: "Comunicados",
+    desc: "Avisos da Companhia do Churrasco",
+    bg: "from-sky-600 to-sky-500",
+    tutorialId: "nav-comunicados",
+  },
+  {
+    href: "/registros",
+    icon: ClipboardList,
+    label: "Registros",
+    desc: "Ocorrências registradas para a sua loja",
+    bg: "from-orange-600 to-orange-500",
+    tutorialId: "nav-registros",
+  },
+  {
+    href: "/cia-news",
+    icon: Newspaper,
+    label: "CIA News",
+    desc: "Notícias e novidades da rede",
+    bg: "from-rose-600 to-rose-500",
+    tutorialId: "nav-cia-news",
+  },
+  {
+    href: "/materiais",
+    icon: BookOpen,
+    label: "Treinamentos",
+    desc: "Acesse todos os materiais e conteúdos da rede",
+    bg: "from-teal-600 to-teal-500",
+    tutorialId: "nav-materiais",
+  },
+  {
+    href: "/cardapios",
+    icon: UtensilsCrossed,
+    label: "Cardápios",
+    desc: "Cardápios do mês disponíveis para a rede",
+    bg: "from-amber-600 to-amber-500",
+    tutorialId: "nav-cardapios",
+  },
+  {
+    href: "/universidade",
+    icon: GraduationCap,
+    label: "Universidade",
+    desc: "Vídeos e tutoriais de uso da plataforma",
+    bg: "from-violet-600 to-violet-500",
+    tutorialId: "nav-universidade",
   },
 ];
 
 export default function GalleryPage() {
   const { data: session } = useSession();
+  const badges = useBadges();
   const [materials, setMaterials] = useState<Material[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [activeCategory, setActiveCategory] = useState<string>("all");
   const [showFilters, setShowFilters] = useState(false);
   const [viewing, setViewing] = useState<Material | null>(null);
+  const [novidades, setNovidades] = useState<ComunicadoItem[]>([]);
+  const [viewingNovidade, setViewingNovidade] = useState<ComunicadoItem | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -122,6 +232,10 @@ export default function GalleryPage() {
       setLoading(false);
     }
     load();
+    fetch("/api/comunicados")
+      .then((r) => r.json())
+      .then((list) => setNovidades(Array.isArray(list) ? list.slice(0, 3) : []))
+      .catch(() => {});
   }, []);
 
   const filtered =
@@ -160,30 +274,69 @@ export default function GalleryPage() {
       </div>
 
       {/* Nav cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10">
-        {NAV_ITEMS.map(({ href, icon: Icon, label, desc, bg, tutorialId }) => (
-          <Link
-            key={href}
-            href={href}
-            data-tutorial={tutorialId}
-            className="group relative overflow-hidden rounded-2xl p-5 flex items-center gap-4 bg-white border border-gray-100 hover:shadow-lg hover:border-transparent transition-all duration-200"
-          >
-            <div
-              className={`w-12 h-12 rounded-xl bg-gradient-to-br ${bg} flex items-center justify-center flex-shrink-0 shadow-sm group-hover:scale-105 transition-transform`}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
+        {NAV_ITEMS.filter(
+          (item) => !item.roles || item.roles.includes(session?.user?.role ?? "FRANCHISEE")
+        ).map(({ href, icon: Icon, label, desc, bg, tutorialId }) => {
+          const badgeCount = badges[BADGE_KEY[href] ?? ""] ?? 0;
+          return (
+            <Link
+              key={href}
+              href={href}
+              data-tutorial={tutorialId}
+              className="group relative overflow-hidden rounded-2xl p-5 flex items-center gap-4 bg-white border border-gray-100 hover:shadow-lg hover:border-transparent transition-all duration-200"
             >
-              <Icon className="h-6 w-6 text-white" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-semibold text-gray-900 text-base">{label}</p>
-              <p className="text-xs text-gray-500 mt-0.5 leading-snug">{desc}</p>
-            </div>
-            <ChevronRight className="h-4 w-4 text-gray-300 group-hover:text-gray-500 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
-          </Link>
-        ))}
+              <div className="relative flex-shrink-0">
+                <div
+                  className={`w-12 h-12 rounded-xl bg-gradient-to-br ${bg} flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform`}
+                >
+                  <Icon className="h-6 w-6 text-white" />
+                </div>
+                {badgeCount > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 shadow ring-2 ring-white">
+                    {badgeCount > 99 ? "99+" : badgeCount}
+                  </span>
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-gray-900 text-base">{label}</p>
+                <p className="text-xs text-gray-500 mt-0.5 leading-snug">{desc}</p>
+              </div>
+              <ChevronRight className="h-4 w-4 text-gray-300 group-hover:text-gray-500 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+            </Link>
+          );
+        })}
       </div>
 
       {/* Atalho de suporte ao sistema 3LM */}
       <Support3LMButton variant="banner" className="-mt-4 mb-10" />
+
+      {/* Novidades em destaque */}
+      {novidades.length > 0 && (
+        <div className="mb-10">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold text-gray-900">Novidades</h2>
+            <Link href="/comunicados" className="text-xs font-medium text-sky-600 hover:underline">
+              Ver todas
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {novidades.map((item, i) => (
+              <ComunicadoCard
+                key={item.id}
+                item={item}
+                featured={i === 0}
+                isNew={!item.views || item.views.length === 0}
+                onOpen={() => {
+                  setViewingNovidade(item);
+                  if (!item.views || item.views.length === 0)
+                    fetch(`/api/comunicados/${item.id}/view`, { method: "POST" });
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Materials section */}
       <div data-tutorial="materials-section" className="flex items-center justify-between mb-4">
@@ -258,6 +411,9 @@ export default function GalleryPage() {
       )}
 
       {viewing && <MaterialViewer material={viewing} onClose={() => setViewing(null)} />}
+      {viewingNovidade && (
+        <MaterialViewer material={comunicadoToViewer(viewingNovidade)} onClose={() => setViewingNovidade(null)} />
+      )}
     </div>
   );
 }

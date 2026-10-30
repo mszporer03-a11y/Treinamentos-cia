@@ -10,15 +10,16 @@ const userSchema = z.object({
   name: z.string().min(1).max(100),
   email: z.string().email(),
   password: z.string().min(6),
-  role: z.enum(["ADMIN", "FRANCHISEE"]).default("FRANCHISEE"),
+  role: z.enum(["ADMIN", "FRANCHISEE", "MANAGER"]).default("FRANCHISEE"),
+  phone: z.string().max(30).optional(),
+  storeIds: z.array(z.string()).optional(),
+  // Login alternativo ao e-mail (ex.: joao.franqueado)
   username: z
     .string()
     .trim()
     .regex(/^[a-zA-Z0-9._-]{3,40}$/, "Login deve ter 3-40 caracteres (letras, números, ponto, hífen)")
     .optional()
     .or(z.literal("")),
-  phone: z.string().trim().max(30).optional(),
-  storeIds: z.array(z.string()).optional().default([]),
 });
 
 const userSelectFields = {
@@ -26,8 +27,8 @@ const userSelectFields = {
   name: true,
   email: true,
   username: true,
-  phone: true,
   role: true,
+  phone: true,
   active: true,
   createdAt: true,
   stores: { select: { store: { select: { id: true, name: true, code: true } } } },
@@ -55,15 +56,32 @@ export async function GET() {
 
 export async function POST(req: Request) {
   const session = await auth();
-  if (!session || session.user.role !== "ADMIN") {
-    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  // Apenas administradores criam contas. Franqueados solicitam gerentes via "Solicitações".
+  if (!session?.user || session.user.role !== "ADMIN") {
+    return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
   }
 
   try {
     const body = await req.json();
     const data = userSchema.parse(body);
 
-    const { storeIds, username, phone, ...rest } = data;
+    if (data.role === "MANAGER") {
+      if (!data.phone?.trim()) {
+        return NextResponse.json(
+          { error: "Telefone é obrigatório para gerentes" },
+          { status: 400 }
+        );
+      }
+      if (!data.storeIds || data.storeIds.length === 0) {
+        return NextResponse.json(
+          { error: "Vincule o gerente a pelo menos uma loja" },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Administradores não ficam vinculados a lojas
+    const storeIds = data.role === "ADMIN" ? [] : data.storeIds ?? [];
 
     const existing = await db.user.findUnique({
       where: { email: data.email },
@@ -74,8 +92,9 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
-    if (username) {
-      const taken = await db.user.findFirst({ where: { username: { equals: username, mode: "insensitive" } } });
+
+    if (data.username) {
+      const taken = await db.user.findFirst({ where: { username: { equals: data.username, mode: "insensitive" } } });
       if (taken) {
         return NextResponse.json({ error: "Login já está em uso" }, { status: 400 });
       }
@@ -84,11 +103,16 @@ export async function POST(req: Request) {
     const hashedPassword = await bcrypt.hash(data.password, 12);
     const user = await db.user.create({
       data: {
-        ...rest,
-        username: username || null,
-        phone: phone || null,
+        name: data.name,
+        email: data.email,
+        username: data.username || null,
         password: hashedPassword,
-        stores: storeIds.length > 0 ? { create: storeIds.map((storeId) => ({ storeId })) } : undefined,
+        role: data.role,
+        phone: data.phone?.trim() || null,
+        createdById: session.user.id,
+        stores: storeIds.length > 0
+          ? { create: storeIds.map((storeId) => ({ storeId })) }
+          : undefined,
       },
       select: userSelectFields,
     });

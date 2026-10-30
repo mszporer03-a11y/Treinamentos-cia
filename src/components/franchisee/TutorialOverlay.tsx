@@ -191,7 +191,7 @@ export const PORTAL_TUTORIAL_STEPS: TutorialStep[] = [
     icon: "👋",
     title: "Bem-vindo ao Portal!",
     description:
-      "Olá! Este é o Portal do Franqueado da Cia do Churrasco. Vamos te guiar pelas principais funcionalidades em poucos passos.",
+      "Olá! Este é o Portal do Franqueado da Companhia do Churrasco. Vamos te guiar pelas principais funcionalidades em poucos passos.",
     hint: null,
     target: null,
   },
@@ -220,60 +220,44 @@ export const PORTAL_TUTORIAL_STEPS: TutorialStep[] = [
     target: null,
   },
   {
-    icon: "📊",
-    title: "Pesquisas",
+    icon: "📢",
+    title: "Comunicados",
     description:
-      "Responda às pesquisas enviadas pela Cia do Churrasco. Sua participação é essencial para a melhoria contínua de toda a rede.",
-    hint: "Menu → Pesquisas",
-    target: "nav-surveys",
+      "Avisos gerais da Companhia do Churrasco aparecem em Comunicados. Você recebe uma notificação sempre que um novo comunicado é publicado.",
+    hint: "Início → card Comunicados",
+    target: "nav-comunicados",
   },
   {
-    icon: "✅",
-    title: "Checklists Operacionais",
+    icon: "📋",
+    title: "Registros",
     description:
-      "Preencha os checklists de operação da sua loja para garantir que os padrões de qualidade e conformidade da franquia sejam seguidos.",
-    hint: "Menu → Checklists",
-    target: "nav-checklists",
+      "Ocorrências registradas para a sua loja ficam em Registros. Sua visualização é confirmada automaticamente ao abrir cada registro.",
+    hint: "Início → card Registros",
+    target: "nav-registros",
   },
   {
-    icon: "💬",
-    title: "Suporte (Chat)",
+    icon: "📰",
+    title: "CIA News",
     description:
-      "Precisa de ajuda? Use o chat para entrar em contato diretamente com a equipe da Cia do Churrasco e resolver qualquer dúvida rapidamente.",
-    hint: "Menu → Suporte",
-    target: "nav-chat",
-  },
-  {
-    icon: "📄",
-    title: "Documentos",
-    description:
-      "Acesse seus contratos, aditivos, procurações e demais documentos da sua franquia — organizados e disponíveis a qualquer momento.",
-    hint: "Menu lateral → Documentos",
-    target: null,
+      "Notícias e novidades da rede são publicadas em CIA News. Fique por dentro de tudo o que acontece na Companhia do Churrasco.",
+    hint: "Início → card CIA News",
+    target: "nav-cia-news",
   },
   {
     icon: "📦",
-    title: "Solicitações Rápidas",
+    title: "Solicitações",
     description:
-      "Envie solicitações de suporte, marketing, senhas de usuários, suporte ao sistema e outras demandas diretamente pelo portal.",
-    hint: "Menu lateral → Solicitações Rápidas",
-    target: null,
+      "Precisa de algo? Em Solicitações você envia pedidos de mídia, senhas, suporte ao sistema, criação de conta de gerente e outros — diretamente para a equipe.",
+    hint: "Início → card Solicitações",
+    target: "nav-solicitar",
   },
   {
-    icon: "🥩",
-    title: "Preço do Quilo",
+    icon: "📬",
+    title: "Acompanhamento de solicitações",
     description:
-      "Informe e confirme o preço do quilo praticado na sua loja, mantendo a franquia atualizada com os preços praticados pela rede.",
-    hint: "Menu lateral → Preço do Quilo",
-    target: null,
-  },
-  {
-    icon: "👥",
-    title: "Funcionários & Treinamentos",
-    description:
-      "Gerencie a equipe da sua loja e acompanhe os treinamentos atribuídos a cada funcionário para garantir a capacitação de todos.",
-    hint: "Menu lateral → Treinamentos",
-    target: null,
+      "Acompanhe o status de tudo o que você enviou. Cada solicitação é atualizada pela equipe com os status: Visto 🟡, Em Preparo 🔵 e Pronto 🟢.",
+    hint: "Início → card Acompanhamento de solicitações",
+    target: "nav-solicitacoes",
   },
   {
     icon: "🎉",

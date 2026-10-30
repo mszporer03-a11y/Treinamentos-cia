@@ -4,24 +4,24 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
+import { useBadges, BADGE_KEY } from "@/hooks/useBadges";
 import {
   LayoutDashboard,
   FolderOpen,
   FileText,
   Users,
   LogOut,
-  BookOpen,
   UserCircle2,
-  MessageSquare,
   Store,
   Megaphone,
-  AlertTriangle,
-  BarChart2,
-  DollarSign,
   MapPin,
-  ClipboardCheck,
   CheckSquare,
   ClipboardList,
+  Inbox,
+  Newspaper,
+  UtensilsCrossed,
+  GraduationCap,
+  MessageSquare,
   Siren,
 } from "lucide-react";
 
@@ -32,50 +32,43 @@ interface AdminSidebarProps {
   };
 }
 
-const sections = [
+const sections: {
+  label: string;
+  items: { href: string; label: string; icon: React.ElementType; exact?: boolean }[];
+}[] = [
   {
     label: "Geral",
     items: [
-      { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
+      { href: "/admin", label: "Menu Principal", icon: LayoutDashboard, exact: true },
       { href: "/admin/chat", label: "Chat", icon: MessageSquare },
       { href: "/admin/emergencia", label: "Chat Emergencial", icon: Siren },
+      { href: "/admin/solicitacoes", label: "Acompanhamento de solicitações", icon: Inbox },
+      { href: "/admin/comunicados", label: "Comunicados", icon: Megaphone },
+      { href: "/admin/registros", label: "Registros", icon: ClipboardList },
     ],
   },
   {
     label: "Conteúdo",
     items: [
-      { href: "/admin/materials", label: "Materiais", icon: FileText },
+      { href: "/admin/cia-news", label: "CIA News", icon: Newspaper },
+      { href: "/admin/materials", label: "Treinamentos", icon: FileText },
+      { href: "/admin/cardapios", label: "Cardápios do Mês", icon: UtensilsCrossed },
+      { href: "/admin/universidade", label: "Universidade", icon: GraduationCap },
       { href: "/admin/categories", label: "Categorias", icon: FolderOpen },
-      { href: "/admin/campaigns", label: "Campanhas", icon: Megaphone },
     ],
   },
   {
-    label: "Operações",
-    items: [
-      { href: "/admin/alerts", label: "Não Conformidades", icon: AlertTriangle },
-      { href: "/admin/kilo-price", label: "Preço do Quilo", icon: DollarSign },
-    ],
-  },
-  {
-    label: "Lojas",
+    label: "Gestão",
     items: [
       { href: "/admin/stores", label: "Lojas", icon: Store },
       { href: "/admin/map", label: "Mapa de Lojas", icon: MapPin },
       { href: "/admin/onboarding", label: "Inauguração", icon: CheckSquare },
-    ],
-  },
-  {
-    label: "Engajamento",
-    items: [
-      { href: "/admin/surveys", label: "Pesquisas", icon: BarChart2 },
-      { href: "/admin/documents", label: "Documentos", icon: ClipboardCheck },
-      { href: "/admin/checklists", label: "Checklists", icon: ClipboardList },
-    ],
-  },
-  {
-    label: "Usuários",
-    items: [
       { href: "/admin/users", label: "Usuários", icon: Users },
+    ],
+  },
+  {
+    label: "Conta",
+    items: [
       { href: "/admin/perfil", label: "Meu Perfil", icon: UserCircle2 },
     ],
   },
@@ -83,6 +76,7 @@ const sections = [
 
 export function AdminSidebar({ user }: AdminSidebarProps) {
   const pathname = usePathname();
+  const badges = useBadges();
 
   return (
     <aside className="w-60 bg-gray-950 text-white flex flex-col h-screen sticky top-0 flex-shrink-0">
@@ -99,6 +93,7 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
             <div className="space-y-0.5">
               {section.items.map((item) => {
                 const isActive = item.exact ? pathname === item.href : pathname.startsWith(item.href);
+                const badgeCount = badges[BADGE_KEY[item.href] ?? ""] ?? 0;
                 return (
                   <Link
                     key={item.href}
@@ -108,7 +103,12 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
                     }`}
                   >
                     <item.icon className="h-4 w-4 flex-shrink-0" />
-                    {item.label}
+                    <span className="flex-1 truncate">{item.label}</span>
+                    {badgeCount > 0 && (
+                      <span className="ml-auto min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 flex-shrink-0">
+                        {badgeCount > 99 ? "99+" : badgeCount}
+                      </span>
+                    )}
                   </Link>
                 );
               })}

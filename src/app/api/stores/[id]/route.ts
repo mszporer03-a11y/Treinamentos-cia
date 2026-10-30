@@ -9,6 +9,8 @@ const updateSchema = z.object({
   name: z.string().min(1).max(120).optional(),
   code: z.string().min(1).max(40).optional(),
   city: z.string().max(80).optional(),
+  contactName: z.string().max(120).optional().nullable(),
+  contactPhone: z.string().max(40).optional().nullable(),
   active: z.boolean().optional(),
   lat: z.number().optional().nullable(),
   lng: z.number().optional().nullable(),

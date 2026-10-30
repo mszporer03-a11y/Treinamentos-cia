@@ -3,14 +3,14 @@ import { sendPushToUser } from "@/lib/push";
 import { appUrl, brandedEmail, sendEmail } from "@/lib/email";
 
 /**
- * Franqueados que têm acesso a um material: os vinculados às lojas
+ * Franqueados/gerentes que têm acesso a um material: os vinculados às lojas
  * selecionadas, ou todos os franqueados ativos quando não há restrição.
  */
 export async function materialAudience(materialId: string) {
   const links = await db.materialStore.findMany({ where: { materialId }, select: { storeId: true } });
   return db.user.findMany({
     where: {
-      role: "FRANCHISEE",
+      role: { not: "ADMIN" },
       active: true,
       ...(links.length > 0 ? { stores: { some: { storeId: { in: links.map((l) => l.storeId) } } } } : {}),
     },

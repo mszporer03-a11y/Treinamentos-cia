@@ -66,18 +66,21 @@ export function materialAttachments(m: {
   fileType?: string | null;
   mimeType?: string | null;
   fileSize?: number | null;
+  fileName?: string | null;
   title?: string;
 }): Attachment[] {
   const list = parseList(m.attachments);
   if (list.length > 0) return list;
   if (!m.fileUrl) return [];
-  const kind =
-    m.fileType && m.fileType !== "NOTICE" ? (m.fileType as AttachmentKind) : kindFromMime(m.mimeType, m.fileUrl);
+  const upper = (m.fileType ?? "").toUpperCase();
+  const kind = ["VIDEO", "PDF", "IMAGE", "DOCUMENT", "OTHER"].includes(upper)
+    ? (upper as AttachmentKind)
+    : kindFromMime(m.mimeType, m.fileName ?? m.fileUrl);
   return [
     {
       url: m.fileUrl,
       key: m.fileKey ?? null,
-      name: m.title ?? "Arquivo",
+      name: m.fileName ?? m.title ?? "Arquivo",
       kind,
       mimeType: m.mimeType ?? null,
       size: m.fileSize ?? null,
@@ -98,6 +101,49 @@ export function messageAttachments(msg: {
   if (!msg.fileUrl) return [];
   const kind = msg.fileType === "image" ? "IMAGE" : kindFromMime(null, msg.fileName ?? msg.fileUrl);
   return [{ url: msg.fileUrl, key: msg.fileKey ?? null, name: msg.fileName ?? "arquivo", kind }];
+}
+
+/** Tipo legado salvo em texto ("image", "pdf", "video", "document") → kind */
+function kindFromLegacy(fileType: string | null | undefined, name: string): AttachmentKind {
+  const t = (fileType ?? "").toLowerCase();
+  if (t === "image") return "IMAGE";
+  if (t === "pdf") return "PDF";
+  if (t === "video") return "VIDEO";
+  const byName = kindFromMime(null, name.split("?")[0]);
+  if (byName !== "OTHER") return byName;
+  return t === "document" ? "DOCUMENT" : "OTHER";
+}
+
+/**
+ * Anexos de um post com arquivo único legado (fileUrl/fileName/fileType):
+ * comunicados, registros, etapas de inauguração, solicitações.
+ */
+export function postAttachments(item: {
+  attachments?: unknown;
+  fileUrl?: string | null;
+  fileKey?: string | null;
+  fileName?: string | null;
+  fileType?: string | null;
+}): Attachment[] {
+  const list = parseList(item.attachments);
+  if (list.length > 0) return list;
+  if (!item.fileUrl) return [];
+  const name = item.fileName ?? item.fileUrl.split("?")[0].split("/").pop() ?? "arquivo";
+  return [{ url: item.fileUrl, key: item.fileKey ?? null, name, kind: kindFromLegacy(item.fileType, name) }];
+}
+
+/** Campos legados com nome/tipo em texto, preenchidos a partir do 1º anexo. */
+export function legacyNamedFileFields(attachments: Attachment[]) {
+  const first = attachments[0];
+  if (!first) return { fileUrl: null, fileKey: null, fileName: null, fileType: null };
+  const map: Record<AttachmentKind, string> = {
+    IMAGE: "image",
+    PDF: "pdf",
+    VIDEO: "video",
+    DOCUMENT: "document",
+    OTHER: "document",
+  };
+  return { fileUrl: first.url, fileKey: first.key ?? null, fileName: first.name, fileType: map[first.kind] };
 }
 
 /** Anexos genéricos (campanhas, alertas), com fallback para uma lista legada. */

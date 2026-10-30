@@ -1,11 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import { PdfThumbnail } from "@/components/PdfPreview";
 import { useRouter } from "next/navigation";
-import { FileText, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
+import { materialAttachments } from "@/lib/attachments";
+import { AttachmentMosaic } from "@/components/attachments/AttachmentMosaic";
+import { materialUsesMosaic } from "@/components/attachments/MaterialFeedMedia";
+import { Play, FileText, Image as ImageIcon, File, Megaphone } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { MaterialViewer } from "@/components/franchisee/MaterialViewer";
-import { MaterialFeedMedia } from "@/components/attachments/MaterialFeedMedia";
 
 interface Material {
   id: string;
@@ -22,6 +26,33 @@ interface Material {
   createdBy?: { name: string } | null;
 }
 
+const typeIcon: Record<string, React.ElementType> = {
+  VIDEO: Play,
+  PDF: FileText,
+  IMAGE: ImageIcon,
+  DOCUMENT: FileText,
+  OTHER: File,
+  NOTICE: Megaphone,
+};
+
+const typeColor: Record<string, string> = {
+  VIDEO: "bg-red-100 text-red-500",
+  PDF: "bg-orange-100 text-orange-500",
+  IMAGE: "bg-green-100 text-green-500",
+  DOCUMENT: "bg-blue-100 text-blue-500",
+  OTHER: "bg-gray-100 text-gray-500",
+  NOTICE: "bg-amber-100 text-amber-600",
+};
+
+const typeLabel: Record<string, string> = {
+  VIDEO: "Vídeo",
+  PDF: "PDF",
+  IMAGE: "Imagem",
+  DOCUMENT: "Documento",
+  OTHER: "Arquivo",
+  NOTICE: "Aviso",
+};
+
 function FeedCard({
   material,
   onOpen,
@@ -31,6 +62,9 @@ function FeedCard({
   onOpen: () => void;
   onDelete: () => void;
 }) {
+  const Icon = typeIcon[material.fileType] ?? File;
+  const color = typeColor[material.fileType] ?? typeColor.OTHER;
+
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all">
       {/* Header */}
@@ -57,12 +91,30 @@ function FeedCard({
         </span>
       </div>
 
-      {/* Preview — mosaico quando há vários anexos */}
-      <div className="px-3">
-        <MaterialFeedMedia material={material} onOpen={onOpen} />
-      </div>
-
+      {/* Preview */}
       <button onClick={onOpen} className="w-full text-left focus:outline-none group">
+        {materialUsesMosaic(material) ? (
+          <div className="mx-3">
+            <AttachmentMosaic attachments={materialAttachments(material)} />
+          </div>
+        ) : material.fileType === "PDF" && material.fileUrl ? (
+          <PdfThumbnail url={material.fileUrl} className="mx-3 rounded-xl aspect-video group-hover:opacity-90 transition-opacity" />
+        ) : material.fileType === "IMAGE" ? (
+          <div className="mx-3 rounded-xl overflow-hidden bg-gray-100 aspect-video">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={material.fileUrl ?? ""}
+              alt={material.title}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            />
+          </div>
+        ) : (
+          <div className={`mx-3 rounded-xl aspect-video flex flex-col items-center justify-center gap-2 ${color} group-hover:opacity-80 transition-opacity`}>
+            <Icon className="h-10 w-10 sm:h-14 sm:w-14 opacity-70" />
+            <span className="text-xs sm:text-sm font-medium opacity-80">{typeLabel[material.fileType] ?? "Arquivo"}</span>
+          </div>
+        )}
+
         <div className="px-4 pt-2.5 pb-1">
           <p className="font-semibold text-gray-900 text-sm leading-snug line-clamp-2 group-hover:text-blue-600 transition-colors">
             {material.title}

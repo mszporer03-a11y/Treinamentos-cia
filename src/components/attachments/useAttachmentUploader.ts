@@ -175,3 +175,49 @@ export function useAttachmentUploader(endpoint: AttachmentEndpoint, initial: Att
 
   return { items, attachments, busy, addFiles, remove, move, setCover, reset };
 }
+
+/**
+ * Envia vários arquivos de uma vez (sem formulário), gerando a capa dos
+ * vídeos no segundo padrão. Usado onde o anexo é salvo na hora (ex.: etapas
+ * da inauguração).
+ */
+export async function uploadAttachments(endpoint: AttachmentEndpoint, files: File[]): Promise<Attachment[]> {
+  const results = await Promise.all(
+    files.map(async (file) => {
+      try {
+        const [res] = await uploadFiles(endpoint, { files: [file] });
+        if (!res) return null;
+        const mimeType = res.type || file.type || null;
+        const attachment: Attachment = {
+          url: res.url,
+          key: res.key,
+          name: res.name || file.name,
+          kind: kindFromMime(mimeType, res.name || file.name),
+          mimeType,
+          size: res.size ?? file.size,
+        };
+        if (attachment.kind === "VIDEO") {
+          attachment.coverTime = DEFAULT_COVER_SECOND;
+          const local = URL.createObjectURL(file);
+          try {
+            const blob = await captureVideoFrame(local, DEFAULT_COVER_SECOND);
+            if (blob) {
+              const [cover] = await uploadFiles("videoCoverUploader", {
+                files: [new File([blob], "capa.jpg", { type: "image/jpeg" })],
+              });
+              attachment.coverUrl = cover?.url ?? null;
+            }
+          } catch {
+            /* sem capa: miniatura usa o vídeo em #t= */
+          } finally {
+            URL.revokeObjectURL(local);
+          }
+        }
+        return attachment;
+      } catch {
+        return null;
+      }
+    })
+  );
+  return results.filter((a): a is Attachment => !!a);
+}

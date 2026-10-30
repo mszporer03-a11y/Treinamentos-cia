@@ -4,61 +4,73 @@ import React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Support3LMButton } from "./Support3LM";
 import { signOut } from "next-auth/react";
+import { useBadges, BADGE_KEY } from "@/hooks/useBadges";
 import {
   BookOpen,
-  MessageSquare,
-  BarChart2,
   ClipboardList,
-  FileText,
   UserCircle2,
   LogOut,
   Megaphone,
   HelpCircle,
-  KeyRound,
-  MonitorCog,
+  Inbox,
+  Send,
+  UtensilsCrossed,
+  Newspaper,
+  GraduationCap,
+  MessageSquare,
   Siren,
 } from "lucide-react";
+import { Support3LMButton } from "./Support3LM";
 
 interface FranchiseeSidebarProps {
   user: {
     name?: string | null;
     email?: string | null;
+    role?: string;
   };
   onOpenTutorial?: () => void;
 }
 
-const sections: { label: string; items: { href: string; label: string; icon: React.ElementType; exact?: boolean }[] }[] = [
+type NavItem = {
+  href: string;
+  label: string;
+  icon: React.ElementType;
+  exact?: boolean;
+  /** Se definido, o item só aparece para estes papéis */
+  roles?: string[];
+};
+
+const sections: { label: string; items: NavItem[] }[] = [
+  {
+    label: "Início",
+    items: [
+      { href: "/gallery", label: "Menu Principal", icon: BookOpen, exact: true },
+    ],
+  },
+  {
+    label: "Solicitações",
+    items: [
+      { href: "/chat", label: "Chat com a equipe", icon: MessageSquare },
+      { href: "/emergencia", label: "Chat Emergencial", icon: Siren },
+      { href: "/solicitacoes", label: "Acompanhamento", icon: Inbox },
+      { href: "/solicitar", label: "Nova solicitação", icon: Send },
+    ],
+  },
+  {
+    label: "Comunicação",
+    items: [
+      { href: "/comunicados", label: "Comunicados", icon: Megaphone },
+      { href: "/registros", label: "Registros", icon: ClipboardList },
+      { href: "/cia-news", label: "CIA News", icon: Newspaper },
+    ],
+  },
   {
     label: "Treinamentos",
     items: [
-      { href: "/gallery", label: "Materiais", icon: BookOpen, exact: true },
-    ],
-  },
-  {
-    label: "Suporte",
-    items: [
-      { href: "/chat", label: "Suporte (Chat)", icon: MessageSquare },
-      { href: "/emergencia", label: "Chat Emergencial", icon: Siren },
-    ],
-  },
-  {
-    label: "Solicitações Rápidas",
-    items: [
-      { href: "/suporte/solicitacoes", label: "Solicitações", icon: MessageSquare },
-      { href: "/suporte/marketing", label: "Marketing", icon: Megaphone },
-      { href: "/suporte/senhas-usuarios", label: "Senhas e usuários", icon: KeyRound },
-      { href: "/suporte/suporte-sistema", label: "Suporte Sistema", icon: MonitorCog },
-      { href: "/suporte/outros", label: "Outros", icon: HelpCircle },
-    ],
-  },
-  {
-    label: "Operações",
-    items: [
-      { href: "/surveys", label: "Pesquisas", icon: BarChart2 },
-      { href: "/checklists", label: "Checklists", icon: ClipboardList },
-      { href: "/documents", label: "Documentos", icon: FileText },
+      { href: "/materiais", label: "Treinamentos", icon: BookOpen },
+      { href: "/universidade", label: "Universidade", icon: GraduationCap },
+      { href: "/cardapios", label: "Cardápios", icon: UtensilsCrossed },
     ],
   },
   {
@@ -71,6 +83,8 @@ const sections: { label: string; items: { href: string; label: string; icon: Rea
 
 export function FranchiseeSidebar({ user, onOpenTutorial }: FranchiseeSidebarProps) {
   const pathname = usePathname();
+  const badges = useBadges();
+  const role = user.role ?? "FRANCHISEE";
 
   return (
     <aside className="w-60 bg-gray-950 text-white flex flex-col h-screen sticky top-0 flex-shrink-0">
@@ -88,7 +102,13 @@ export function FranchiseeSidebar({ user, onOpenTutorial }: FranchiseeSidebarPro
       {/* Navigation */}
       <nav className="flex-1 p-3 space-y-5 overflow-y-auto">
         <Support3LMButton variant="sidebar" />
-        {sections.map((section) => (
+        {sections
+          .map((section) => ({
+            ...section,
+            items: section.items.filter((item) => !item.roles || item.roles.includes(role)),
+          }))
+          .filter((section) => section.items.length > 0)
+          .map((section) => (
           <div key={section.label}>
             <p className="px-3 mb-1 text-[10px] font-semibold text-gray-500 uppercase tracking-widest">
               {section.label}
@@ -98,6 +118,7 @@ export function FranchiseeSidebar({ user, onOpenTutorial }: FranchiseeSidebarPro
                 const isActive = item.exact
                   ? pathname === item.href
                   : pathname.startsWith(item.href);
+                const badgeCount = badges[BADGE_KEY[item.href] ?? ""] ?? 0;
                 return (
                   <Link
                     key={item.href}
@@ -109,7 +130,12 @@ export function FranchiseeSidebar({ user, onOpenTutorial }: FranchiseeSidebarPro
                     }`}
                   >
                     <item.icon className="h-4 w-4 flex-shrink-0" />
-                    {item.label}
+                    <span className="flex-1 truncate">{item.label}</span>
+                    {badgeCount > 0 && (
+                      <span className="ml-auto min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 flex-shrink-0">
+                        {badgeCount > 99 ? "99+" : badgeCount}
+                      </span>
+                    )}
                   </Link>
                 );
               })}

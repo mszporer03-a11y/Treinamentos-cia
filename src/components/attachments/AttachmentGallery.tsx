@@ -1,10 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { X, ChevronLeft, ChevronRight, LayoutGrid, ExternalLink, Download } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, LayoutGrid, Download } from "lucide-react";
+import { PdfPages } from "@/components/PdfPreview";
 import { type Attachment, attachmentLabel } from "@/lib/attachments";
 import { formatFileSize, cn } from "@/lib/utils";
 import { AttachmentThumb } from "./AttachmentMosaic";
+
+/** Download com o nome original (via proxy do UploadThing) */
+export function downloadUrl(attachment: Pick<Attachment, "url" | "name">): string {
+  return `/api/file-proxy?url=${encodeURIComponent(attachment.url)}&download=${encodeURIComponent(attachment.name)}`;
+}
 
 /** Visualização de um único anexo (vídeo, imagem, PDF, documento). */
 export function AttachmentView({ attachment }: { attachment: Attachment }) {
@@ -35,14 +41,7 @@ export function AttachmentView({ attachment }: { attachment: Attachment }) {
         />
       );
     case "PDF":
-      return (
-        <iframe
-          key={attachment.url}
-          src={attachment.url}
-          title={attachment.name}
-          className="w-full h-[calc(100svh-200px)] sm:h-[65vh] rounded-lg border-0"
-        />
-      );
+      return <PdfPages key={attachment.url} url={attachment.url} />;
     case "DOCUMENT":
       return (
         <iframe
@@ -58,9 +57,7 @@ export function AttachmentView({ attachment }: { attachment: Attachment }) {
           <span className="text-6xl">📁</span>
           <p className="text-gray-600 text-center">Pré-visualização não disponível para este tipo de arquivo.</p>
           <a
-            href={attachment.url}
-            target="_blank"
-            rel="noopener noreferrer"
+            href={downloadUrl(attachment)}
             className="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 text-white text-sm rounded-lg hover:bg-gray-700 transition"
           >
             <Download className="h-4 w-4" /> Baixar arquivo
@@ -151,13 +148,12 @@ export function AttachmentGallery({
             )}
             {current && (
               <a
-                href={current.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition"
-                title="Abrir em nova aba"
+                href={downloadUrl(current)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white text-xs font-medium rounded-lg transition"
+                title="Baixar arquivo"
               >
-                <ExternalLink className="h-5 w-5" />
+                <Download className="h-4 w-4" />
+                <span className="hidden sm:inline">Baixar</span>
               </a>
             )}
             <button

@@ -32,14 +32,21 @@ const typeLabel: Record<string, string> = {
   NOTICE: "Aviso",
 };
 
-interface FeedMaterial {
+export interface FeedMaterial {
   title: string;
   description?: string | null;
   fileUrl: string | null;
   fileType: string;
   mimeType?: string | null;
   fileSize?: number | null;
+  fileName?: string | null;
   attachments?: unknown;
+}
+
+/** Usa o mosaico quando há vários anexos ou um vídeo (miniatura no segundo da capa). */
+export function materialUsesMosaic(material: FeedMaterial): boolean {
+  const list = materialAttachments(material);
+  return list.length > 1 || list[0]?.kind === "VIDEO";
 }
 
 /**

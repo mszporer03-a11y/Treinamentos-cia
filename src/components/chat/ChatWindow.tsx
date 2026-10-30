@@ -7,19 +7,29 @@ import { AttachmentMosaic } from "@/components/attachments/AttachmentMosaic";
 import { AttachmentGallery } from "@/components/attachments/AttachmentGallery";
 import { AttachmentPickerList } from "@/components/attachments/AttachmentPicker";
 import { useAttachmentUploader } from "@/components/attachments/useAttachmentUploader";
+import { formatDate } from "@/lib/utils";
 
 const MESSAGE_CATEGORIES = [
-  { value: "Solicitacoes", label: "Solicitações", color: "bg-blue-100 text-blue-700" },
-  { value: "Marketing", label: "Marketing", color: "bg-purple-100 text-purple-700" },
-  { value: "SenhasUsuarios", label: "Senhas e usuários", color: "bg-orange-100 text-orange-700" },
-  { value: "SuporteSistema", label: "Suporte Sistema", color: "bg-red-100 text-red-700" },
+  { value: "solicitacoes",   label: "Solicitações (Geral)", color: "bg-blue-100 text-blue-700" },
+  { value: "marketing",      label: "Mídia",                color: "bg-purple-100 text-purple-700" },
+  { value: "senhas-usuarios",label: "Senhas e usuários",   color: "bg-orange-100 text-orange-700" },
+  { value: "suporte-sistema",label: "Suporte Sistema",     color: "bg-cyan-100 text-cyan-700" },
+  { value: "outros",         label: "Outros",              color: "bg-gray-100 text-gray-600" },
 ] as const;
+
+// Legacy camelCase values (kept for backward compat with older messages)
+const LEGACY_CATEGORY_MAP: Record<string, { label: string; color: string }> = {
+  Solicitacoes:   { label: "Solicitações (Geral)", color: "bg-blue-100 text-blue-700" },
+  Marketing:      { label: "Mídia",             color: "bg-purple-100 text-purple-700" },
+  SenhasUsuarios: { label: "Senhas e usuários", color: "bg-orange-100 text-orange-700" },
+  SuporteSistema: { label: "Suporte Sistema",   color: "bg-cyan-100 text-cyan-700" },
+};
 
 type MessageCategoryValue = typeof MESSAGE_CATEGORIES[number]["value"];
 
 function categoryBadge(value: string | null | undefined) {
   if (!value) return null;
-  const cat = MESSAGE_CATEGORIES.find((c) => c.value === value);
+  const cat = MESSAGE_CATEGORIES.find((c) => c.value === value) ?? LEGACY_CATEGORY_MAP[value];
   if (!cat) return null;
   return (
     <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${cat.color}`}>
@@ -57,10 +67,38 @@ interface Message {
 interface ChatWindowProps {
   conversationId: string;
   currentUserId: string;
-  currentUserRole: "ADMIN" | "FRANCHISEE";
+  currentUserRole: "ADMIN" | "FRANCHISEE" | "MANAGER";
   recipientName?: string;
+  recipientRole?: string;
   pollInterval?: number;
   availableStores?: LinkedStore[];
+  readOnly?: boolean;
+}
+
+const ROLE_LABEL: Record<string, string> = {
+  ADMIN: "Admin",
+  FRANCHISEE: "Franqueado",
+  MANAGER: "Gerente",
+};
+
+function dayLabel(dateStr: string): string {
+  const d = new Date(dateStr);
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+
+  const sameDay = (a: Date, b: Date) =>
+    a.getDate() === b.getDate() &&
+    a.getMonth() === b.getMonth() &&
+    a.getFullYear() === b.getFullYear();
+
+  if (sameDay(d, today)) return "Hoje";
+  if (sameDay(d, yesterday)) return "Ontem";
+  return d.toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
 }
 
 export function ChatWindow({
@@ -68,8 +106,10 @@ export function ChatWindow({
   currentUserId,
   currentUserRole,
   recipientName = "Admin",
+  recipientRole,
   pollInterval = 4000,
   availableStores = [],
+  readOnly = false,
 }: ChatWindowProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [text, setText] = useState("");
@@ -150,7 +190,11 @@ export function ChatWindow({
         <div>
           <p className="font-semibold text-gray-900 text-sm">{recipientName}</p>
           <p className="text-xs text-gray-400">
-            {currentUserRole === "ADMIN" ? "Franqueado" : "Admin"}
+            {recipientRole
+              ? ROLE_LABEL[recipientRole] ?? recipientRole
+              : currentUserRole === "ADMIN"
+              ? "Franqueado"
+              : "Admin"}
           </p>
         </div>
       </div>
@@ -162,12 +206,25 @@ export function ChatWindow({
             Nenhuma mensagem ainda. Diga olá! 👋
           </div>
         )}
-        {messages.map((msg) => {
+        {messages.map((msg, idx) => {
           const isMe = msg.sender.id === currentUserId;
-          const attachments = messageAttachments(msg);
+          const prevMsg = messages[idx - 1];
+          const showDayDivider =
+            !prevMsg ||
+            new Date(prevMsg.createdAt).toDateString() !==
+              new Date(msg.createdAt).toDateString();
           return (
+            <div key={msg.id}>
+              {showDayDivider && (
+                <div className="flex items-center gap-3 my-4">
+                  <div className="flex-1 h-px bg-gray-200" />
+                  <span className="text-[11px] font-medium text-gray-400 bg-gray-100 px-2.5 py-0.5 rounded-full">
+                    {dayLabel(msg.createdAt)}
+                  </span>
+                  <div className="flex-1 h-px bg-gray-200" />
+                </div>
+              )}
             <div
-              key={msg.id}
               className={`flex items-end gap-2 ${isMe ? "flex-row-reverse" : "flex-row"}`}
             >
               {/* Avatar */}
@@ -205,12 +262,12 @@ export function ChatWindow({
                       : "bg-white text-gray-900 shadow-sm rounded-bl-sm"
                   }`}
                 >
-                  {attachments.length > 0 && (
+                  {messageAttachments(msg).length > 0 && (
                     <div className="mb-1 w-[220px] sm:w-[260px]">
                       <AttachmentMosaic
                         variant="chat"
-                        attachments={attachments}
-                        onOpen={() => setGallery(attachments)}
+                        attachments={messageAttachments(msg)}
+                        onOpen={() => setGallery(messageAttachments(msg))}
                       />
                     </div>
                   )}
@@ -224,19 +281,28 @@ export function ChatWindow({
                 </span>
               </div>
             </div>
+            </div>
           );
         })}
         <div ref={bottomRef} />
       </div>
 
+      {/* Read-only notice (conversa de histórico) */}
+      {readOnly && (
+        <div className="px-4 py-3 bg-gray-100 border-t border-gray-200 text-center text-xs text-gray-500 flex-shrink-0">
+          Esta conversa é um histórico — para falar com a equipe, inicie uma conversa com um administrador.
+        </div>
+      )}
+
       {/* Anexos pendentes (vários por mensagem) */}
-      {uploader.items.length > 0 && (
+      {!readOnly && uploader.items.length > 0 && (
         <div className="mx-4 mb-2 max-h-48 overflow-y-auto">
           <AttachmentPickerList uploader={uploader} compact />
         </div>
       )}
 
       {/* Input bar */}
+      {!readOnly && (
       <div className="px-4 py-3 bg-white border-t border-gray-200 flex-shrink-0">
         {/* Store picker */}
         {availableStores.length > 0 && showStorePicker && (
@@ -392,6 +458,7 @@ export function ChatWindow({
           </button>
         </div>
       </div>
+      )}
 
       {gallery && <AttachmentGallery attachments={gallery} title="Anexos da mensagem" onClose={() => setGallery(null)} />}
     </div>

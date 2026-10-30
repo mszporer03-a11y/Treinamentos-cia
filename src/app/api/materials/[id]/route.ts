@@ -11,6 +11,7 @@ const updateSchema = z.object({
   title: z.string().min(1).max(200).optional(),
   description: z.string().optional(),
   published: z.boolean().optional(),
+  color: z.enum(["amber", "blue"]).optional(),
   categoryId: z.string().optional(),
   attachments: attachmentsSchema.optional(),
   linkedStoreIds: z.array(z.string()).optional(),
@@ -64,21 +65,23 @@ export async function PATCH(
     const body = await req.json();
     const { attachments, linkedStoreIds, ...data } = updateSchema.parse(body);
 
-    const before = await db.material.findUnique({ where: { id: params.id }, select: { published: true } });
+    const before = await db.material.findUnique({
+      where: { id: params.id },
+      select: { published: true, fileType: true },
+    });
+    if (!before) {
+      return NextResponse.json({ error: "Material não encontrado" }, { status: 404 });
+    }
 
     let attachmentData = {};
     if (attachments) {
-      const current = await db.material.findUnique({ where: { id: params.id }, select: { fileType: true } });
-      if (!current) {
-        return NextResponse.json({ error: "Material não encontrado" }, { status: 404 });
-      }
-      if (current.fileType !== "NOTICE" && attachments.length === 0) {
+      if (before.fileType !== "NOTICE" && attachments.length === 0) {
         return NextResponse.json({ error: "Anexe pelo menos um arquivo" }, { status: 400 });
       }
       attachmentData = {
         attachments,
         ...legacyFileFields(attachments),
-        ...(current.fileType !== "NOTICE" ? { fileType: attachments[0].kind } : {}),
+        ...(before.fileType !== "NOTICE" ? { fileType: attachments[0].kind } : {}),
       };
     }
 
@@ -88,12 +91,7 @@ export async function PATCH(
         ...data,
         ...attachmentData,
         ...(linkedStoreIds
-          ? {
-              linkedStores: {
-                deleteMany: {},
-                create: linkedStoreIds.map((storeId) => ({ storeId })),
-              },
-            }
+          ? { linkedStores: { deleteMany: {}, create: linkedStoreIds.map((storeId) => ({ storeId })) } }
           : {}),
       },
       include: {
@@ -101,8 +99,9 @@ export async function PATCH(
         linkedStores: { include: { store: { select: { id: true, name: true, code: true } } } },
       },
     });
+
     // Rascunho → publicado: dispara push + e-mail
-    if (before && !before.published && material.published) {
+    if (!before.published && material.published) {
       const list = materialAttachments(material);
       notifyMaterialPublished({
         id: material.id,

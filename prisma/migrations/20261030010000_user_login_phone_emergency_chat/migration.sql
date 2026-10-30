@@ -1,5 +1,6 @@
 -- Login (username) e telefone WhatsApp no cadastro + Chat Individual Emergencial
--- Idempotente (seguro para bancos que já tenham parte do schema)
+-- Idempotente (seguro para bancos que já tenham parte do schema ou um
+-- registro de execução anterior que falhou)
 
 DO $$ BEGIN
   CREATE TYPE "EmergencyStatus" AS ENUM ('OPEN', 'CLOSED');

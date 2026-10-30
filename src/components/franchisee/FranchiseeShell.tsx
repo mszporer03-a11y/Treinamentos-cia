@@ -6,36 +6,38 @@ import Link from "next/link";
 import { signOut } from "next-auth/react";
 import { FranchiseeSidebar } from "./FranchiseeSidebar";
 import { TutorialOverlay, PORTAL_TUTORIAL_STEPS } from "./TutorialOverlay";
+import { PwaInstallPrompt } from "@/components/PwaInstallPrompt";
 import { WelcomeModal } from "./WelcomeModal";
 import { Support3LMButton } from "./Support3LM";
 import { EmergencyAlertBanner } from "@/components/emergency/EmergencyAlertBanner";
+import { useBadges, BADGE_KEY } from "@/hooks/useBadges";
 import {
   BookOpen,
-  MessageSquare,
-  BarChart2,
-  ClipboardList,
-  FileText,
+  Megaphone,
+  Send,
   UserCircle2,
   LogOut,
   HelpCircle,
+  Inbox,
 } from "lucide-react";
 
 interface FranchiseeShellProps {
-  user: { name?: string | null; email?: string | null };
+  user: { name?: string | null; email?: string | null; role?: string };
   storeNames?: string[];
   children: React.ReactNode;
 }
 
 const mobileNavItems = [
-  { href: "/gallery", label: "Materiais", icon: BookOpen, exact: true },
-  { href: "/chat", label: "Suporte", icon: MessageSquare },
-  { href: "/surveys", label: "Pesquisas", icon: BarChart2 },
-  { href: "/checklists", label: "Checklists", icon: ClipboardList },
+  { href: "/gallery", label: "Início", icon: BookOpen, exact: true },
+  { href: "/solicitar", label: "Solicitar", icon: Send },
+  { href: "/solicitacoes", label: "Acompanhar", icon: Inbox },
+  { href: "/comunicados", label: "Comunicados", icon: Megaphone },
   { href: "/perfil", label: "Perfil", icon: UserCircle2, exact: true },
 ];
 
 export function FranchiseeShell({ user, storeNames = [], children }: FranchiseeShellProps) {
   const pathname = usePathname();
+  const badges = useBadges();
   const [showTutorial, setShowTutorial] = useState(false);
   const [tutorialStep, setTutorialStep] = useState(0);
 
@@ -75,7 +77,9 @@ export function FranchiseeShell({ user, storeNames = [], children }: FranchiseeS
             <div className="w-8 h-8 bg-orange-600 rounded-lg flex items-center justify-center flex-shrink-0">
               <BookOpen className="h-4 w-4 text-white" />
             </div>
-            <span className="font-bold text-gray-900 text-sm">Portal Franqueado</span>
+            <span className="font-bold text-gray-900 text-sm">
+              {user.role === "MANAGER" ? "Portal Gerente" : "Portal Franqueado"}
+            </span>
           </div>
           <div className="flex items-center gap-1">
             <Support3LMButton variant="icon" />
@@ -112,16 +116,24 @@ export function FranchiseeShell({ user, storeNames = [], children }: FranchiseeS
           const isActive = item.exact
             ? pathname === item.href
             : pathname.startsWith(item.href);
+          const badgeCount = badges[BADGE_KEY[item.href] ?? ""] ?? 0;
 
           return (
             <Link
               key={item.href}
               href={item.href}
-              className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2.5 transition ${
+              className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2.5 transition relative ${
                 isActive ? "text-orange-600" : "text-gray-400"
               }`}
             >
-              <item.icon className="h-5 w-5" />
+              <div className="relative">
+                <item.icon className="h-5 w-5" />
+                {badgeCount > 0 && (
+                  <span className="absolute -top-1 -right-1.5 min-w-[14px] h-3.5 bg-red-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center px-0.5 ring-1 ring-white">
+                    {badgeCount > 9 ? "9+" : badgeCount}
+                  </span>
+                )}
+              </div>
               <span className="text-[10px] font-medium leading-tight">
                 {item.label}
               </span>
@@ -130,6 +142,8 @@ export function FranchiseeShell({ user, storeNames = [], children }: FranchiseeS
         })}
       </nav>
 
+      {/* PWA install / notification prompt */}
+      <PwaInstallPrompt />
       <WelcomeModal name={user.name ?? "Franqueado"} storeNames={storeNames} />
 
       {/* Tutorial overlay */}

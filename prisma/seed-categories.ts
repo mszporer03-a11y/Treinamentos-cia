@@ -22,7 +22,7 @@ const categories = [
   {
     name: "Cia News",
     slug: "cia-news",
-    description: "Novidades, avisos e comunicados internos da Cia do Churrasco",
+    description: "Novidades, avisos e comunicados internos da Companhia do Churrasco",
     icon: "📰",
   },
 ];
