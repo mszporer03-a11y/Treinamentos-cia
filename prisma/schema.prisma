@@ -125,6 +125,8 @@ model Material {
   fileType          FileType           @default(OTHER)
   mimeType          String?
   fileSize          Int?
+  // Lista de anexos do post (mosaico). Cada item: { url, key, name, kind, mimeType, size, coverTime, coverUrl }
+  attachments       Json               @default("[]")
   published         Boolean            @default(true)
   categoryId        String
   category          Category           @relation(fields: [categoryId], references: [id], onDelete: Cascade)
@@ -199,6 +201,7 @@ model Message {
   fileKey          String?
   fileType         String?
   fileName         String?
+  attachments      Json           @default("[]")
   category         String?
   readByAdmin      Boolean        @default(false)
   readByFranchisee Boolean        @default(false)
@@ -329,6 +332,7 @@ model NonComplianceAlert {
   status      AlertStatus   @default(OPEN)
   dueDate     DateTime?
   resolution  String?
+  attachments Json          @default("[]")
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 }
@@ -342,6 +346,7 @@ model MarketingCampaign {
   endDate     DateTime?
   published   Boolean         @default(false)
   assets      CampaignAsset[]
+  attachments Json            @default("[]")
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
 }

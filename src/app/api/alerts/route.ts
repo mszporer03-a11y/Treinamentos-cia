@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { z } from "zod";
+import { attachmentsSchema } from "@/lib/attachments";
 
 const createSchema = z.object({
   storeId: z.string().cuid(),
@@ -9,6 +10,7 @@ const createSchema = z.object({
   description: z.string().min(1).max(2000),
   severity: z.enum(["LOW", "MEDIUM", "HIGH", "CRITICAL"]).default("MEDIUM"),
   dueDate: z.string().optional(),
+  attachments: attachmentsSchema.default([]),
 });
 
 export async function GET(req: Request) {

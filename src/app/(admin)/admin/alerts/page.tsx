@@ -3,6 +3,11 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { AlertTriangle, Plus, X, CheckCircle2 } from "lucide-react";
+import { type Attachment, genericAttachments } from "@/lib/attachments";
+import { AttachmentPicker } from "@/components/attachments/AttachmentPicker";
+import { AttachmentMosaic } from "@/components/attachments/AttachmentMosaic";
+import { AttachmentGallery } from "@/components/attachments/AttachmentGallery";
+import { useAttachmentUploader } from "@/components/attachments/useAttachmentUploader";
 
 type Store = { id: string; name: string; code: string };
 type Alert = {
@@ -13,6 +18,7 @@ type Alert = {
   status: string;
   dueDate: string | null;
   resolution: string | null;
+  attachments?: unknown;
   createdAt: string;
   store: Store;
 };
@@ -34,6 +40,8 @@ export default function AlertsPage() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ storeId: "", title: "", description: "", severity: "MEDIUM", dueDate: "" });
   const [saving, setSaving] = useState(false);
+  const uploader = useAttachmentUploader("materialUploader");
+  const [gallery, setGallery] = useState<{ title: string; attachments: Attachment[] } | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -43,15 +51,16 @@ export default function AlertsPage() {
   }, []);
 
   async function create() {
-    if (!form.storeId || !form.title || !form.description) return;
+    if (!form.storeId || !form.title || !form.description || uploader.busy) return;
     setSaving(true);
     const res = await fetch("/api/alerts", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...form, dueDate: form.dueDate || undefined }),
+      body: JSON.stringify({ ...form, dueDate: form.dueDate || undefined, attachments: uploader.attachments }),
     });
     const a = await res.json();
     setAlerts((prev) => [a, ...prev]);
     setForm({ storeId: "", title: "", description: "", severity: "MEDIUM", dueDate: "" });
+    uploader.reset();
     setShowForm(false);
     setSaving(false);
   }
@@ -118,9 +127,13 @@ export default function AlertsPage() {
                     value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} />
                 </div>
               </div>
-              <button disabled={saving || !form.storeId || !form.title || !form.description} onClick={create}
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">Evidências (fotos, vídeos, documentos — opcional)</label>
+                <AttachmentPicker uploader={uploader} />
+              </div>
+              <button disabled={saving || uploader.busy || !form.storeId || !form.title || !form.description} onClick={create}
                 className="w-full py-2 bg-orange-600 text-white text-sm font-medium rounded-lg hover:bg-orange-700 disabled:opacity-50 transition">
-                {saving ? "Salvando..." : "Criar Alerta"}
+                {saving ? "Salvando..." : uploader.busy ? "Enviando arquivos..." : "Criar Alerta"}
               </button>
             </div>
           </div>
@@ -145,6 +158,14 @@ export default function AlertsPage() {
                           </div>
                           <p className="text-sm text-gray-500 mt-0.5">{a.description}</p>
                           {a.dueDate && <p className="text-xs text-orange-600 mt-1">Prazo: {new Date(a.dueDate).toLocaleDateString("pt-BR")}</p>}
+                          {genericAttachments(a.attachments).length > 0 && (
+                            <div className="mt-2 max-w-sm">
+                              <AttachmentMosaic
+                                attachments={genericAttachments(a.attachments)}
+                                onOpen={() => setGallery({ title: a.title, attachments: genericAttachments(a.attachments) })}
+                              />
+                            </div>
+                          )}
                           <div className="flex gap-2 mt-3">
                             {a.status === "OPEN" && (
                               <button onClick={() => updateStatus(a.id, "ACKNOWLEDGED")}
@@ -181,6 +202,9 @@ export default function AlertsPage() {
           </div>
         )}
       </div>
+      {gallery && (
+        <AttachmentGallery attachments={gallery.attachments} title={gallery.title} onClose={() => setGallery(null)} />
+      )}
     </>
   );
 }

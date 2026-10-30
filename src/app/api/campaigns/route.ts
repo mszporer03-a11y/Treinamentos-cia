@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { z } from "zod";
+import { attachmentsSchema } from "@/lib/attachments";
 
 const assetSchema = z.object({
   fileUrl: z.string().url(),
@@ -17,6 +18,7 @@ const createSchema = z.object({
   endDate: z.string().optional(),
   published: z.boolean().default(false),
   assets: z.array(assetSchema).default([]),
+  attachments: attachmentsSchema.default([]),
 });
 
 export async function GET() {

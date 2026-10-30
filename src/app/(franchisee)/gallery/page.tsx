@@ -5,8 +5,9 @@ import Link from "next/link";
 import Image from "next/image";
 import { useSession } from "next-auth/react";
 import { MaterialViewer } from "@/components/franchisee/MaterialViewer";
-import { Play, FileText, Image as ImageIcon, File, MessageSquare, BarChart2, ClipboardList, ChevronRight, SlidersHorizontal, Megaphone } from "lucide-react";
+import { MessageSquare, BarChart2, ClipboardList, ChevronRight, SlidersHorizontal } from "lucide-react";
 import { formatDate } from "@/lib/utils";
+import { MaterialFeedMedia } from "@/components/attachments/MaterialFeedMedia";
 
 export const dynamic = "force-dynamic";
 
@@ -25,42 +26,13 @@ interface Material {
   fileType: string;
   fileSize?: number | null;
   mimeType?: string | null;
+  attachments?: unknown;
   createdAt: string;
   category: Category;
   createdBy?: { name: string } | null;
 }
 
-const typeIcon: Record<string, React.ElementType> = {
-  VIDEO: Play,
-  PDF: FileText,
-  IMAGE: ImageIcon,
-  DOCUMENT: FileText,
-  OTHER: File,
-  NOTICE: Megaphone,
-};
-
-const typeLabel: Record<string, string> = {
-  VIDEO: "Video",
-  PDF: "PDF",
-  IMAGE: "Imagem",
-  DOCUMENT: "Documento",
-  OTHER: "Arquivo",
-  NOTICE: "Aviso",
-};
-
-const typeColor: Record<string, string> = {
-  VIDEO: "bg-red-50 text-red-500",
-  PDF: "bg-orange-50 text-orange-500",
-  IMAGE: "bg-sky-50 text-sky-500",
-  DOCUMENT: "bg-blue-50 text-blue-500",
-  OTHER: "bg-gray-50 text-gray-400",
-  NOTICE: "bg-amber-50 text-amber-600",
-};
-
 function FeedCard({ material, onOpen }: { material: Material; onOpen: () => void }) {
-  const Icon = typeIcon[material.fileType] ?? File;
-  const color = typeColor[material.fileType] ?? typeColor.OTHER;
-
   return (
     <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden hover:border-gray-200 hover:shadow-md transition-all group">
       <div className="flex items-center gap-2.5 px-4 pt-3 pb-2">
@@ -79,19 +51,12 @@ function FeedCard({ material, onOpen }: { material: Material; onOpen: () => void
         </div>
       </div>
 
+      {/* Mosaico de anexos (estilo WhatsApp) → abre a galeria */}
+      <div className="px-3">
+        <MaterialFeedMedia material={material} onOpen={onOpen} />
+      </div>
+
       <button onClick={onOpen} className="w-full text-left focus:outline-none">
-        {material.fileType === "IMAGE" ? (
-          <div className="mx-3 rounded-xl overflow-hidden bg-gray-100 aspect-video">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={material.fileUrl ?? ""} alt={material.title}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-          </div>
-        ) : (
-          <div className={`mx-3 rounded-xl aspect-video flex flex-col items-center justify-center gap-2 ${color} group-hover:opacity-80 transition-opacity`}>
-            <Icon className="h-10 w-10 sm:h-14 sm:w-14 opacity-60" />
-            <span className="text-xs sm:text-sm font-medium opacity-70">{typeLabel[material.fileType] ?? "Arquivo"}</span>
-          </div>
-        )}
         <div className="px-4 pt-2.5 pb-4">
           <p className="font-semibold text-gray-900 text-sm leading-snug line-clamp-2 group-hover:text-orange-600 transition-colors">
             {material.title}

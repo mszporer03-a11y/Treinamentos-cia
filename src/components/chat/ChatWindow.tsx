@@ -1,19 +1,12 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import {
-  Send,
-  Paperclip,
-  X,
-  FileText,
-  Image as ImageIcon,
-  Download,
-  Loader2,
-  Tag,
-  Store,
-} from "lucide-react";
-import { useUploadThing } from "@/lib/uploadthing-components";
-import { formatDate } from "@/lib/utils";
+import { Send, Paperclip, X, Loader2, Tag, Store } from "lucide-react";
+import { type Attachment, messageAttachments } from "@/lib/attachments";
+import { AttachmentMosaic } from "@/components/attachments/AttachmentMosaic";
+import { AttachmentGallery } from "@/components/attachments/AttachmentGallery";
+import { AttachmentPickerList } from "@/components/attachments/AttachmentPicker";
+import { useAttachmentUploader } from "@/components/attachments/useAttachmentUploader";
 
 const MESSAGE_CATEGORIES = [
   { value: "Solicitacoes", label: "Solicitações", color: "bg-blue-100 text-blue-700" },
@@ -54,6 +47,7 @@ interface Message {
   fileUrl: string | null;
   fileType: string | null;
   fileName: string | null;
+  attachments?: unknown;
   category: string | null;
   createdAt: string;
   sender: Sender;
@@ -67,35 +61,6 @@ interface ChatWindowProps {
   recipientName?: string;
   pollInterval?: number;
   availableStores?: LinkedStore[];
-}
-
-function FilePreview({ url, type, name }: { url: string; type: string | null; name: string | null }) {
-  const isImage = type === "image" || (name ? /\.(jpg|jpeg|png|gif|webp)$/i.test(name) : false);
-
-  if (isImage) {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={url}
-        alt={name ?? "imagem"}
-        className="max-w-[240px] max-h-[200px] rounded-lg object-cover cursor-pointer"
-        onClick={() => window.open(url, "_blank")}
-      />
-    );
-  }
-
-  return (
-    <a
-      href={url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="flex items-center gap-2 px-3 py-2 bg-white/20 rounded-lg hover:bg-white/30 transition text-sm"
-    >
-      <FileText className="h-4 w-4 flex-shrink-0" />
-      <span className="truncate max-w-[160px]">{name ?? "arquivo"}</span>
-      <Download className="h-3 w-3 flex-shrink-0" />
-    </a>
-  );
 }
 
 export function ChatWindow({
@@ -113,33 +78,12 @@ export function ChatWindow({
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [selectedStoreIds, setSelectedStoreIds] = useState<string[]>([]);
   const [showStorePicker, setShowStorePicker] = useState(false);
-  const [pendingFile, setPendingFile] = useState<{
-    url: string;
-    key: string;
-    type: string;
-    name: string;
-  } | null>(null);
-  const [uploading, setUploading] = useState(false);
+  const uploader = useAttachmentUploader("chatAttachment");
+  const uploading = uploader.busy;
+  const hasAttachments = uploader.attachments.length > 0;
+  const [gallery, setGallery] = useState<Attachment[] | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const { startUpload } = useUploadThing("chatAttachment", {
-    onClientUploadComplete: (res) => {
-      const file = res?.[0];
-      if (file) {
-        const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
-        const isImg = ["jpg", "jpeg", "png", "gif", "webp"].includes(ext);
-        setPendingFile({
-          url: file.url,
-          key: file.key,
-          type: isImg ? "image" : "document",
-          name: file.name,
-        });
-      }
-      setUploading(false);
-    },
-    onUploadError: () => setUploading(false),
-  });
 
   const fetchMessages = useCallback(async () => {
     const res = await fetch(`/api/conversations/${conversationId}/messages`);
@@ -160,7 +104,7 @@ export function ChatWindow({
   }, [messages]);
 
   async function handleSend() {
-    if (!text.trim() && !pendingFile) return;
+    if ((!text.trim() && !hasAttachments) || uploading) return;
     setSending(true);
 
     await fetch(`/api/conversations/${conversationId}/messages`, {
@@ -168,17 +112,14 @@ export function ChatWindow({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         content: text.trim() || null,
-        fileUrl: pendingFile?.url ?? null,
-        fileKey: pendingFile?.key ?? null,
-        fileType: pendingFile?.type ?? null,
-        fileName: pendingFile?.name ?? null,
+        attachments: uploader.attachments,
         category: category || null,
         linkedStoreIds: selectedStoreIds,
       }),
     });
 
     setText("");
-    setPendingFile(null);
+    uploader.reset();
     setCategory("");
     setSelectedStoreIds([]);
     setShowCategoryPicker(false);
@@ -187,11 +128,8 @@ export function ChatWindow({
     await fetchMessages();
   }
 
-  async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    await startUpload([file]);
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    uploader.addFiles(e.target.files);
     e.target.value = "";
   }
 
@@ -226,6 +164,7 @@ export function ChatWindow({
         )}
         {messages.map((msg) => {
           const isMe = msg.sender.id === currentUserId;
+          const attachments = messageAttachments(msg);
           return (
             <div
               key={msg.id}
@@ -266,9 +205,13 @@ export function ChatWindow({
                       : "bg-white text-gray-900 shadow-sm rounded-bl-sm"
                   }`}
                 >
-                  {msg.fileUrl && (
-                    <div className="mb-1">
-                      <FilePreview url={msg.fileUrl} type={msg.fileType} name={msg.fileName} />
+                  {attachments.length > 0 && (
+                    <div className="mb-1 w-[220px] sm:w-[260px]">
+                      <AttachmentMosaic
+                        variant="chat"
+                        attachments={attachments}
+                        onOpen={() => setGallery(attachments)}
+                      />
                     </div>
                   )}
                   {msg.content && <p className="whitespace-pre-wrap">{msg.content}</p>}
@@ -286,18 +229,10 @@ export function ChatWindow({
         <div ref={bottomRef} />
       </div>
 
-      {/* Pending file preview */}
-      {pendingFile && (
-        <div className="mx-4 mb-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-xl flex items-center gap-2 text-sm text-blue-700">
-          {pendingFile.type === "image" ? (
-            <ImageIcon className="h-4 w-4 flex-shrink-0" />
-          ) : (
-            <FileText className="h-4 w-4 flex-shrink-0" />
-          )}
-          <span className="truncate flex-1">{pendingFile.name}</span>
-          <button onClick={() => setPendingFile(null)}>
-            <X className="h-4 w-4" />
-          </button>
+      {/* Anexos pendentes (vários por mensagem) */}
+      {uploader.items.length > 0 && (
+        <div className="mx-4 mb-2 max-h-48 overflow-y-auto">
+          <AttachmentPickerList uploader={uploader} compact />
         </div>
       )}
 
@@ -391,7 +326,7 @@ export function ChatWindow({
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
             className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition flex-shrink-0"
-            title="Anexar arquivo"
+            title="Anexar arquivos"
           >
             {uploading ? (
               <Loader2 className="h-5 w-5 animate-spin" />
@@ -402,7 +337,8 @@ export function ChatWindow({
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/*,.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx"
+            accept="image/*,video/*,.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx"
+            multiple
             className="hidden"
             onChange={handleFileSelect}
           />
@@ -449,13 +385,15 @@ export function ChatWindow({
 
           <button
             onClick={handleSend}
-            disabled={sending || uploading || (!text.trim() && !pendingFile)}
+            disabled={sending || uploading || (!text.trim() && !hasAttachments)}
             className="p-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl transition flex-shrink-0"
           >
             <Send className="h-5 w-5" />
           </button>
         </div>
       </div>
+
+      {gallery && <AttachmentGallery attachments={gallery} title="Anexos da mensagem" onClose={() => setGallery(null)} />}
     </div>
   );
 }

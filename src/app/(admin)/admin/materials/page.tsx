@@ -3,11 +3,13 @@
 export const dynamic = "force-dynamic";
 
 import { useState, useEffect, useCallback } from "react";
-import { Plus, Pencil, Trash2, Eye, EyeOff, FileText, Upload, CheckCircle, ExternalLink, Users } from "lucide-react";
-import { UploadButton } from "@/lib/uploadthing-components";
-import { getFileType, formatFileSize, formatDate, fileTypeIcon } from "@/lib/utils";
+import { Plus, Pencil, Trash2, Eye, EyeOff, FileText, ExternalLink, Users, Paperclip } from "lucide-react";
+import { formatFileSize, formatDate, fileTypeIcon } from "@/lib/utils";
+import { materialAttachments } from "@/lib/attachments";
 import { MaterialViewer } from "@/components/franchisee/MaterialViewer";
 import { MaterialViewsModal } from "@/components/admin/MaterialViewsModal";
+import { AttachmentPicker } from "@/components/attachments/AttachmentPicker";
+import { useAttachmentUploader } from "@/components/attachments/useAttachmentUploader";
 
 interface Category {
   id: string;
@@ -29,19 +31,13 @@ interface Material {
   fileUrl: string | null;
   fileType: string;
   fileSize?: number | null;
+  mimeType?: string | null;
+  attachments?: unknown;
   published: boolean;
   categoryId: string;
   category: Category;
   linkedStores: { store: StoreRef }[];
   createdAt: string;
-}
-
-interface UploadedFile {
-  url: string;
-  key: string;
-  name: string;
-  size: number;
-  type: string;
 }
 
 const DEFAULT_FORM = {
@@ -61,7 +57,7 @@ export default function MaterialsPage() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [editing, setEditing] = useState<Material | null>(null);
   const [form, setForm] = useState(DEFAULT_FORM);
-  const [uploadedFile, setUploadedFile] = useState<UploadedFile | null>(null);
+  const uploader = useAttachmentUploader("materialUploader");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [filterCategory, setFilterCategory] = useState("");
@@ -87,7 +83,7 @@ export default function MaterialsPage() {
 
   function openCreate() {
     setForm(DEFAULT_FORM);
-    setUploadedFile(null);
+    uploader.reset();
     setError("");
     setShowCreateModal(true);
   }
@@ -99,8 +95,9 @@ export default function MaterialsPage() {
       description: mat.description ?? "",
       categoryId: mat.categoryId,
       published: mat.published,
-      linkedStoreIds: [],
+      linkedStoreIds: (mat.linkedStores ?? []).map(({ store }) => store.id),
     });
+    uploader.reset(materialAttachments(mat));
     setError("");
     setShowEditModal(true);
   }
@@ -116,25 +113,24 @@ export default function MaterialsPage() {
         setError("Escreva a descrição do aviso");
         return;
       }
-    } else if (!uploadedFile) {
-      setError("Selecione um arquivo para upload");
+    } else if (uploader.attachments.length === 0) {
+      setError("Selecione pelo menos um arquivo para upload");
+      return;
+    }
+    if (uploader.busy) {
+      setError("Aguarde o envio dos arquivos terminar");
       return;
     }
 
     setSaving(true);
     setError("");
 
-    const body = isAviso
-      ? { ...form, fileType: "NOTICE", linkedStoreIds: form.linkedStoreIds }
-      : {
-          ...form,
-          fileUrl: uploadedFile!.url,
-          fileKey: uploadedFile!.key,
-          fileType: getFileType(uploadedFile!.type),
-          mimeType: uploadedFile!.type,
-          fileSize: uploadedFile!.size,
-          linkedStoreIds: form.linkedStoreIds,
-        };
+    const body = {
+      ...form,
+      ...(isAviso ? { fileType: "NOTICE" } : {}),
+      attachments: uploader.attachments,
+      linkedStoreIds: form.linkedStoreIds,
+    };
 
     const res = await fetch("/api/materials", {
       method: "POST",
@@ -157,6 +153,14 @@ export default function MaterialsPage() {
   async function handleEdit(e: React.FormEvent) {
     e.preventDefault();
     if (!editing) return;
+    if (uploader.busy) {
+      setError("Aguarde o envio dos arquivos terminar");
+      return;
+    }
+    if (editing.fileType !== "NOTICE" && uploader.attachments.length === 0) {
+      setError("O material precisa de pelo menos um anexo");
+      return;
+    }
     setSaving(true);
     setError("");
 
@@ -168,6 +172,8 @@ export default function MaterialsPage() {
         description: form.description,
         categoryId: form.categoryId,
         published: form.published,
+        attachments: uploader.attachments,
+        linkedStoreIds: form.linkedStoreIds,
       }),
     });
 
@@ -200,12 +206,69 @@ export default function MaterialsPage() {
     }
   }
 
+  // Preenche o título com o nome do primeiro arquivo enviado
+  const firstAttachmentName = uploader.attachments[0]?.name;
+  useEffect(() => {
+    if (showCreateModal && firstAttachmentName) {
+      setForm((f) => (f.title ? f : { ...f, title: firstAttachmentName.replace(/\.[^/.]+$/, "") }));
+    }
+  }, [showCreateModal, firstAttachmentName]);
+
   const filtered = filterCategory
     ? materials.filter((m) => m.categoryId === filterCategory)
     : materials;
 
   const selectedCategory = categories.find((c) => c.id === form.categoryId);
   const isAviso = selectedCategory?.slug === "avisos";
+
+  const allStoresSelected = stores.length > 0 && form.linkedStoreIds.length === stores.length;
+
+  // Segmentação: lojas que terão acesso ao conteúdo
+  const storePicker = stores.length > 0 && (
+    <div>
+      <div className="flex items-center justify-between mb-1.5">
+        <label className="block text-sm font-medium text-gray-700">
+          Lojas com acesso
+          <span className="ml-1.5 text-xs font-normal text-gray-400">(nenhuma marcada = todas)</span>
+        </label>
+        <button
+          type="button"
+          onClick={() =>
+            setForm((f) => ({ ...f, linkedStoreIds: allStoresSelected ? [] : stores.map((s) => s.id) }))
+          }
+          className="text-xs font-medium text-blue-600 hover:text-blue-800"
+        >
+          {allStoresSelected ? "Desmarcar todas" : "✓ Marcar todas as lojas"}
+        </button>
+      </div>
+      <div className="flex flex-wrap gap-1.5 p-2.5 border border-gray-200 rounded-lg max-h-36 overflow-y-auto">
+        {stores.map((store) => {
+          const selected = form.linkedStoreIds.includes(store.id);
+          return (
+            <button
+              key={store.id}
+              type="button"
+              onClick={() =>
+                setForm((f) => ({
+                  ...f,
+                  linkedStoreIds: selected
+                    ? f.linkedStoreIds.filter((id) => id !== store.id)
+                    : [...f.linkedStoreIds, store.id],
+                }))
+              }
+              className={`px-2.5 py-1 rounded-full text-xs font-medium border transition ${
+                selected
+                  ? "bg-blue-600 text-white border-blue-600"
+                  : "bg-white border-gray-200 text-gray-600 hover:border-blue-300"
+              }`}
+            >
+              {store.name}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
 
   return (
     <div className="p-4 sm:p-6 md:p-8">
@@ -282,6 +345,7 @@ export default function MaterialsPage() {
                   <p className="text-xs text-gray-500 mt-0.5">
                     {mat.category.icon} {mat.category.name}
                     {mat.fileSize ? ` · ${formatFileSize(mat.fileSize)}` : ""}
+                    {materialAttachments(mat).length > 1 ? ` · ${materialAttachments(mat).length} anexos` : ""}
                   </p>
                   <div className="flex items-center gap-2 mt-2">
                     <button
@@ -367,6 +431,11 @@ export default function MaterialsPage() {
                         {mat.description && (
                           <p className="text-xs text-gray-400 truncate max-w-xs">
                             {mat.description}
+                          </p>
+                        )}
+                        {materialAttachments(mat).length > 1 && (
+                          <p className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
+                            <Paperclip className="h-3 w-3" /> {materialAttachments(mat).length} anexos
                           </p>
                         )}
                         {mat.linkedStores && mat.linkedStores.length > 0 && (
@@ -477,70 +546,21 @@ export default function MaterialsPage() {
                 </select>
                 {isAviso && (
                   <p className="text-xs text-gray-500 mt-1.5">
-                    Avisos são apenas texto — preencha o título e a descrição abaixo, sem anexar arquivo.
+                    Avisos são texto — preencha o título e a descrição; anexos são opcionais.
                   </p>
                 )}
               </div>
 
-              {/* File Upload — hidden for text-only "Avisos" */}
-              {!isAviso && (
+              {/* Anexos — vários arquivos por post (opcional para Avisos) */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Arquivo *
+                  {isAviso ? "Anexos (opcional)" : "Arquivos *"}
                 </label>
-                {uploadedFile ? (
-                  <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-lg">
-                    <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">
-                        {uploadedFile.name}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {formatFileSize(uploadedFile.size)}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setUploadedFile(null)}
-                      className="text-xs text-red-500 hover:text-red-700 flex-shrink-0"
-                    >
-                      Remover
-                    </button>
-                  </div>
-                ) : (
-                  <div className="border-2 border-dashed border-gray-200 rounded-xl p-5 flex flex-col items-center text-center">
-                    <Upload className="h-8 w-8 text-gray-300 mb-2" />
-                    <p className="text-sm text-gray-500 mb-3">
-                      Vídeos (até 2GB), PDFs, Imagens, Documentos
-                    </p>
-                    <UploadButton
-                      endpoint="materialUploader"
-                      onClientUploadComplete={(res) => {
-                        if (res && res[0]) {
-                          const file = res[0];
-                          setUploadedFile({
-                            url: file.url,
-                            key: file.key,
-                            name: file.name,
-                            size: file.size,
-                            type: file.type ?? "",
-                          });
-                          if (!form.title) {
-                            setForm((f) => ({
-                              ...f,
-                              title: file.name.replace(/\.[^/.]+$/, ""),
-                            }));
-                          }
-                        }
-                      }}
-                      onUploadError={(err) => {
-                        setError(`Erro no upload: ${err.message}`);
-                      }}
-                    />
-                  </div>
-                )}
+                <AttachmentPicker
+                  uploader={uploader}
+                  hint="Vídeos (até 2GB), PDFs, imagens e documentos — vários de uma vez"
+                />
               </div>
-              )}
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -570,41 +590,7 @@ export default function MaterialsPage() {
                 />
               </div>
 
-              {/* Store picker */}
-              {stores.length > 0 && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Visível para lojas
-                    <span className="ml-1.5 text-xs font-normal text-gray-400">(vazio = todas)</span>
-                  </label>
-                  <div className="flex flex-wrap gap-1.5 p-2.5 border border-gray-200 rounded-lg max-h-36 overflow-y-auto">
-                    {stores.map((store) => {
-                      const selected = form.linkedStoreIds.includes(store.id);
-                      return (
-                        <button
-                          key={store.id}
-                          type="button"
-                          onClick={() =>
-                            setForm((f) => ({
-                              ...f,
-                              linkedStoreIds: selected
-                                ? f.linkedStoreIds.filter((id) => id !== store.id)
-                                : [...f.linkedStoreIds, store.id],
-                            }))
-                          }
-                          className={`px-2.5 py-1 rounded-full text-xs font-medium border transition ${
-                            selected
-                              ? "bg-blue-600 text-white border-blue-600"
-                              : "bg-white border-gray-200 text-gray-600 hover:border-blue-300"
-                          }`}
-                        >
-                          {store.name}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
+              {storePicker}
 
               <div className="flex items-center gap-2">
                 <input
@@ -640,10 +626,10 @@ export default function MaterialsPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={saving || (!isAviso && !uploadedFile)}
+                  disabled={saving || uploader.busy || (!isAviso && uploader.attachments.length === 0)}
                   className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-lg transition text-sm"
                 >
-                  {saving ? "Salvando..." : isAviso ? "Publicar Aviso" : "Salvar Material"}
+                  {saving ? "Salvando..." : uploader.busy ? "Enviando arquivos..." : isAviso ? "Publicar Aviso" : "Salvar Material"}
                 </button>
               </div>
             </form>
@@ -654,7 +640,7 @@ export default function MaterialsPage() {
       {/* Edit Modal */}
       {showEditModal && editing && (
         <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50">
-          <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full sm:max-w-md p-6 max-h-[95vh] overflow-y-auto">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full sm:max-w-lg p-6 max-h-[95vh] overflow-y-auto">
             <h2 className="text-xl font-bold text-gray-900 mb-5">
               Editar Material
             </h2>
@@ -704,6 +690,15 @@ export default function MaterialsPage() {
                 </select>
               </div>
 
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  {editing.fileType === "NOTICE" ? "Anexos (opcional)" : "Arquivos *"}
+                </label>
+                <AttachmentPicker uploader={uploader} />
+              </div>
+
+              {storePicker}
+
               <div className="flex items-center gap-2">
                 <input
                   type="checkbox"
@@ -735,10 +730,10 @@ export default function MaterialsPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={saving}
+                  disabled={saving || uploader.busy}
                   className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-lg transition text-sm"
                 >
-                  {saving ? "Salvando..." : "Salvar"}
+                  {saving ? "Salvando..." : uploader.busy ? "Enviando arquivos..." : "Salvar"}
                 </button>
               </div>
             </form>

@@ -2,7 +2,7 @@
 
 export const dynamic = "force-dynamic";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -12,13 +12,12 @@ import {
   HelpCircle,
   KeyRound,
   MonitorCog,
-  Paperclip,
-  X,
   Send,
   Loader2,
   CheckCircle2,
 } from "lucide-react";
-import { useUploadThing } from "@/lib/uploadthing-components";
+import { AttachmentPicker } from "@/components/attachments/AttachmentPicker";
+import { useAttachmentUploader } from "@/components/attachments/useAttachmentUploader";
 
 type Store = { id: string; name: string; code: string };
 
@@ -38,26 +37,11 @@ export default function SupporteCategoryPage() {
   const [stores, setStores] = useState<Store[]>([]);
   const [selectedStoreIds, setSelectedStoreIds] = useState<string[]>([]);
   const [message, setMessage] = useState("");
-  const [pendingFile, setPendingFile] = useState<{
-    url: string; key: string; type: string; name: string;
-  } | null>(null);
-  const [uploading, setUploading] = useState(false);
+  const uploader = useAttachmentUploader("chatAttachment");
+  const uploading = uploader.busy;
+  const hasAttachments = uploader.attachments.length > 0;
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const { startUpload } = useUploadThing("chatAttachment", {
-    onClientUploadComplete: (res) => {
-      const file = res?.[0];
-      if (file) {
-        const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
-        const isImg = ["jpg", "jpeg", "png", "gif", "webp"].includes(ext);
-        setPendingFile({ url: file.url, key: file.key, type: isImg ? "image" : "document", name: file.name });
-      }
-      setUploading(false);
-    },
-    onUploadError: () => setUploading(false),
-  });
 
   useEffect(() => {
     fetch("/api/stores")
@@ -88,7 +72,7 @@ export default function SupporteCategoryPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!message.trim() && !pendingFile) return;
+    if ((!message.trim() && !hasAttachments) || uploading) return;
     setSubmitting(true);
     try {
       // 1. Get (or create) the franchisee's conversation
@@ -110,13 +94,8 @@ export default function SupporteCategoryPage() {
         content: fullContent,
         category: params.category,
         linkedStoreIds: selectedStoreIds,
+        attachments: uploader.attachments,
       };
-      if (pendingFile) {
-        body.fileUrl = pendingFile.url;
-        body.fileKey = pendingFile.key;
-        body.fileType = pendingFile.type;
-        body.fileName = pendingFile.name;
-      }
 
       const msgRes = await fetch(`/api/conversations/${conversationId}/messages`, {
         method: "POST",
@@ -207,58 +186,22 @@ export default function SupporteCategoryPage() {
           />
         </div>
 
-        {/* File attachment */}
+        {/* Anexos — vários arquivos */}
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-2">
-            Anexo <span className="text-gray-400 font-normal">(imagem ou documento)</span>
+            Anexos <span className="text-gray-400 font-normal">(imagens, vídeos ou documentos — opcional)</span>
           </label>
-          {pendingFile ? (
-            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-200">
-              <Paperclip className="h-4 w-4 text-gray-400 flex-shrink-0" />
-              <span className="text-sm text-gray-700 truncate flex-1">{pendingFile.name}</span>
-              <button
-                type="button"
-                onClick={() => setPendingFile(null)}
-                className="text-gray-400 hover:text-red-500 transition"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
-              className="flex items-center gap-2 px-4 py-2.5 border border-dashed border-gray-300 rounded-xl text-sm text-gray-500 hover:border-orange-400 hover:text-orange-600 transition w-full justify-center"
-            >
-              {uploading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Paperclip className="h-4 w-4" />
-              )}
-              {uploading ? "Enviando arquivo…" : "Adicionar imagem ou documento"}
-            </button>
-          )}
-          <input
-            ref={fileInputRef}
-            type="file"
-            className="hidden"
-            accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) {
-                setUploading(true);
-                startUpload([file]);
-              }
-              e.target.value = "";
-            }}
+          <AttachmentPicker
+            uploader={uploader}
+            accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+            hint="Você pode anexar vários arquivos de uma vez"
           />
         </div>
 
         {/* Submit */}
         <button
           type="submit"
-          disabled={submitting || uploading || (!message.trim() && !pendingFile)}
+          disabled={submitting || uploading || (!message.trim() && !hasAttachments)}
           className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition"
         >
           {submitting ? (
