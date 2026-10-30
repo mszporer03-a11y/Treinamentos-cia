@@ -13,6 +13,7 @@ import {
   BookOpen,
   UserCircle2,
   MessageSquare,
+  Siren,
 } from "lucide-react";
 
 interface AdminShellProps {
@@ -26,6 +27,7 @@ const navItems = [
   { href: "/admin/materials", label: "Materiais", icon: FileText },
   { href: "/admin/users", label: "Usuários", icon: Users },
   { href: "/admin/chat", label: "Chat", icon: MessageSquare },
+  { href: "/admin/emergencia", label: "SOS", icon: Siren },
   { href: "/admin/perfil", label: "Perfil", icon: UserCircle2, exact: true },
 ];
 

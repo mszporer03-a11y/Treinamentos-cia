@@ -18,6 +18,7 @@ import {
   HelpCircle,
   KeyRound,
   MonitorCog,
+  Siren,
 } from "lucide-react";
 
 interface FranchiseeSidebarProps {
@@ -39,6 +40,7 @@ const sections: { label: string; items: { href: string; label: string; icon: Rea
     label: "Suporte",
     items: [
       { href: "/chat", label: "Suporte (Chat)", icon: MessageSquare },
+      { href: "/emergencia", label: "Chat Emergencial", icon: Siren },
     ],
   },
   {

@@ -22,6 +22,7 @@ import {
   ClipboardCheck,
   CheckSquare,
   ClipboardList,
+  Siren,
 } from "lucide-react";
 
 interface AdminSidebarProps {
@@ -37,6 +38,7 @@ const sections = [
     items: [
       { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
       { href: "/admin/chat", label: "Chat", icon: MessageSquare },
+      { href: "/admin/emergencia", label: "Chat Emergencial", icon: Siren },
     ],
   },
   {

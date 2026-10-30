@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import Link from "next/link";
 import { Wrench, X, Phone, AlertTriangle } from "lucide-react";
@@ -136,7 +137,8 @@ export function Support3LMButton({
           <Wrench className="h-4 w-4" />
         </button>
       )}
-      {open && <Support3LMModal onClose={() => setOpen(false)} />}
+      {/* Portal: o botão pode estar dentro do topo fixo (z-index próprio) */}
+      {open && createPortal(<Support3LMModal onClose={() => setOpen(false)} />, document.body)}
     </>
   );
 }

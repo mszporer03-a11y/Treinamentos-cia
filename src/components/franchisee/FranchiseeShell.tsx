@@ -8,6 +8,7 @@ import { FranchiseeSidebar } from "./FranchiseeSidebar";
 import { TutorialOverlay, PORTAL_TUTORIAL_STEPS } from "./TutorialOverlay";
 import { WelcomeModal } from "./WelcomeModal";
 import { Support3LMButton } from "./Support3LM";
+import { EmergencyAlertBanner } from "@/components/emergency/EmergencyAlertBanner";
 import {
   BookOpen,
   MessageSquare,
@@ -96,6 +97,8 @@ export function FranchiseeShell({ user, storeNames = [], children }: FranchiseeS
             </button>
           </div>
         </header>
+
+        <EmergencyAlertBanner />
 
         {/* Page content — extra bottom padding for the mobile nav */}
         <main className="flex-1 overflow-y-auto pb-20 md:pb-0">

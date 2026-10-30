@@ -58,3 +58,6 @@ DO $$ BEGIN
   ALTER TABLE "EmergencyMessage" ADD CONSTRAINT "EmergencyMessage_senderId_fkey" FOREIGN KEY ("senderId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
+
+-- No máximo uma sessão emergencial aberta por usuário
+CREATE UNIQUE INDEX IF NOT EXISTS "EmergencyChat_one_open_per_franchisee" ON "EmergencyChat"("franchiseeId") WHERE "status" = 'OPEN';
