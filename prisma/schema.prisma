@@ -84,25 +84,33 @@ enum OnboardingPhase {
 }
 
 model User {
-  id                String               @id @default(cuid())
-  name              String
-  email             String               @unique
-  password          String
-  role              Role                 @default(FRANCHISEE)
-  active            Boolean              @default(true)
-  createdAt         DateTime             @default(now())
-  updatedAt         DateTime             @updatedAt
-  materials         Material[]
-  stores            UserStore[]
-  conversation      Conversation?        @relation("FranchiseeConversations")
-  sentMessages      Message[]            @relation("SentMessages")
-  materialViews     MaterialView[]
-  pushSubscriptions PushSubscription[]
-  supplyRequests    SupplyRequest[]
-  surveyResponses   SurveyResponse[]
-  documents         FranchiseeDocument[]
-  tutorialSeen      AppTutorialSeen?
+  id                 String               @id @default(cuid())
+  name               String
+  email              String               @unique
+  // Login alternativo ao e-mail (ex.: joao.franqueado)
+  username           String?              @unique
+  // Telefone WhatsApp
+  phone              String?
+  password           String
+  role               Role                 @default(FRANCHISEE)
+  active             Boolean              @default(true)
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  materials          Material[]
+  stores             UserStore[]
+  conversation       Conversation?        @relation("FranchiseeConversations")
+  sentMessages       Message[]            @relation("SentMessages")
+  materialViews      MaterialView[]
+  pushSubscriptions  PushSubscription[]
+  supplyRequests     SupplyRequest[]
+  surveyResponses    SurveyResponse[]
+  documents          FranchiseeDocument[]
+  tutorialSeen       AppTutorialSeen?
   checklistResponses ChecklistResponse[]
+  emergencyChats     EmergencyChat[]      @relation("EmergencyFranchisee")
+  emergencyOpened    EmergencyChat[]      @relation("EmergencyOpenedBy")
+  emergencyClosed    EmergencyChat[]      @relation("EmergencyClosedBy")
+  emergencyMessages  EmergencyMessage[]
 }
 
 model Category {
@@ -141,25 +149,26 @@ model Material {
 
 // ── Lojas ───────────────────────────────────────────────────────────────
 model Store {
-  id             String               @id @default(cuid())
-  name           String
-  code           String               @unique
-  city           String?
-  lat            Float?
-  lng            Float?
-  active         Boolean              @default(true)
-  users          UserStore[]
-  employees      Employee[]
-  supplyRequests SupplyRequest[]
-  alerts         NonComplianceAlert[]
-  schedules      WorkSchedule[]
-  kiloPrices     KiloPrice[]
-  onboarding     StoreOnboarding?
-  messageLinks   MessageStore[]
-  materialLinks  MaterialStore[]
+  id                 String               @id @default(cuid())
+  name               String
+  code               String               @unique
+  city               String?
+  lat                Float?
+  lng                Float?
+  active             Boolean              @default(true)
+  users              UserStore[]
+  employees          Employee[]
+  supplyRequests     SupplyRequest[]
+  alerts             NonComplianceAlert[]
+  schedules          WorkSchedule[]
+  kiloPrices         KiloPrice[]
+  onboarding         StoreOnboarding?
+  messageLinks       MessageStore[]
+  materialLinks      MaterialStore[]
   checklistResponses ChecklistResponse[]
-  createdAt      DateTime             @default(now())
-  updatedAt      DateTime             @updatedAt
+  emergencyChats     EmergencyChat[]
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
 }
 
 model UserStore {
@@ -257,13 +266,13 @@ model SupplyRequest {
 }
 
 model SupplyRequestItem {
-  id        String        @id @default(cuid())
+  id        String         @id @default(cuid())
   requestId String
-  request   SupplyRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  request   SupplyRequest  @relation(fields: [requestId], references: [id], onDelete: Cascade)
   category  SupplyCategory
   name      String
   quantity  Int
-  unit      String        @default("un")
+  unit      String         @default("un")
 }
 
 // ── Funcionários ────────────────────────────────────────────────────────
@@ -300,7 +309,7 @@ model WorkShift {
   schedule   WorkSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
   employeeId String
   employee   Employee     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  dayIndex   Int          // 0=Mon … 6=Sun
+  dayIndex   Int // 0=Mon … 6=Sun
   type       ShiftType    @default(MANHA)
   startTime  String?
   endTime    String?
@@ -457,12 +466,12 @@ model AppTutorialSeen {
 
 // ── Checklists ──────────────────────────────────────────────────────────
 model ChecklistTemplate {
-  id          String             @id @default(cuid())
+  id          String              @id @default(cuid())
   name        String
   description String?
-  active      Boolean            @default(true)
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
+  active      Boolean             @default(true)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
   sections    ChecklistSection[]
   responses   ChecklistResponse[]
 }
@@ -477,25 +486,25 @@ model ChecklistSection {
 }
 
 model ChecklistItem {
-  id            String                   @id @default(cuid())
+  id            String                  @id @default(cuid())
   sectionId     String
-  section       ChecklistSection         @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  section       ChecklistSection        @relation(fields: [sectionId], references: [id], onDelete: Cascade)
   text          String
-  order         Int                      @default(0)
+  order         Int                     @default(0)
   responseItems ChecklistResponseItem[]
 }
 
 model ChecklistResponse {
-  id          String                   @id @default(cuid())
+  id          String                  @id @default(cuid())
   templateId  String
-  template    ChecklistTemplate        @relation(fields: [templateId], references: [id])
+  template    ChecklistTemplate       @relation(fields: [templateId], references: [id])
   storeId     String
-  store       Store                    @relation(fields: [storeId], references: [id])
+  store       Store                   @relation(fields: [storeId], references: [id])
   responderId String
-  responder   User                     @relation(fields: [responderId], references: [id])
+  responder   User                    @relation(fields: [responderId], references: [id])
   notes       String?
   completedAt DateTime?
-  createdAt   DateTime                 @default(now())
+  createdAt   DateTime                @default(now())
   items       ChecklistResponseItem[]
 }
 
@@ -511,3 +520,39 @@ model ChecklistResponseItem {
   @@unique([responseId, itemId])
 }
 
+// ── Chat Individual Emergencial ─────────────────────────────────────────
+// Somente a Franquia (admin) abre e encerra a sessão; o franqueado/gerente
+// só pode responder enquanto a sessão estiver aberta.
+enum EmergencyStatus {
+  OPEN
+  CLOSED
+}
+
+model EmergencyChat {
+  id           String             @id @default(cuid())
+  franchiseeId String
+  franchisee   User               @relation("EmergencyFranchisee", fields: [franchiseeId], references: [id], onDelete: Cascade)
+  storeId      String?
+  store        Store?             @relation(fields: [storeId], references: [id], onDelete: SetNull)
+  openedById   String?
+  openedBy     User?              @relation("EmergencyOpenedBy", fields: [openedById], references: [id], onDelete: SetNull)
+  closedById   String?
+  closedBy     User?              @relation("EmergencyClosedBy", fields: [closedById], references: [id], onDelete: SetNull)
+  status       EmergencyStatus    @default(OPEN)
+  messages     EmergencyMessage[]
+  createdAt    DateTime           @default(now())
+  closedAt     DateTime?
+
+  @@index([franchiseeId, status])
+}
+
+model EmergencyMessage {
+  id          String        @id @default(cuid())
+  chatId      String
+  chat        EmergencyChat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  senderId    String
+  sender      User          @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  content     String?
+  attachments Json          @default("[]")
+  createdAt   DateTime      @default(now())
+}

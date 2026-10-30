@@ -11,15 +11,26 @@ const userSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6),
   role: z.enum(["ADMIN", "FRANCHISEE"]).default("FRANCHISEE"),
+  username: z
+    .string()
+    .trim()
+    .regex(/^[a-zA-Z0-9._-]{3,40}$/, "Login deve ter 3-40 caracteres (letras, números, ponto, hífen)")
+    .optional()
+    .or(z.literal("")),
+  phone: z.string().trim().max(30).optional(),
+  storeIds: z.array(z.string()).optional().default([]),
 });
 
 const userSelectFields = {
   id: true,
   name: true,
   email: true,
+  username: true,
+  phone: true,
   role: true,
   active: true,
   createdAt: true,
+  stores: { select: { store: { select: { id: true, name: true, code: true } } } },
 };
 
 export async function GET() {
@@ -52,6 +63,8 @@ export async function POST(req: Request) {
     const body = await req.json();
     const data = userSchema.parse(body);
 
+    const { storeIds, username, phone, ...rest } = data;
+
     const existing = await db.user.findUnique({
       where: { email: data.email },
     });
@@ -61,10 +74,22 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
+    if (username) {
+      const taken = await db.user.findFirst({ where: { username: { equals: username, mode: "insensitive" } } });
+      if (taken) {
+        return NextResponse.json({ error: "Login já está em uso" }, { status: 400 });
+      }
+    }
 
     const hashedPassword = await bcrypt.hash(data.password, 12);
     const user = await db.user.create({
-      data: { ...data, password: hashedPassword },
+      data: {
+        ...rest,
+        username: username || null,
+        phone: phone || null,
+        password: hashedPassword,
+        stores: storeIds.length > 0 ? { create: storeIds.map((storeId) => ({ storeId })) } : undefined,
+      },
       select: userSelectFields,
     });
     return NextResponse.json(user, { status: 201 });

@@ -2,7 +2,7 @@ import { auth } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 import { db } from "@/lib/db";
-import { sendPushToAll } from "@/lib/push";
+import { notifyMaterialPublished } from "@/lib/notify";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { attachmentsSchema, attachmentsSummary, legacyFileFields } from "@/lib/attachments";
@@ -114,15 +114,13 @@ export async function POST(req: Request) {
     });
 
     if (data.published) {
-      const isNotice = data.fileType === "NOTICE";
-      await sendPushToAll(
-        {
-          title: isNotice ? "Novo aviso!" : "Novo material disponivel!",
-          body: attachments.length > 0 ? `${data.title} · ${attachmentsSummary(attachments)}` : data.title,
-          url: "/gallery",
-        },
-        "FRANCHISEE"
-      );
+      // Push + e-mail para os franqueados das lojas selecionadas (sem bloquear a resposta)
+      notifyMaterialPublished({
+        id: material.id,
+        title: material.title,
+        fileType: material.fileType,
+        summary: attachments.length > 0 ? attachmentsSummary(attachments) : undefined,
+      }).catch((err) => console.error("[notify] material", err));
     }
 
     return NextResponse.json(material, { status: 201 });

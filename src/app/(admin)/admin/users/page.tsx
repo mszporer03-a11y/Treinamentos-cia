@@ -6,10 +6,19 @@ import { useState, useEffect, useCallback } from "react";
 import { Plus, Pencil, Trash2, Users, ShieldCheck, User } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
+interface StoreRef {
+  id: string;
+  name: string;
+  code: string;
+}
+
 interface UserData {
   id: string;
   name: string;
   email: string;
+  username?: string | null;
+  phone?: string | null;
+  stores?: { store: StoreRef }[];
   role: "ADMIN" | "FRANCHISEE";
   active: boolean;
   createdAt: string;
@@ -18,12 +27,88 @@ interface UserData {
 const DEFAULT_FORM = {
   name: "",
   email: "",
+  username: "",
+  phone: "",
+  storeIds: [] as string[],
   password: "",
   role: "FRANCHISEE" as "ADMIN" | "FRANCHISEE",
 };
 
+type AccessFields = { username: string; phone: string; storeIds: string[] };
+
+// Campos de cadastro: login, WhatsApp e vínculo com a(s) loja(s)
+function AccessFieldsInputs<T extends AccessFields>({
+  value,
+  onChange,
+  stores,
+}: {
+  value: T;
+  onChange: (v: T) => void;
+  stores: StoreRef[];
+}) {
+  return (
+    <>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Login</label>
+          <input
+            value={value.username}
+            onChange={(e) => onChange({ ...value, username: e.target.value.trim() })}
+            className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            placeholder="joao.franqueado"
+            autoCapitalize="none"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Telefone WhatsApp</label>
+          <input
+            type="tel"
+            value={value.phone}
+            onChange={(e) => onChange({ ...value, phone: e.target.value })}
+            className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            placeholder="(XX) 9XXXX-XXXX"
+          />
+        </div>
+      </div>
+      {stores.length > 0 && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">Loja (vínculo)</label>
+          <div className="flex flex-wrap gap-1.5 p-2.5 border border-gray-200 rounded-lg max-h-36 overflow-y-auto">
+            {stores.map((store) => {
+              const selected = value.storeIds.includes(store.id);
+              return (
+                <button
+                  key={store.id}
+                  type="button"
+                  onClick={() =>
+                    onChange({
+                      ...value,
+                      storeIds: selected
+                        ? value.storeIds.filter((id) => id !== store.id)
+                        : [...value.storeIds, store.id],
+                    })
+                  }
+                  className={`px-2.5 py-1 rounded-full text-xs font-medium border transition ${
+                    selected
+                      ? "bg-blue-600 text-white border-blue-600"
+                      : "bg-white border-gray-200 text-gray-600 hover:border-blue-300"
+                  }`}
+                >
+                  {store.name}
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-xs text-gray-400 mt-1">O usuário só acessa o conteúdo da(s) loja(s) vinculada(s).</p>
+        </div>
+      )}
+    </>
+  );
+}
+
 export default function UsersPage() {
   const [users, setUsers] = useState<UserData[]>([]);
+  const [stores, setStores] = useState<StoreRef[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -32,6 +117,9 @@ export default function UsersPage() {
   const [editForm, setEditForm] = useState({
     name: "",
     email: "",
+    username: "",
+    phone: "",
+    storeIds: [] as string[],
     password: "",
     role: "FRANCHISEE" as "ADMIN" | "FRANCHISEE",
     active: true,
@@ -48,6 +136,9 @@ export default function UsersPage() {
 
   useEffect(() => {
     fetchUsers();
+    fetch("/api/stores")
+      .then((r) => r.json())
+      .then((data) => setStores(Array.isArray(data) ? data.map(({ id, name, code }: StoreRef) => ({ id, name, code })) : []));
   }, [fetchUsers]);
 
   function openCreate() {
@@ -61,6 +152,9 @@ export default function UsersPage() {
     setEditForm({
       name: user.name,
       email: user.email,
+      username: user.username ?? "",
+      phone: user.phone ?? "",
+      storeIds: (user.stores ?? []).map(({ store }) => store.id),
       password: "",
       role: user.role,
       active: user.active,
@@ -101,6 +195,9 @@ export default function UsersPage() {
     const payload: Record<string, unknown> = {
       name: editForm.name,
       email: editForm.email,
+      username: editForm.username,
+      phone: editForm.phone,
+      storeIds: editForm.storeIds,
       role: editForm.role,
       active: editForm.active,
     };
@@ -177,6 +274,12 @@ export default function UsersPage() {
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-gray-900 text-sm truncate">{user.name}</p>
                   <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                  {(user.stores?.length || user.phone) && (
+                    <p className="text-xs text-gray-400 truncate">
+                      {user.stores?.map(({ store }) => store.name).join(", ")}
+                      {user.phone ? ` · ${user.phone}` : ""}
+                    </p>
+                  )}
                   <div className="flex items-center gap-1.5 mt-1.5">
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                       user.role === "ADMIN" ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-600"
@@ -244,7 +347,16 @@ export default function UsersPage() {
                       </div>
                       <div>
                         <p className="font-medium text-gray-900">{user.name}</p>
-                        <p className="text-xs text-gray-500">{user.email}</p>
+                        <p className="text-xs text-gray-500">
+                          {user.email}
+                          {user.username ? ` · login: ${user.username}` : ""}
+                        </p>
+                        {(user.stores?.length || user.phone) && (
+                          <p className="text-xs text-gray-400">
+                            {user.stores?.map(({ store }) => store.name).join(", ")}
+                            {user.phone ? ` · WhatsApp ${user.phone}` : ""}
+                          </p>
+                        )}
                       </div>
                     </div>
                   </td>
@@ -346,6 +458,7 @@ export default function UsersPage() {
                   minLength={6}
                 />
               </div>
+              <AccessFieldsInputs value={form} onChange={setForm} stores={stores} />
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Perfil
@@ -442,6 +555,7 @@ export default function UsersPage() {
                   minLength={6}
                 />
               </div>
+              <AccessFieldsInputs value={editForm} onChange={setEditForm} stores={stores} />
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Perfil

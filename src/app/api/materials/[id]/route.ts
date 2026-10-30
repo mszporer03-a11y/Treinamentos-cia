@@ -4,7 +4,8 @@ export const dynamic = "force-dynamic";
 import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { attachmentsSchema, legacyFileFields } from "@/lib/attachments";
+import { attachmentsSchema, attachmentsSummary, legacyFileFields, materialAttachments } from "@/lib/attachments";
+import { notifyMaterialPublished } from "@/lib/notify";
 
 const updateSchema = z.object({
   title: z.string().min(1).max(200).optional(),
@@ -63,6 +64,8 @@ export async function PATCH(
     const body = await req.json();
     const { attachments, linkedStoreIds, ...data } = updateSchema.parse(body);
 
+    const before = await db.material.findUnique({ where: { id: params.id }, select: { published: true } });
+
     let attachmentData = {};
     if (attachments) {
       const current = await db.material.findUnique({ where: { id: params.id }, select: { fileType: true } });
@@ -98,6 +101,17 @@ export async function PATCH(
         linkedStores: { include: { store: { select: { id: true, name: true, code: true } } } },
       },
     });
+    // Rascunho → publicado: dispara push + e-mail
+    if (before && !before.published && material.published) {
+      const list = materialAttachments(material);
+      notifyMaterialPublished({
+        id: material.id,
+        title: material.title,
+        fileType: material.fileType,
+        summary: list.length > 0 ? attachmentsSummary(list) : undefined,
+      }).catch((err) => console.error("[notify] material", err));
+    }
+
     return NextResponse.json(material);
   } catch (e) {
     if (e instanceof z.ZodError) {

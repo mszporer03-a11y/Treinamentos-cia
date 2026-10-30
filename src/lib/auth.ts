@@ -4,8 +4,9 @@ import { db } from "@/lib/db";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 
+// "email" aceita o e-mail ou o login (username) do usuário
 const loginSchema = z.object({
-  email: z.string().email(),
+  email: z.string().trim().min(1),
   password: z.string().min(1),
 });
 
@@ -56,7 +57,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
     Credentials({
       credentials: {
-        email: { label: "Email", type: "email" },
+        email: { label: "E-mail ou login", type: "text" },
         password: { label: "Senha", type: "password" },
       },
       async authorize(credentials) {
@@ -65,8 +66,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         const { email, password } = parsed.data;
 
-        const user = await db.user.findUnique({
-          where: { email, active: true },
+        const user = await db.user.findFirst({
+          where: {
+            active: true,
+            OR: [
+              { email: { equals: email, mode: "insensitive" } },
+              { username: { equals: email, mode: "insensitive" } },
+            ],
+          },
         });
 
         if (!user) return null;

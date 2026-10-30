@@ -12,15 +12,26 @@ const updateSchema = z.object({
   password: z.string().min(6).optional(),
   role: z.enum(["ADMIN", "FRANCHISEE"]).optional(),
   active: z.boolean().optional(),
+  username: z
+    .string()
+    .trim()
+    .regex(/^[a-zA-Z0-9._-]{3,40}$/, "Login deve ter 3-40 caracteres (letras, números, ponto, hífen)")
+    .optional()
+    .or(z.literal("")),
+  phone: z.string().trim().max(30).optional(),
+  storeIds: z.array(z.string()).optional(),
 });
 
 const userSelectFields = {
   id: true,
   name: true,
   email: true,
+  username: true,
+  phone: true,
   role: true,
   active: true,
   createdAt: true,
+  stores: { select: { store: { select: { id: true, name: true, code: true } } } },
 };
 
 export async function PATCH(
@@ -36,9 +47,28 @@ export async function PATCH(
     const body = await req.json();
     const data = updateSchema.parse(body);
 
-    const updateData: Record<string, unknown> = { ...data };
+    const { storeIds, username, phone, ...rest } = data;
+    const updateData: Record<string, unknown> = { ...rest };
     if (data.password) {
       updateData.password = await bcrypt.hash(data.password, 12);
+    }
+    if (username !== undefined) {
+      if (username) {
+        const taken = await db.user.findFirst({
+          where: { username: { equals: username, mode: "insensitive" }, NOT: { id: params.id } },
+        });
+        if (taken) {
+          return NextResponse.json({ error: "Login já está em uso" }, { status: 400 });
+        }
+      }
+      updateData.username = username || null;
+    }
+    if (phone !== undefined) updateData.phone = phone || null;
+    if (storeIds) {
+      updateData.stores = {
+        deleteMany: {},
+        create: storeIds.map((storeId) => ({ storeId })),
+      };
     }
 
     const user = await db.user.update({

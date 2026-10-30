@@ -4,6 +4,7 @@ import React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
+import { Support3LMButton } from "./Support3LM";
 import { signOut } from "next-auth/react";
 import {
   BookOpen,
@@ -84,6 +85,7 @@ export function FranchiseeSidebar({ user, onOpenTutorial }: FranchiseeSidebarPro
 
       {/* Navigation */}
       <nav className="flex-1 p-3 space-y-5 overflow-y-auto">
+        <Support3LMButton variant="sidebar" />
         {sections.map((section) => (
           <div key={section.label}>
             <p className="px-3 mb-1 text-[10px] font-semibold text-gray-500 uppercase tracking-widest">

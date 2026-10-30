@@ -8,6 +8,7 @@ import { MaterialViewer } from "@/components/franchisee/MaterialViewer";
 import { MessageSquare, BarChart2, ClipboardList, ChevronRight, SlidersHorizontal } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { MaterialFeedMedia } from "@/components/attachments/MaterialFeedMedia";
+import { Support3LMButton } from "@/components/franchisee/Support3LM";
 
 export const dynamic = "force-dynamic";
 
@@ -180,6 +181,9 @@ export default function GalleryPage() {
           </Link>
         ))}
       </div>
+
+      {/* Atalho de suporte ao sistema 3LM */}
+      <Support3LMButton variant="banner" className="-mt-4 mb-10" />
 
       {/* Materials section */}
       <div data-tutorial="materials-section" className="flex items-center justify-between mb-4">

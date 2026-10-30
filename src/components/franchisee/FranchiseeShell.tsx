@@ -6,6 +6,8 @@ import Link from "next/link";
 import { signOut } from "next-auth/react";
 import { FranchiseeSidebar } from "./FranchiseeSidebar";
 import { TutorialOverlay, PORTAL_TUTORIAL_STEPS } from "./TutorialOverlay";
+import { WelcomeModal } from "./WelcomeModal";
+import { Support3LMButton } from "./Support3LM";
 import {
   BookOpen,
   MessageSquare,
@@ -19,6 +21,7 @@ import {
 
 interface FranchiseeShellProps {
   user: { name?: string | null; email?: string | null };
+  storeNames?: string[];
   children: React.ReactNode;
 }
 
@@ -30,7 +33,7 @@ const mobileNavItems = [
   { href: "/perfil", label: "Perfil", icon: UserCircle2, exact: true },
 ];
 
-export function FranchiseeShell({ user, children }: FranchiseeShellProps) {
+export function FranchiseeShell({ user, storeNames = [], children }: FranchiseeShellProps) {
   const pathname = usePathname();
   const [showTutorial, setShowTutorial] = useState(false);
   const [tutorialStep, setTutorialStep] = useState(0);
@@ -74,6 +77,7 @@ export function FranchiseeShell({ user, children }: FranchiseeShellProps) {
             <span className="font-bold text-gray-900 text-sm">Portal Franqueado</span>
           </div>
           <div className="flex items-center gap-1">
+            <Support3LMButton variant="icon" />
             {/* Help / Tutorial button */}
             <button
               onClick={openTutorial}
@@ -122,6 +126,8 @@ export function FranchiseeShell({ user, children }: FranchiseeShellProps) {
           );
         })}
       </nav>
+
+      <WelcomeModal name={user.name ?? "Franqueado"} storeNames={storeNames} />
 
       {/* Tutorial overlay */}
       {showTutorial && (
