@@ -37,30 +37,36 @@ enum RequestStatus {
 }
 
 model User {
-  id                String               @id @default(cuid())
-  name              String
-  email             String               @unique
-  password          String
-  role              Role                 @default(FRANCHISEE)
-  phone             String?
-  active            Boolean              @default(true)
-  createdById       String?
-  createdBy         User?                @relation("CreatedUsers", fields: [createdById], references: [id], onDelete: SetNull)
-  createdUsers      User[]               @relation("CreatedUsers")
-  createdAt         DateTime             @default(now())
-  updatedAt         DateTime             @updatedAt
-  materials         Material[]
-  stores            UserStore[]
-  conversations     Conversation[]       @relation("FranchiseeConversations")
-  adminConversations Conversation[]      @relation("AdminConversations")
-  sentMessages      Message[]            @relation("SentMessages")
-  materialViews     MaterialView[]
-  pushSubscriptions PushSubscription[]
-  surveyResponses   SurveyResponse[]
-  tutorialSeen      AppTutorialSeen?
-  comunicados       Comunicado[]
-  comunicadoViews   ComunicadoView[]
-  alertViews        AlertView[]
+  id                 String             @id @default(cuid())
+  name               String
+  email              String             @unique
+  // Login alternativo ao e-mail (ex.: joao.franqueado)
+  username           String?            @unique
+  password           String
+  role               Role               @default(FRANCHISEE)
+  phone              String?
+  active             Boolean            @default(true)
+  createdById        String?
+  createdBy          User?              @relation("CreatedUsers", fields: [createdById], references: [id], onDelete: SetNull)
+  createdUsers       User[]             @relation("CreatedUsers")
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  materials          Material[]
+  stores             UserStore[]
+  conversations      Conversation[]     @relation("FranchiseeConversations")
+  adminConversations Conversation[]     @relation("AdminConversations")
+  sentMessages       Message[]          @relation("SentMessages")
+  materialViews      MaterialView[]
+  pushSubscriptions  PushSubscription[]
+  surveyResponses    SurveyResponse[]
+  tutorialSeen       AppTutorialSeen?
+  comunicados        Comunicado[]
+  comunicadoViews    ComunicadoView[]
+  alertViews         AlertView[]
+  emergencyChats     EmergencyChat[]    @relation("EmergencyFranchisee")
+  emergencyOpened    EmergencyChat[]    @relation("EmergencyOpenedBy")
+  emergencyClosed    EmergencyChat[]    @relation("EmergencyClosedBy")
+  emergencyMessages  EmergencyMessage[]
 }
 
 model Category {
@@ -75,25 +81,27 @@ model Category {
 }
 
 model Material {
-  id                String             @id @default(cuid())
-  title             String
-  description       String?
-  fileUrl           String?
-  fileKey           String?
-  fileType          FileType           @default(OTHER)
-  mimeType          String?
-  fileSize          Int?
-  published         Boolean            @default(true)
+  id           String          @id @default(cuid())
+  title        String
+  description  String?
+  fileUrl      String?
+  fileKey      String?
+  fileType     FileType        @default(OTHER)
+  mimeType     String?
+  fileSize     Int?
+  // Anexos do post (mosaico). Itens: { url, key, name, kind, mimeType, size, coverTime, coverUrl }
+  attachments  Json            @default("[]")
+  published    Boolean         @default(true)
   // Cor de destaque do card (ex.: "amber", "blue"); null = padrão
-  color             String?
-  categoryId        String
-  category          Category           @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  createdById       String?
-  createdBy         User?              @relation(fields: [createdById], references: [id], onDelete: SetNull)
-  views             MaterialView[]
-  linkedStores      MaterialStore[]
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
+  color        String?
+  categoryId   String
+  category     Category        @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  createdById  String?
+  createdBy    User?           @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  views        MaterialView[]
+  linkedStores MaterialStore[]
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
 }
 
 // ── Lojas ───────────────────────────────────────────────────────────────
@@ -113,6 +121,7 @@ model Store {
   onboarding     StoreOnboarding?
   messageLinks   MessageStore[]
   materialLinks  MaterialStore[]
+  emergencyChats EmergencyChat[]
   createdAt      DateTime             @default(now())
   updatedAt      DateTime             @updatedAt
 }
@@ -152,32 +161,34 @@ model Conversation {
 }
 
 model Message {
-  id               String         @id @default(cuid())
-  conversationId   String
-  conversation     Conversation   @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  senderId         String
-  sender           User           @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
-  content          String?
-  fileUrl          String?
-  fileKey          String?
-  fileType         String?
-  fileName         String?
-  category            String?
-  requestStatus       RequestStatus?
+  id                    String         @id @default(cuid())
+  conversationId        String
+  conversation          Conversation   @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId              String
+  sender                User           @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  content               String?
+  fileUrl               String?
+  fileKey               String?
+  fileType              String?
+  fileName              String?
+  attachments           Json           @default("[]")
+  category              String?
+  requestStatus         RequestStatus?
   // Agrupa as cópias de uma mesma solicitação enviada a vários admins
-  requestGroupId      String?
-  seenAt              DateTime?
-  inProgressAt        DateTime?
-  doneAt              DateTime?
-  adminReplyContent   String?
-  adminReplyFileUrl   String?
-  adminReplyFileKey   String?
-  adminReplyFileName  String?
-  adminReplyFileType  String?
-  readByAdmin         Boolean        @default(false)
-  readByFranchisee    Boolean        @default(false)
-  linkedStores        MessageStore[]
-  createdAt           DateTime       @default(now())
+  requestGroupId        String?
+  seenAt                DateTime?
+  inProgressAt          DateTime?
+  doneAt                DateTime?
+  adminReplyContent     String?
+  adminReplyFileUrl     String?
+  adminReplyFileKey     String?
+  adminReplyFileName    String?
+  adminReplyFileType    String?
+  adminReplyAttachments Json           @default("[]")
+  readByAdmin           Boolean        @default(false)
+  readByFranchisee      Boolean        @default(false)
+  linkedStores          MessageStore[]
+  createdAt             DateTime       @default(now())
 
   @@index([requestGroupId])
 }
@@ -225,6 +236,7 @@ model NonComplianceAlert {
   fileKey     String?
   fileName    String?
   fileType    String?
+  attachments Json        @default("[]")
   views       AlertView[]
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
@@ -251,6 +263,7 @@ model Comunicado {
   fileKey     String?
   fileName    String?
   fileType    String?
+  attachments Json             @default("[]")
   published   Boolean          @default(true)
   createdById String?
   createdBy   User?            @relation(fields: [createdById], references: [id], onDelete: SetNull)
@@ -323,6 +336,12 @@ model OnboardingStep {
   description  String?
   phase        OnboardingPhase
   responsible  String?
+  // Anexo da etapa (imagem, PDF...) exibido no formato post-card
+  fileUrl      String?
+  fileKey      String?
+  fileName     String?
+  fileType     String?
+  attachments  Json            @default("[]")
   order        Int             @default(0)
   completedAt  DateTime?
 }
@@ -335,3 +354,39 @@ model AppTutorialSeen {
   seenAt DateTime @default(now())
 }
 
+// ── Chat Individual Emergencial ─────────────────────────────────────────
+// Somente a Franquia (admin) abre e encerra a sessão; o franqueado/gerente
+// só pode responder enquanto a sessão estiver aberta.
+enum EmergencyStatus {
+  OPEN
+  CLOSED
+}
+
+model EmergencyChat {
+  id           String             @id @default(cuid())
+  franchiseeId String
+  franchisee   User               @relation("EmergencyFranchisee", fields: [franchiseeId], references: [id], onDelete: Cascade)
+  storeId      String?
+  store        Store?             @relation(fields: [storeId], references: [id], onDelete: SetNull)
+  openedById   String?
+  openedBy     User?              @relation("EmergencyOpenedBy", fields: [openedById], references: [id], onDelete: SetNull)
+  closedById   String?
+  closedBy     User?              @relation("EmergencyClosedBy", fields: [closedById], references: [id], onDelete: SetNull)
+  status       EmergencyStatus    @default(OPEN)
+  messages     EmergencyMessage[]
+  createdAt    DateTime           @default(now())
+  closedAt     DateTime?
+
+  @@index([franchiseeId, status])
+}
+
+model EmergencyMessage {
+  id          String        @id @default(cuid())
+  chatId      String
+  chat        EmergencyChat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  senderId    String
+  sender      User          @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  content     String?
+  attachments Json          @default("[]")
+  createdAt   DateTime      @default(now())
+}

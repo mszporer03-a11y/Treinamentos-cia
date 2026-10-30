@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { sendPushToUser } from "@/lib/push";
+import { attachmentsSchema, attachmentsSummary, legacyFileFields } from "@/lib/attachments";
 
 export const dynamic = "force-dynamic";
 
@@ -86,7 +87,16 @@ export async function POST(
   const body = await req.json();
   const { content, fileUrl, fileKey, fileType, fileName, category, linkedStoreIds } = body;
 
-  if (!content?.trim() && !fileUrl) {
+  const parsedAttachments = attachmentsSchema.safeParse(body.attachments ?? []);
+  if (!parsedAttachments.success) {
+    return NextResponse.json({ error: "Anexos inválidos" }, { status: 400 });
+  }
+  const attachments = parsedAttachments.data;
+  // Compatibilidade: primeiro anexo também vai nos campos legados
+  const legacy = attachments.length > 0 ? legacyFileFields(attachments) : null;
+  const first = attachments[0];
+
+  if (!content?.trim() && !fileUrl && attachments.length === 0) {
     return NextResponse.json({ error: "Mensagem vazia" }, { status: 400 });
   }
 
@@ -97,10 +107,11 @@ export async function POST(
       conversationId: params.id,
       senderId: session.user.id,
       content: content?.trim() || null,
-      fileUrl: fileUrl || null,
-      fileKey: fileKey || null,
-      fileType: fileType || null,
-      fileName: fileName || null,
+      fileUrl: legacy?.fileUrl ?? (fileUrl || null),
+      fileKey: legacy?.fileKey ?? (fileKey || null),
+      fileType: first ? (first.kind === "IMAGE" ? "image" : "document") : fileType || null,
+      fileName: first ? first.name : fileName || null,
+      attachments,
       category: category || null,
       requestStatus: (!isAdmin && category) ? "PENDING" : null,
       readByAdmin: isAdmin,
@@ -123,7 +134,11 @@ export async function POST(
 
   // Enviar push para o destinatário
   const senderName = session.user.name ?? "Alguém";
-  const notifBody = content?.trim() ? content.trim() : `📎 ${fileName ?? "Arquivo"}`;
+  const notifBody = content?.trim()
+    ? content.trim()
+    : attachments.length > 0
+      ? attachmentsSummary(attachments)
+      : `📎 ${fileName ?? "Arquivo"}`;
 
   if (isAdmin) {
     // Notificar o franqueado/gerente

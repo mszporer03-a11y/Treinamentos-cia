@@ -22,6 +22,7 @@ import {
   UtensilsCrossed,
   GraduationCap,
   MessageSquare,
+  Siren,
 } from "lucide-react";
 
 interface AdminSidebarProps {
@@ -40,6 +41,7 @@ const sections: {
     items: [
       { href: "/admin", label: "Menu Principal", icon: LayoutDashboard, exact: true },
       { href: "/admin/chat", label: "Chat", icon: MessageSquare },
+      { href: "/admin/emergencia", label: "Chat Emergencial", icon: Siren },
       { href: "/admin/solicitacoes", label: "Acompanhamento de solicitações", icon: Inbox },
       { href: "/admin/comunicados", label: "Comunicados", icon: Megaphone },
       { href: "/admin/registros", label: "Registros", icon: ClipboardList },

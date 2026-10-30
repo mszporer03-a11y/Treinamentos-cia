@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { sendPushToUser } from "@/lib/push";
 import { randomUUID } from "crypto";
+import { attachmentsSchema, attachmentsSummary, legacyNamedFileFields } from "@/lib/attachments";
 
 export const dynamic = "force-dynamic";
 
@@ -159,7 +160,15 @@ export async function POST(req: Request) {
   if (!category) {
     return NextResponse.json({ error: "Categoria obrigatória" }, { status: 400 });
   }
-  if (!content?.trim() && !fileUrl) {
+  const parsedAttachments = attachmentsSchema.safeParse(body.attachments ?? []);
+  if (!parsedAttachments.success) {
+    return NextResponse.json({ error: "Anexos inválidos" }, { status: 400 });
+  }
+  const attachments = parsedAttachments.data;
+  // Vários anexos: os campos legados espelham o primeiro
+  const legacy = attachments.length > 0 ? legacyNamedFileFields(attachments) : null;
+
+  if (!content?.trim() && !fileUrl && attachments.length === 0) {
     return NextResponse.json({ error: "Mensagem vazia" }, { status: 400 });
   }
 
@@ -175,7 +184,11 @@ export async function POST(req: Request) {
   const storeIds: string[] = Array.isArray(linkedStoreIds) ? linkedStoreIds : [];
   const groupId = admins.length > 1 ? randomUUID() : null;
   const senderName = session.user.name ?? "Franqueado";
-  const notifBody = content?.trim() ? content.trim() : `📎 ${fileName ?? "Arquivo"}`;
+  const notifBody = content?.trim()
+    ? content.trim()
+    : attachments.length > 0
+      ? attachmentsSummary(attachments)
+      : `📎 ${fileName ?? "Arquivo"}`;
 
   for (const admin of admins) {
     const conv = await db.conversation.upsert({
@@ -190,10 +203,11 @@ export async function POST(req: Request) {
         conversationId: conv.id,
         senderId: session.user.id,
         content: content?.trim() || null,
-        fileUrl: fileUrl || null,
-        fileKey: fileKey || null,
-        fileType: fileType || null,
-        fileName: fileName || null,
+        fileUrl: legacy?.fileUrl ?? (fileUrl || null),
+        fileKey: legacy?.fileKey ?? (fileKey || null),
+        fileType: legacy ? (attachments[0].kind === "IMAGE" ? "image" : "document") : fileType || null,
+        fileName: legacy?.fileName ?? (fileName || null),
+        attachments,
         category,
         requestStatus: "PENDING",
         requestGroupId: groupId,

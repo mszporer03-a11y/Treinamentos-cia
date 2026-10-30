@@ -3,8 +3,9 @@
 export const dynamic = "force-dynamic";
 
 import { useState, useEffect, useCallback } from "react";
-import { Plus, Pencil, Trash2, Users, ShieldCheck, User, UserCog } from "lucide-react";
+import { Plus, Pencil, Trash2, Users, ShieldCheck, User, UserCog, Power, Search, Lock } from "lucide-react";
 import { formatDate } from "@/lib/utils";
+import { isMasterEmail } from "@/lib/masters";
 
 type RoleValue = "ADMIN" | "FRANCHISEE" | "MANAGER";
 
@@ -18,6 +19,7 @@ interface UserData {
   id: string;
   name: string;
   email: string;
+  username?: string | null;
   role: RoleValue;
   phone?: string | null;
   active: boolean;
@@ -37,14 +39,142 @@ const ROLE_BADGE: Record<RoleValue, string> = {
   MANAGER: "bg-violet-100 text-violet-700",
 };
 
+/** Seleção de uma ou várias lojas (acesso multi-loja). */
+function StorePicker({
+  stores,
+  value,
+  onChange,
+  required,
+}: {
+  stores: StoreOption[];
+  value: string[];
+  onChange: (ids: string[]) => void;
+  required?: boolean;
+}) {
+  const [q, setQ] = useState("");
+  const list = stores.filter((s) => `${s.name} ${s.code}`.toLowerCase().includes(q.trim().toLowerCase()));
+  const toggle = (id: string) => onChange(value.includes(id) ? value.filter((v) => v !== id) : [...value, id]);
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <label className="block text-sm font-medium text-gray-700">
+          Lojas vinculadas {required ? "*" : "(opcional)"}
+          <span className="ml-1 text-xs font-normal text-gray-400">· {value.length} selecionada{value.length !== 1 ? "s" : ""}</span>
+        </label>
+        <div className="flex gap-3 text-xs">
+          <button type="button" onClick={() => onChange(Array.from(new Set([...value, ...list.map((s) => s.id)])))} className="text-blue-600 hover:underline">
+            Marcar todas
+          </button>
+          <button type="button" onClick={() => onChange([])} className="text-gray-500 hover:underline">
+            Limpar
+          </button>
+        </div>
+      </div>
+      {stores.length > 6 && (
+        <div className="relative mb-2">
+          <Search className="h-3.5 w-3.5 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Buscar loja"
+            className="w-full pl-8 pr-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+      )}
+      <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto">
+        {list.map((store) => {
+          const sel = value.includes(store.id);
+          return (
+            <button
+              key={store.id}
+              type="button"
+              onClick={() => toggle(store.id)}
+              className={`px-3 py-1.5 rounded-full text-sm font-medium border transition ${
+                sel
+                  ? "bg-violet-600 text-white border-violet-600"
+                  : "bg-white text-gray-600 border-gray-200 hover:border-violet-300"
+              }`}
+            >
+              {store.name}
+            </button>
+          );
+        })}
+        {list.length === 0 && <p className="text-xs text-gray-400">Nenhuma loja encontrada.</p>}
+      </div>
+    </div>
+  );
+}
+
 const DEFAULT_FORM = {
   name: "",
   email: "",
+  username: "",
   password: "",
   role: "FRANCHISEE" as RoleValue,
   phone: "",
   storeIds: [] as string[],
 };
+
+function StoreTags({ user }: { user: UserData }) {
+  const list = user.stores ?? [];
+  if (user.role === "ADMIN" || list.length === 0) return null;
+  return (
+    <div className="flex flex-wrap gap-1 mt-1">
+      {list.slice(0, 3).map((s) => (
+        <span key={s.store.id} className="text-[11px] bg-violet-50 text-violet-700 px-1.5 py-0.5 rounded-full">
+          {s.store.name}
+        </span>
+      ))}
+      {list.length > 3 && <span className="text-[11px] text-gray-400">+{list.length - 3}</span>}
+    </div>
+  );
+}
+
+/** Ações de linha: ativar/inativar, editar e excluir (contas master ficam protegidas). */
+function RowActions({
+  user,
+  size,
+  onToggle,
+  onEdit,
+  onDelete,
+}: {
+  user: UserData;
+  size: "sm" | "md";
+  onToggle: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const locked = isMasterEmail(user.email);
+  const pad = size === "md" ? "p-2" : "p-1.5";
+  return (
+    <>
+      {locked ? (
+        <span className={`${pad} text-gray-300`} title="Conta master: protegida contra exclusão e inativação">
+          <Lock className="h-4 w-4" />
+        </span>
+      ) : (
+        <button
+          onClick={onToggle}
+          title={user.active ? "Inativar usuário" : "Reativar usuário"}
+          className={`${pad} rounded-lg transition ${
+            user.active ? "text-gray-400 hover:text-amber-600 hover:bg-amber-50" : "text-green-600 hover:bg-green-50"
+          }`}
+        >
+          <Power className="h-4 w-4" />
+        </button>
+      )}
+      <button onClick={onEdit} className={`${pad} text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition`}>
+        <Pencil className="h-4 w-4" />
+      </button>
+      {!locked && (
+        <button onClick={onDelete} className={`${pad} text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition`}>
+          <Trash2 className="h-4 w-4" />
+        </button>
+      )}
+    </>
+  );
+}
 
 export default function UsersPage() {
   const [users, setUsers] = useState<UserData[]>([]);
@@ -57,6 +187,7 @@ export default function UsersPage() {
   const [editForm, setEditForm] = useState({
     name: "",
     email: "",
+    username: "",
     password: "",
     role: "FRANCHISEE" as RoleValue,
     phone: "",
@@ -95,6 +226,7 @@ export default function UsersPage() {
     setEditForm({
       name: user.name,
       email: user.email,
+      username: user.username ?? "",
       password: "",
       role: user.role,
       phone: user.phone ?? "",
@@ -116,8 +248,9 @@ export default function UsersPage() {
       password: form.password,
       role: form.role,
     };
+    if (form.username.trim()) payload.username = form.username.trim();
     if (form.phone.trim()) payload.phone = form.phone.trim();
-    if (form.role === "MANAGER") payload.storeIds = form.storeIds;
+    if (form.role !== "ADMIN") payload.storeIds = form.storeIds;
 
     const res = await fetch("/api/users", {
       method: "POST",
@@ -151,7 +284,8 @@ export default function UsersPage() {
     };
     if (editForm.password) payload.password = editForm.password;
     payload.phone = editForm.phone.trim() || null;
-    if (editForm.role === "MANAGER") payload.storeIds = editForm.storeIds;
+    payload.username = editForm.username.trim();
+    payload.storeIds = editForm.role === "ADMIN" ? [] : editForm.storeIds;
 
     const res = await fetch(`/api/users/${editing.id}`, {
       method: "PATCH",
@@ -169,6 +303,20 @@ export default function UsersPage() {
 
     await fetchUsers();
     setShowEditModal(false);
+  }
+
+  async function toggleActive(user: UserData) {
+    const res = await fetch(`/api/users/${user.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ active: !user.active }),
+    });
+    if (res.ok) {
+      setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, active: !user.active } : u)));
+    } else {
+      const data = await res.json();
+      alert(data.error ?? "Erro ao alterar status");
+    }
   }
 
   async function handleDelete(id: string, name: string) {
@@ -227,9 +375,10 @@ export default function UsersPage() {
                   <p className="font-medium text-gray-900 text-sm truncate">{user.name}</p>
                   <p className="text-xs text-gray-500 truncate">{user.email}</p>
                   {user.phone && <p className="text-xs text-gray-400 truncate">📞 {user.phone}</p>}
+                  <StoreTags user={user} />
                   <div className="flex items-center gap-1.5 mt-1.5">
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${ROLE_BADGE[user.role]}`}>
-                      {ROLE_LABEL[user.role]}
+                      {isMasterEmail(user.email) ? "Master" : ROLE_LABEL[user.role]}
                     </span>
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                       user.active ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
@@ -239,18 +388,13 @@ export default function UsersPage() {
                   </div>
                 </div>
                 <div className="flex gap-1 flex-shrink-0">
-                  <button
-                    onClick={() => openEdit(user)}
-                    className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(user.id, user.name)}
-                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                  <RowActions
+                    user={user}
+                    size="md"
+                    onToggle={() => toggleActive(user)}
+                    onEdit={() => openEdit(user)}
+                    onDelete={() => handleDelete(user.id, user.name)}
+                  />
                 </div>
               </div>
             ))}
@@ -296,8 +440,10 @@ export default function UsersPage() {
                         <p className="font-medium text-gray-900">{user.name}</p>
                         <p className="text-xs text-gray-500">
                           {user.email}
+                          {user.username ? ` · login: ${user.username}` : ""}
                           {user.phone ? ` · 📞 ${user.phone}` : ""}
                         </p>
+                        <StoreTags user={user} />
                       </div>
                     </div>
                   </td>
@@ -305,7 +451,7 @@ export default function UsersPage() {
                     <span
                       className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${ROLE_BADGE[user.role]}`}
                     >
-                      {ROLE_LABEL[user.role]}
+                      {isMasterEmail(user.email) ? "Master" : ROLE_LABEL[user.role]}
                     </span>
                   </td>
                   <td className="px-5 py-4">
@@ -324,18 +470,13 @@ export default function UsersPage() {
                   </td>
                   <td className="px-5 py-4 text-right">
                     <div className="flex items-center justify-end gap-1">
-                      <button
-                        onClick={() => openEdit(user)}
-                        className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(user.id, user.name)}
-                        className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      <RowActions
+                        user={user}
+                        size="sm"
+                        onToggle={() => toggleActive(user)}
+                        onEdit={() => openEdit(user)}
+                        onDelete={() => handleDelete(user.id, user.name)}
+                      />
                     </div>
                   </td>
                 </tr>
@@ -377,6 +518,18 @@ export default function UsersPage() {
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                   placeholder="joao@email.com"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Login <span className="text-gray-400 font-normal">(opcional — entra com e-mail ou login)</span>
+                </label>
+                <input
+                  value={form.username}
+                  onChange={(e) => setForm({ ...form, username: e.target.value.trim() })}
+                  autoCapitalize="none"
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  placeholder="joao.franqueado"
                 />
               </div>
               <div>
@@ -429,38 +582,13 @@ export default function UsersPage() {
                 />
               </div>
 
-              {form.role === "MANAGER" && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Lojas vinculadas *
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    {stores.map((store) => {
-                      const sel = form.storeIds.includes(store.id);
-                      return (
-                        <button
-                          key={store.id}
-                          type="button"
-                          onClick={() =>
-                            setForm({
-                              ...form,
-                              storeIds: sel
-                                ? form.storeIds.filter((id) => id !== store.id)
-                                : [...form.storeIds, store.id],
-                            })
-                          }
-                          className={`px-3 py-1.5 rounded-full text-sm font-medium border transition ${
-                            sel
-                              ? "bg-violet-600 text-white border-violet-600"
-                              : "bg-white text-gray-600 border-gray-200 hover:border-violet-300"
-                          }`}
-                        >
-                          {store.name}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
+              {form.role !== "ADMIN" && (
+                <StorePicker
+                  stores={stores}
+                  value={form.storeIds}
+                  onChange={(storeIds) => setForm({ ...form, storeIds })}
+                  required={form.role === "MANAGER"}
+                />
               )}
 
               {error && (
@@ -519,10 +647,23 @@ export default function UsersPage() {
                   required
                   type="email"
                   value={editForm.email}
+                  disabled={isMasterEmail(editing.email)}
                   onChange={(e) =>
                     setEditForm({ ...editForm, email: e.target.value })
                   }
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Login <span className="text-gray-400 font-normal">(opcional — entra com e-mail ou login)</span>
+                </label>
+                <input
+                  value={editForm.username}
+                  onChange={(e) => setEditForm({ ...editForm, username: e.target.value.trim() })}
+                  autoCapitalize="none"
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  placeholder="joao.franqueado"
                 />
               </div>
               <div>
@@ -546,6 +687,7 @@ export default function UsersPage() {
                 </label>
                 <select
                   value={editForm.role}
+                  disabled={isMasterEmail(editing.email)}
                   onChange={(e) =>
                     setEditForm({
                       ...editForm,
@@ -572,44 +714,20 @@ export default function UsersPage() {
                   placeholder="(85) 99999-9999"
                 />
               </div>
-              {editForm.role === "MANAGER" && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Lojas vinculadas *
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    {stores.map((store) => {
-                      const sel = editForm.storeIds.includes(store.id);
-                      return (
-                        <button
-                          key={store.id}
-                          type="button"
-                          onClick={() =>
-                            setEditForm({
-                              ...editForm,
-                              storeIds: sel
-                                ? editForm.storeIds.filter((id) => id !== store.id)
-                                : [...editForm.storeIds, store.id],
-                            })
-                          }
-                          className={`px-3 py-1.5 rounded-full text-sm font-medium border transition ${
-                            sel
-                              ? "bg-violet-600 text-white border-violet-600"
-                              : "bg-white text-gray-600 border-gray-200 hover:border-violet-300"
-                          }`}
-                        >
-                          {store.name}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
+              {editForm.role !== "ADMIN" && (
+                <StorePicker
+                  stores={stores}
+                  value={editForm.storeIds}
+                  onChange={(storeIds) => setEditForm({ ...editForm, storeIds })}
+                  required={editForm.role === "MANAGER"}
+                />
               )}
               <div className="flex items-center gap-2">
                 <input
                   type="checkbox"
                   id="active"
                   checked={editForm.active}
+                  disabled={isMasterEmail(editing.email)}
                   onChange={(e) =>
                     setEditForm({ ...editForm, active: e.target.checked })
                   }

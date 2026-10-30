@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { sendPushToUser } from "@/lib/push";
 import { z } from "zod";
+import { attachmentsSchema, attachmentsSummary, legacyNamedFileFields } from "@/lib/attachments";
 
 const createSchema = z.object({
   storeId: z.string().cuid(),
@@ -12,6 +13,7 @@ const createSchema = z.object({
   fileKey: z.string().optional(),
   fileName: z.string().optional(),
   fileType: z.string().optional(),
+  attachments: attachmentsSchema.optional(),
 });
 
 export async function GET(req: Request) {
@@ -59,8 +61,9 @@ export async function POST(req: Request) {
   const parsed = createSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
 
+  const { attachments, ...data } = parsed.data;
   const alert = await db.nonComplianceAlert.create({
-    data: parsed.data,
+    data: { ...data, ...(attachments ? { attachments, ...legacyNamedFileFields(attachments) } : {}) },
     include: { store: { select: { id: true, name: true } } },
   });
 
@@ -73,7 +76,7 @@ export async function POST(req: Request) {
     links.map((link) =>
       sendPushToUser(link.userId, {
         title: `📋 Novo registro — ${alert.store.name}`,
-        body: alert.title,
+        body: attachments?.length ? `${alert.title} · ${attachmentsSummary(attachments)}` : alert.title,
         url: "/registros",
       })
     )

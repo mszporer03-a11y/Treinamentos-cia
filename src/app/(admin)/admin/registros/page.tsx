@@ -2,10 +2,14 @@
 
 export const dynamic = "force-dynamic";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
-import { ClipboardList, Plus, X, Trash2, Paperclip, Loader2, Eye } from "lucide-react";
-import { useUploadThing } from "@/lib/uploadthing-components";
+import { ClipboardList, Plus, X, Trash2, Eye } from "lucide-react";
+import { postAttachments } from "@/lib/attachments";
+import { MaterialViewer } from "@/components/franchisee/MaterialViewer";
+import { AttachmentMosaic } from "@/components/attachments/AttachmentMosaic";
+import { AttachmentPicker } from "@/components/attachments/AttachmentPicker";
+import { useAttachmentUploader } from "@/components/attachments/useAttachmentUploader";
 import { formatDate } from "@/lib/utils";
 
 type Store = { id: string; name: string; code: string };
@@ -14,6 +18,7 @@ type Alert = {
   title: string;
   description: string;
   fileUrl: string | null;
+  attachments?: unknown;
   fileName: string | null;
   fileType: string | null;
   createdAt: string;
@@ -35,22 +40,12 @@ export default function AdminRegistrosPage() {
   const [storeId, setStoreId] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [pendingFile, setPendingFile] = useState<{ url: string; key: string; name: string } | null>(null);
-  const [uploading, setUploading] = useState(false);
+  const uploader = useAttachmentUploader("chatAttachment");
+  const uploading = uploader.busy;
+  const [viewing, setViewing] = useState<Alert | null>(null);
   const [saving, setSaving] = useState(false);
   const [viewersFor, setViewersFor] = useState<string | null>(null);
   const [viewers, setViewers] = useState<Viewer[]>([]);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const { startUpload } = useUploadThing("chatAttachment", {
-    onClientUploadComplete: (res) => {
-      const file = res?.[0];
-      if (file) setPendingFile({ url: file.url, key: file.key, name: file.name });
-      setUploading(false);
-    },
-    onUploadError: () => setUploading(false),
-  });
-
   useEffect(() => {
     Promise.all([
       fetch("/api/alerts").then((r) => r.json()),
@@ -63,10 +58,8 @@ export default function AdminRegistrosPage() {
   }, []);
 
   async function create() {
-    if (!storeId || !title.trim() || !description.trim()) return;
+    if (!storeId || !title.trim() || !description.trim() || uploading) return;
     setSaving(true);
-    const ext = pendingFile?.name.split(".").pop()?.toLowerCase() ?? "";
-    const isImg = ["jpg", "jpeg", "png", "gif", "webp"].includes(ext);
     const res = await fetch("/api/alerts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -74,10 +67,7 @@ export default function AdminRegistrosPage() {
         storeId,
         title: title.trim(),
         description: description.trim(),
-        fileUrl: pendingFile?.url,
-        fileKey: pendingFile?.key,
-        fileName: pendingFile?.name,
-        fileType: pendingFile ? (isImg ? "image" : "document") : undefined,
+        attachments: uploader.attachments,
       }),
     });
     if (res.ok) {
@@ -86,7 +76,7 @@ export default function AdminRegistrosPage() {
       setStoreId("");
       setTitle("");
       setDescription("");
-      setPendingFile(null);
+      uploader.reset();
       setShowForm(false);
     }
     setSaving(false);
@@ -158,45 +148,16 @@ export default function AdminRegistrosPage() {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
-            {pendingFile ? (
-              <div className="flex items-center gap-3 p-3 bg-orange-50 rounded-xl border border-orange-200">
-                <Paperclip className="h-4 w-4 text-orange-600 flex-shrink-0" />
-                <span className="text-sm text-gray-700 truncate flex-1">{pendingFile.name}</span>
-                <button type="button" onClick={() => setPendingFile(null)} className="text-gray-400 hover:text-red-500">
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploading}
-                className="flex items-center gap-2 px-4 py-2.5 border border-dashed border-gray-300 rounded-xl text-sm text-gray-500 hover:border-orange-400 hover:text-orange-600 transition w-full justify-center"
-              >
-                {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Paperclip className="h-4 w-4" />}
-                {uploading ? "Enviando arquivo…" : "Anexar mídia (opcional)"}
-              </button>
-            )}
-            <input
-              ref={fileInputRef}
-              type="file"
-              className="hidden"
-              accept="image/*,.pdf,.doc,.docx"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) {
-                  setUploading(true);
-                  startUpload([file]);
-                }
-                e.target.value = "";
-              }}
-            />
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Mídias (opcional — fotos, vídeos, PDFs; vários arquivos)</label>
+              <AttachmentPicker uploader={uploader} accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx" />
+            </div>
             <button
               disabled={saving || uploading || !storeId || !title.trim() || !description.trim()}
               onClick={create}
               className="w-full py-2 bg-orange-600 text-white text-sm font-medium rounded-lg hover:bg-orange-700 disabled:opacity-50 transition"
             >
-              {saving ? "Salvando..." : "Criar registro"}
+              {saving ? "Salvando..." : uploading ? "Enviando arquivos..." : "Criar registro"}
             </button>
           </div>
         </div>
@@ -220,15 +181,10 @@ export default function AdminRegistrosPage() {
                     <span className="text-xs text-gray-400">· {a.store.name}</span>
                   </div>
                   <p className="text-sm text-gray-500 mt-0.5 whitespace-pre-wrap">{a.description}</p>
-                  {a.fileUrl && (
-                    <a
-                      href={a.fileUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 mt-2 text-xs text-orange-600 hover:underline"
-                    >
-                      <Paperclip className="h-3 w-3" /> {a.fileName ?? "Anexo"}
-                    </a>
+                  {postAttachments(a).length > 0 && (
+                    <div className="mt-2 max-w-sm">
+                      <AttachmentMosaic attachments={postAttachments(a)} onOpen={() => setViewing(a)} />
+                    </div>
                   )}
                   <div className="flex items-center gap-3 mt-3">
                     <span className="text-xs text-gray-400">{formatDate(a.createdAt)}</span>
@@ -280,6 +236,19 @@ export default function AdminRegistrosPage() {
             )}
           </div>
         </div>
+      )}
+      {viewing && (
+        <MaterialViewer
+          material={{
+            id: viewing.id,
+            title: viewing.title,
+            body: viewing.description,
+            fileUrl: viewing.fileUrl,
+            fileType: "OTHER",
+            attachments: postAttachments(viewing),
+          }}
+          onClose={() => setViewing(null)}
+        />
       )}
     </div>
   );

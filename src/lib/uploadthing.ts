@@ -4,18 +4,21 @@ import { auth } from "@/lib/auth";
 const f = createUploadthing();
 
 export const ourFileRouter = {
+  // Materiais, comunicados e alertas — vários anexos por post
   materialUploader: f({
-    video: { maxFileSize: "2GB", maxFileCount: 1 },
-    pdf: { maxFileSize: "64MB", maxFileCount: 1 },
-    image: { maxFileSize: "16MB", maxFileCount: 1 },
-    "application/msword": { maxFileSize: "32MB", maxFileCount: 1 },
+    video: { maxFileSize: "2GB", maxFileCount: 20 },
+    pdf: { maxFileSize: "64MB", maxFileCount: 20 },
+    image: { maxFileSize: "16MB", maxFileCount: 30 },
+    "application/msword": { maxFileSize: "32MB", maxFileCount: 20 },
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document": {
       maxFileSize: "32MB",
-      maxFileCount: 1,
+      maxFileCount: 20,
     },
-    "application/vnd.ms-powerpoint": { maxFileSize: "64MB", maxFileCount: 1 },
+    "application/vnd.ms-powerpoint": { maxFileSize: "64MB", maxFileCount: 20 },
     "application/vnd.openxmlformats-officedocument.presentationml.presentation":
-      { maxFileSize: "64MB", maxFileCount: 1 },
+      { maxFileSize: "64MB", maxFileCount: 20 },
+    "application/vnd.ms-excel": { maxFileSize: "16MB", maxFileCount: 20 },
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": { maxFileSize: "16MB", maxFileCount: 20 },
   })
     .middleware(async () => {
       const session = await auth();
@@ -29,7 +32,9 @@ export const ourFileRouter = {
     }),
 
   campaignImageUploader: f({
-    image: { maxFileSize: "16MB", maxFileCount: 10 },
+    image: { maxFileSize: "16MB", maxFileCount: 30 },
+    video: { maxFileSize: "1GB", maxFileCount: 10 },
+    pdf: { maxFileSize: "64MB", maxFileCount: 10 },
   })
     .middleware(async () => {
       const session = await auth();
@@ -41,15 +46,15 @@ export const ourFileRouter = {
     }),
 
   chatAttachment: f({
-    image: { maxFileSize: "16MB", maxFileCount: 1 },
-    pdf: { maxFileSize: "32MB", maxFileCount: 1 },
-    video: { maxFileSize: "256MB", maxFileCount: 1 },
-    "application/msword": { maxFileSize: "32MB", maxFileCount: 1 },
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": { maxFileSize: "32MB", maxFileCount: 1 },
-    "application/vnd.ms-powerpoint": { maxFileSize: "32MB", maxFileCount: 1 },
-    "application/vnd.openxmlformats-officedocument.presentationml.presentation": { maxFileSize: "32MB", maxFileCount: 1 },
-    "application/vnd.ms-excel": { maxFileSize: "16MB", maxFileCount: 1 },
-    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": { maxFileSize: "16MB", maxFileCount: 1 },
+    image: { maxFileSize: "16MB", maxFileCount: 10 },
+    pdf: { maxFileSize: "32MB", maxFileCount: 10 },
+    video: { maxFileSize: "256MB", maxFileCount: 5 },
+    "application/msword": { maxFileSize: "32MB", maxFileCount: 10 },
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": { maxFileSize: "32MB", maxFileCount: 10 },
+    "application/vnd.ms-powerpoint": { maxFileSize: "32MB", maxFileCount: 10 },
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation": { maxFileSize: "32MB", maxFileCount: 10 },
+    "application/vnd.ms-excel": { maxFileSize: "16MB", maxFileCount: 10 },
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": { maxFileSize: "16MB", maxFileCount: 10 },
   })
     .middleware(async () => {
       const session = await auth();
@@ -58,6 +63,19 @@ export const ourFileRouter = {
     })
     .onUploadComplete(async ({ metadata, file }) => {
       return { uploadedBy: metadata.userId, url: file.url, key: file.key, name: file.name };
+    }),
+
+  // Capa (miniatura JPEG) gerada a partir do segundo escolhido do vídeo
+  videoCoverUploader: f({
+    image: { maxFileSize: "4MB", maxFileCount: 1 },
+  })
+    .middleware(async () => {
+      const session = await auth();
+      if (!session?.user) throw new Error("Unauthorized");
+      return { userId: session.user.id };
+    })
+    .onUploadComplete(async ({ metadata, file }) => {
+      return { uploadedBy: metadata.userId, url: file.url, key: file.key };
     }),
 } satisfies FileRouter;
 

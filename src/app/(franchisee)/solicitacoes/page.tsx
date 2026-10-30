@@ -2,7 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ChevronLeft, Inbox, Store, Tag, Clock, ChevronDown, ChevronUp, FileText, Image as ImageIcon } from "lucide-react";
+import { ChevronLeft, Inbox, Store, Tag, Clock, ChevronDown, ChevronUp } from "lucide-react";
+import { type Attachment, postAttachments } from "@/lib/attachments";
+import { AttachmentMosaic } from "@/components/attachments/AttachmentMosaic";
+import { AttachmentGallery } from "@/components/attachments/AttachmentGallery";
 import { useSession } from "next-auth/react";
 
 type StoreRef = { store: { id: string; name: string; code: string } };
@@ -20,12 +23,25 @@ type Solicitacao = {
   adminReplyFileUrl: string | null;
   adminReplyFileName: string | null;
   adminReplyFileType: string | null;
+  adminReplyAttachments?: unknown;
   linkedStores: StoreRef[];
   conversation: { id: string };
   recipients?: string[];
   fileUrl?: string | null;
   fileName?: string | null;
+  fileType?: string | null;
+  attachments?: unknown;
 };
+
+// Anexos da resposta da equipe (lista nova ou arquivo único legado)
+function replyAttachments(item: Solicitacao) {
+  return postAttachments({
+    attachments: item.adminReplyAttachments,
+    fileUrl: item.adminReplyFileUrl,
+    fileName: item.adminReplyFileName,
+    fileType: item.adminReplyFileType,
+  });
+}
 
 const CATEGORY_LABEL: Record<string, string> = {
   solicitacoes: "Solicitações (Geral)", marketing: "Mídia",
@@ -62,6 +78,7 @@ export default function SolicitacoesPage() {
   const [catFilter, setCatFilter] = useState("all");
   const [storeFilter, setStoreFilter] = useState("all");
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [gallery, setGallery] = useState<Attachment[] | null>(null);
 
   useEffect(() => {
     fetch("/api/solicitacoes")
@@ -140,7 +157,7 @@ export default function SolicitacoesPage() {
             const catLabel = CATEGORY_LABEL[item.category] ?? item.category;
             const catColor = CATEGORY_COLOR[item.category] ?? "bg-gray-100 text-gray-600";
             const isExpanded = expanded === item.id;
-            const hasReply = item.adminReplyContent || item.adminReplyFileUrl;
+            const hasReply = item.adminReplyContent || replyAttachments(item).length > 0;
 
             return (
               <div key={item.id} className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
@@ -197,11 +214,10 @@ export default function SolicitacoesPage() {
                         {item.content.replace(/^\[.*?\]\n\n/, "")}
                       </p>
                     )}
-                    {item.fileName && (
-                      <a href={item.fileUrl ?? "#"} target="_blank" rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 text-xs text-indigo-600 hover:underline">
-                        📎 {item.fileName}
-                      </a>
+                    {postAttachments(item).length > 0 && (
+                      <div className="max-w-xs">
+                        <AttachmentMosaic attachments={postAttachments(item)} onOpen={() => setGallery(postAttachments(item))} />
+                      </div>
                     )}
 
                     {/* Timeline */}
@@ -224,14 +240,10 @@ export default function SolicitacoesPage() {
                             {item.adminReplyContent}
                           </p>
                         )}
-                        {item.adminReplyFileUrl && (
-                          <a href={item.adminReplyFileUrl} target="_blank" rel="noopener noreferrer"
-                            className="inline-flex items-center gap-2 px-3 py-2 bg-white border border-green-200 rounded-xl text-xs text-green-700 hover:bg-green-50 transition">
-                            {item.adminReplyFileType === "image"
-                              ? <ImageIcon className="h-3.5 w-3.5" />
-                              : <FileText className="h-3.5 w-3.5" />}
-                            {item.adminReplyFileName ?? "Arquivo"}
-                          </a>
+                        {replyAttachments(item).length > 0 && (
+                          <div className="max-w-xs">
+                            <AttachmentMosaic attachments={replyAttachments(item)} onOpen={() => setGallery(replyAttachments(item))} />
+                          </div>
                         )}
                       </div>
                     )}
@@ -243,6 +255,8 @@ export default function SolicitacoesPage() {
           })}
         </div>
       )}
+
+      {gallery && <AttachmentGallery attachments={gallery} title="Anexos" onClose={() => setGallery(null)} />}
     </div>
   );
 }

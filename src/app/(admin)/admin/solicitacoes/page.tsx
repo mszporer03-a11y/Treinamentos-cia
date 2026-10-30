@@ -2,13 +2,16 @@
 
 export const dynamic = "force-dynamic";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   Inbox, Store, Tag, Clock, ChevronDown, ChevronUp,
-  CheckCircle2, Eye, Loader2, Send, X, Paperclip,
-  FileText, Image as ImageIcon, Settings2,
+  CheckCircle2, Eye, Loader2, Send, X, Settings2,
 } from "lucide-react";
-import { useUploadThing } from "@/lib/uploadthing-components";
+import { type Attachment, postAttachments } from "@/lib/attachments";
+import { AttachmentMosaic } from "@/components/attachments/AttachmentMosaic";
+import { AttachmentGallery } from "@/components/attachments/AttachmentGallery";
+import { AttachmentPicker } from "@/components/attachments/AttachmentPicker";
+import { useAttachmentUploader } from "@/components/attachments/useAttachmentUploader";
 
 type StoreRef = { store: { id: string; name: string; code: string } };
 type Franchisee = { id: string; name: string; email: string; role?: string; phone?: string | null };
@@ -26,13 +29,25 @@ type Solicitacao = {
   adminReplyFileUrl: string | null;
   adminReplyFileName: string | null;
   adminReplyFileType: string | null;
+  adminReplyAttachments?: unknown;
   linkedStores: StoreRef[];
   sender: Franchisee;
   conversation: { id: string; franchisee: Franchisee };
   fileUrl?: string | null;
   fileName?: string | null;
   fileType?: string | null;
+  attachments?: unknown;
 };
+
+// Anexos da resposta da equipe (lista nova ou arquivo único legado)
+function replyAttachments(item: Solicitacao) {
+  return postAttachments({
+    attachments: item.adminReplyAttachments,
+    fileUrl: item.adminReplyFileUrl,
+    fileName: item.adminReplyFileName,
+    fileType: item.adminReplyFileType,
+  });
+}
 
 const CATEGORY_LABEL: Record<string, string> = {
   solicitacoes: "Solicitações (Geral)", marketing: "Mídia",
@@ -73,23 +88,11 @@ export default function AdminSolicitacoesPage() {
   const [updating, setUpdating] = useState<string | null>(null);
   const [replyTarget, setReplyTarget] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
-  const [replyFile, setReplyFile] = useState<{ url: string; key: string; type: string; name: string } | null>(null);
-  const [uploading, setUploading] = useState(false);
+  const uploader = useAttachmentUploader("chatAttachment");
+  const uploading = uploader.busy;
+  const hasReplyFiles = uploader.attachments.length > 0;
   const [sendingReply, setSendingReply] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const { startUpload } = useUploadThing("chatAttachment", {
-    onClientUploadComplete: (res) => {
-      const file = res?.[0];
-      if (file) {
-        const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
-        const isImg = ["jpg","jpeg","png","gif","webp"].includes(ext);
-        setReplyFile({ url: file.url, key: file.key, type: isImg ? "image" : "document", name: file.name });
-      }
-      setUploading(false);
-    },
-    onUploadError: () => setUploading(false),
-  });
+  const [gallery, setGallery] = useState<Attachment[] | null>(null);
 
   const load = useCallback(async () => {
     const p = new URLSearchParams();
@@ -118,7 +121,8 @@ export default function AdminSolicitacoesPage() {
   }
 
   async function handleDone(id: string) {
-    if (!replyText.trim() && !replyFile) return;
+    if ((!replyText.trim() && !hasReplyFiles) || uploading) return;
+    const files = uploader.attachments;
     setSendingReply(true);
     const now = new Date().toISOString();
     await fetch(`/api/solicitacoes/${id}`, {
@@ -127,10 +131,7 @@ export default function AdminSolicitacoesPage() {
       body: JSON.stringify({
         status: "DONE",
         reply: replyText.trim() || undefined,
-        replyFileUrl:  replyFile?.url,
-        replyFileKey:  replyFile?.key,
-        replyFileName: replyFile?.name,
-        replyFileType: replyFile?.type,
+        replyAttachments: files,
       }),
     });
     setItems((prev) => prev.map((i) =>
@@ -139,12 +140,13 @@ export default function AdminSolicitacoesPage() {
         requestStatus: "DONE",
         doneAt: now,
         adminReplyContent: replyText.trim() || null,
-        adminReplyFileUrl: replyFile?.url ?? null,
-        adminReplyFileName: replyFile?.name ?? null,
-        adminReplyFileType: replyFile?.type ?? null,
+        adminReplyFileUrl: files[0]?.url ?? null,
+        adminReplyFileName: files[0]?.name ?? null,
+        adminReplyFileType: null,
+        adminReplyAttachments: files,
       } : i
     ));
-    setReplyTarget(null); setReplyText(""); setReplyFile(null);
+    setReplyTarget(null); setReplyText(""); uploader.reset();
     setSendingReply(false);
   }
 
@@ -282,11 +284,10 @@ export default function AdminSolicitacoesPage() {
                         {item.content.replace(/^\[.*?\]\n\n/, "")}
                       </p>
                     )}
-                    {item.fileName && (
-                      <a href={item.fileUrl ?? "#"} target="_blank" rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 text-xs text-indigo-600 hover:underline">
-                        📎 {item.fileName}
-                      </a>
+                    {postAttachments(item).length > 0 && (
+                      <div className="max-w-xs">
+                        <AttachmentMosaic attachments={postAttachments(item)} onOpen={() => setGallery(postAttachments(item))} />
+                      </div>
                     )}
 
                     {/* Timeline */}
@@ -299,17 +300,16 @@ export default function AdminSolicitacoesPage() {
                     </div>
 
                     {/* Admin reply (if done) */}
-                    {status === "DONE" && (item.adminReplyContent || item.adminReplyFileUrl) && (
+                    {status === "DONE" && (item.adminReplyContent || replyAttachments(item).length > 0) && (
                       <div className="bg-green-50 border border-green-100 rounded-xl px-3 py-2.5">
                         <p className="text-[10px] font-semibold text-green-700 uppercase tracking-wide mb-1.5">Resposta enviada</p>
                         {item.adminReplyContent && (
                           <p className="text-sm text-gray-700 whitespace-pre-wrap">{item.adminReplyContent}</p>
                         )}
-                        {item.adminReplyFileUrl && (
-                          <a href={item.adminReplyFileUrl} target="_blank" rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 text-xs text-green-700 hover:underline mt-1">
-                            📎 {item.adminReplyFileName ?? "Arquivo"}
-                          </a>
+                        {replyAttachments(item).length > 0 && (
+                          <div className="max-w-xs mt-1.5">
+                            <AttachmentMosaic attachments={replyAttachments(item)} onOpen={() => setGallery(replyAttachments(item))} />
+                          </div>
                         )}
                       </div>
                     )}
@@ -331,7 +331,7 @@ export default function AdminSolicitacoesPage() {
                             Em Preparo
                           </button>
                         )}
-                        <button onClick={() => setReplyTarget(isReplyOpen ? null : item.id)}
+                        <button onClick={() => { setReplyTarget(isReplyOpen ? null : item.id); uploader.reset(); }}
                           className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-green-50 text-green-700 border border-green-200 rounded-xl hover:bg-green-100 transition">
                           <CheckCircle2 className="h-3 w-3" /> Marcar como Pronto
                         </button>
@@ -350,43 +350,15 @@ export default function AdminSolicitacoesPage() {
                           className="w-full border border-green-200 rounded-xl px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
                         />
 
-                        {/* File preview or upload button */}
-                        {replyFile ? (
-                          <div className="flex items-center gap-2 px-3 py-2 bg-white border border-green-200 rounded-xl text-sm">
-                            {replyFile.type === "image"
-                              ? <ImageIcon className="h-4 w-4 text-green-600 flex-shrink-0" />
-                              : <FileText className="h-4 w-4 text-green-600 flex-shrink-0" />}
-                            <span className="text-gray-700 truncate flex-1 text-xs">{replyFile.name}</span>
-                            <button onClick={() => setReplyFile(null)} className="text-gray-400 hover:text-red-500 transition flex-shrink-0">
-                              <X className="h-4 w-4" />
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => fileInputRef.current?.click()}
-                            disabled={uploading}
-                            className="flex items-center gap-2 px-3 py-2 border border-dashed border-green-300 rounded-xl text-xs text-green-700 hover:border-green-500 hover:bg-green-100 transition w-full justify-center"
-                          >
-                            {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Paperclip className="h-3.5 w-3.5" />}
-                            {uploading ? "Enviando arquivo…" : "Anexar imagem ou documento"}
-                          </button>
-                        )}
-                        <input ref={fileInputRef} type="file" className="hidden"
-                          accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) { setUploading(true); startUpload([file]); }
-                            e.target.value = "";
-                          }} />
+                        <AttachmentPicker uploader={uploader} hint="Imagens, vídeos ou documentos — vários de uma vez" />
 
                         <div className="flex gap-2 justify-end">
-                          <button onClick={() => { setReplyTarget(null); setReplyText(""); setReplyFile(null); }}
+                          <button onClick={() => { setReplyTarget(null); setReplyText(""); uploader.reset(); }}
                             className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition">
                             <X className="h-3 w-3" /> Cancelar
                           </button>
                           <button onClick={() => handleDone(item.id)}
-                            disabled={sendingReply || uploading || (!replyText.trim() && !replyFile)}
+                            disabled={sendingReply || uploading || (!replyText.trim() && !hasReplyFiles)}
                             className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold bg-green-600 hover:bg-green-700 text-white rounded-xl transition disabled:opacity-50">
                             {sendingReply ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
                             Concluir e Enviar
@@ -401,6 +373,8 @@ export default function AdminSolicitacoesPage() {
           })}
         </div>
       )}
+
+      {gallery && <AttachmentGallery attachments={gallery} title="Anexos" onClose={() => setGallery(null)} />}
     </div>
   );
 }

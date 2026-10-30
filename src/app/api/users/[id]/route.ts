@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
+import { isMasterEmail } from "@/lib/masters";
 
 const updateSchema = z.object({
   name: z.string().min(1).max(100).optional(),
@@ -14,12 +15,20 @@ const updateSchema = z.object({
   phone: z.string().max(30).optional().nullable(),
   active: z.boolean().optional(),
   storeIds: z.array(z.string()).optional(),
+  // Login alternativo ao e-mail (ex.: joao.franqueado)
+  username: z
+    .string()
+    .trim()
+    .regex(/^[a-zA-Z0-9._-]{3,40}$/, "Login deve ter 3-40 caracteres (letras, números, ponto, hífen)")
+    .optional()
+    .or(z.literal("")),
 });
 
 const userSelectFields = {
   id: true,
   name: true,
   email: true,
+  username: true,
   role: true,
   phone: true,
   active: true,
@@ -55,8 +64,40 @@ export async function PATCH(
       return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
     }
 
-    const { storeIds, ...fields } = data;
+    // Contas master não podem ser inativadas, rebaixadas nem trocar de e-mail
+    const target = await db.user.findUnique({ where: { id: params.id }, select: { email: true } });
+    if (!target) {
+      return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
+    }
+    if (isMasterEmail(target.email)) {
+      if (data.active === false || (data.role && data.role !== "ADMIN")) {
+        return NextResponse.json(
+          { error: "Contas master não podem ser inativadas nem rebaixadas" },
+          { status: 400 }
+        );
+      }
+      if (data.email && data.email.toLowerCase() !== target.email.toLowerCase()) {
+        return NextResponse.json({ error: "O e-mail de uma conta master não pode ser alterado" }, { status: 400 });
+      }
+    }
+    // Não permite que o admin se inative/rebaixe sozinho
+    if (params.id === session.user.id && (data.active === false || (data.role && data.role !== "ADMIN"))) {
+      return NextResponse.json({ error: "Você não pode inativar ou rebaixar a própria conta" }, { status: 400 });
+    }
+
+    const { storeIds: rawStoreIds, username, ...fields } = data;
+    if (username) {
+      const taken = await db.user.findFirst({
+        where: { username: { equals: username, mode: "insensitive" }, NOT: { id: params.id } },
+      });
+      if (taken) {
+        return NextResponse.json({ error: "Login já está em uso" }, { status: 400 });
+      }
+    }
+    // Administradores não ficam vinculados a lojas
+    const storeIds = data.role === "ADMIN" ? [] : rawStoreIds;
     const updateData: Record<string, unknown> = { ...fields };
+    if (username !== undefined) updateData.username = username || null;
     if (data.password) {
       updateData.password = await bcrypt.hash(data.password, 12);
     }
@@ -125,6 +166,10 @@ export async function DELETE(
   }
 
   try {
+    const target = await db.user.findUnique({ where: { id: params.id }, select: { email: true } });
+    if (target && isMasterEmail(target.email)) {
+      return NextResponse.json({ error: "Contas master não podem ser excluídas" }, { status: 400 });
+    }
     await db.user.delete({ where: { id: params.id } });
     return NextResponse.json({ success: true });
   } catch {

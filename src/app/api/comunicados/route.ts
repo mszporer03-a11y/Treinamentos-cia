@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { sendPushToAll } from "@/lib/push";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { attachmentsSchema, attachmentsSummary, legacyNamedFileFields } from "@/lib/attachments";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,7 @@ const createSchema = z.object({
   fileName: z.string().optional(),
   fileType: z.string().optional(),
   published: z.boolean().optional().default(true),
+  attachments: attachmentsSchema.optional(),
 });
 
 export async function GET() {
@@ -46,14 +48,24 @@ export async function POST(req: Request) {
   const parsed = createSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
 
+  // Vários anexos: os campos legados (fileUrl…) espelham o primeiro
+  const { attachments, ...data } = parsed.data;
   const comunicado = await db.comunicado.create({
-    data: { ...parsed.data, createdById: session.user.id },
+    data: {
+      ...data,
+      ...(attachments ? { attachments, ...legacyNamedFileFields(attachments) } : {}),
+      createdById: session.user.id,
+    },
     include: { createdBy: { select: { name: true } }, _count: { select: { views: true } } },
   });
 
   if (comunicado.published) {
     await sendPushToAll(
-      { title: "📣 Novo comunicado", body: comunicado.title, url: "/comunicados" },
+      {
+        title: "📣 Novo comunicado",
+        body: attachments?.length ? `${comunicado.title} · ${attachmentsSummary(attachments)}` : comunicado.title,
+        url: "/comunicados",
+      },
       "NON_ADMIN"
     );
   }

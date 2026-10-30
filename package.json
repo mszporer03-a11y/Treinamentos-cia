@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "db:push": "prisma db push",
-    "db:migrate": "prisma migrate deploy",
+    "db:migrate": "node scripts/resolve-failed-migrations.js && prisma migrate deploy",
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts"
   },

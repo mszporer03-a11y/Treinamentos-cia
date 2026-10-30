@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 import { PdfThumbnail } from "@/components/PdfPreview";
+import { materialAttachments } from "@/lib/attachments";
+import { AttachmentMosaic } from "@/components/attachments/AttachmentMosaic";
+import { materialUsesMosaic } from "@/components/attachments/MaterialFeedMedia";
 import { Play, FileText, Image, File, Megaphone } from "lucide-react";
 import { formatFileSize, formatDate } from "@/lib/utils";
 import { MaterialViewer } from "./MaterialViewer";
@@ -14,6 +17,7 @@ interface Material {
   fileType: string;
   fileSize?: number | null;
   mimeType?: string | null;
+  attachments?: unknown;
   createdAt: Date | string;
 }
 
@@ -47,18 +51,28 @@ export function MaterialCard({ material }: MaterialCardProps) {
   const config = fileTypeConfig[material.fileType] ?? fileTypeConfig.OTHER;
   const Icon = config.icon;
 
+  // Abrir já registra a visualização (recibo de leitura automático)
+  function openViewer() {
+    setShowViewer(true);
+    fetch(`/api/materials/${material.id}/view`, { method: "POST" });
+  }
+
   return (
     <>
       <div className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-all border border-transparent hover:border-blue-100 flex flex-col">
-        {/* Thumbnail / Icon area */}
-        {material.fileType === "PDF" && material.fileUrl ? (
-          <div className="h-36 rounded-t-2xl overflow-hidden cursor-pointer" onClick={() => setShowViewer(true)}>
+        {/* Thumbnail / Icon area — mosaico quando há vários anexos */}
+        {materialUsesMosaic(material) ? (
+          <div className="p-2 pb-0">
+            <AttachmentMosaic attachments={materialAttachments(material)} onOpen={() => openViewer()} />
+          </div>
+        ) : material.fileType === "PDF" && material.fileUrl ? (
+          <div className="h-36 rounded-t-2xl overflow-hidden cursor-pointer" onClick={openViewer}>
             <PdfThumbnail url={material.fileUrl} className="h-36" />
           </div>
         ) : material.fileType === "IMAGE" ? (
           <div
             className="h-36 rounded-t-2xl bg-gray-100 overflow-hidden cursor-pointer"
-            onClick={() => setShowViewer(true)}
+            onClick={openViewer}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -70,7 +84,7 @@ export function MaterialCard({ material }: MaterialCardProps) {
         ) : (
           <div
             className={`h-36 rounded-t-2xl flex items-center justify-center cursor-pointer ${config.color}`}
-            onClick={() => setShowViewer(true)}
+            onClick={openViewer}
           >
             <Icon className="h-14 w-14 opacity-60" />
           </div>
@@ -87,7 +101,7 @@ export function MaterialCard({ material }: MaterialCardProps) {
 
           <h3
             className="font-semibold text-gray-900 text-sm leading-snug mb-1 cursor-pointer hover:text-blue-600 transition line-clamp-2"
-            onClick={() => setShowViewer(true)}
+            onClick={openViewer}
           >
             {material.title}
           </h3>
@@ -103,7 +117,7 @@ export function MaterialCard({ material }: MaterialCardProps) {
               {material.fileSize ? formatFileSize(material.fileSize) : formatDate(material.createdAt)}
             </span>
             <button
-              onClick={() => setShowViewer(true)}
+              onClick={openViewer}
               className="text-xs text-blue-600 font-medium hover:underline"
             >
               Abrir
