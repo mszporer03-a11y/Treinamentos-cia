@@ -6,6 +6,8 @@ import Link from "next/link";
 import { signOut } from "next-auth/react";
 import { FranchiseeSidebar } from "./FranchiseeSidebar";
 import { TutorialOverlay, PORTAL_TUTORIAL_STEPS } from "./TutorialOverlay";
+import { WelcomeModal } from "./WelcomeModal";
+import { Support3LMModal } from "./Support3LM";
 import {
   BookOpen,
   MessageSquare,
@@ -24,7 +26,7 @@ interface FranchiseeShellProps {
 
 const mobileNavItems = [
   { href: "/gallery", label: "Materiais", icon: BookOpen, exact: true },
-  { href: "/chat", label: "Suporte", icon: MessageSquare },
+  { href: "/chat", label: "Chat", icon: MessageSquare },
   { href: "/surveys", label: "Pesquisas", icon: BarChart2 },
   { href: "/checklists", label: "Checklists", icon: ClipboardList },
   { href: "/perfil", label: "Perfil", icon: UserCircle2, exact: true },
@@ -34,6 +36,7 @@ export function FranchiseeShell({ user, children }: FranchiseeShellProps) {
   const pathname = usePathname();
   const [showTutorial, setShowTutorial] = useState(false);
   const [tutorialStep, setTutorialStep] = useState(0);
+  const [show3LM, setShow3LM] = useState(false);
 
   const openTutorial = useCallback(() => {
     setTutorialStep(0);
@@ -60,7 +63,7 @@ export function FranchiseeShell({ user, children }: FranchiseeShellProps) {
     <div className="flex h-screen bg-gray-100 overflow-hidden">
       {/* Desktop sidebar — hidden on mobile */}
       <div className="hidden md:flex flex-shrink-0">
-        <FranchiseeSidebar user={user} onOpenTutorial={openTutorial} />
+        <FranchiseeSidebar user={user} onOpenTutorial={openTutorial} onOpen3LM={() => setShow3LM(true)} />
       </div>
 
       {/* Main area */}
@@ -122,6 +125,12 @@ export function FranchiseeShell({ user, children }: FranchiseeShellProps) {
           );
         })}
       </nav>
+
+      {/* Passo 2 — saudação pós-login */}
+      <WelcomeModal userKey={user.email ?? user.name ?? "user"} name={user.name ?? "Franqueado"} />
+
+      {/* Passo 9 — suporte 3LM */}
+      {show3LM && <Support3LMModal onClose={() => setShow3LM(false)} />}
 
       {/* Tutorial overlay */}
       {showTutorial && (

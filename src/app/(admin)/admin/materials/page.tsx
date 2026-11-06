@@ -573,10 +573,25 @@ export default function MaterialsPage() {
               {/* Store picker */}
               {stores.length > 0 && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Visível para lojas
-                    <span className="ml-1.5 text-xs font-normal text-gray-400">(vazio = todas)</span>
-                  </label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Visível para lojas
+                      <span className="ml-1.5 text-xs font-normal text-gray-400">(vazio = todas)</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setForm((f) => ({
+                          ...f,
+                          linkedStoreIds:
+                            f.linkedStoreIds.length === stores.length ? [] : stores.map((s) => s.id),
+                        }))
+                      }
+                      className="text-xs font-medium text-blue-600 hover:underline"
+                    >
+                      {form.linkedStoreIds.length === stores.length ? "Desmarcar todas" : "✓ Marcar todas as lojas"}
+                    </button>
+                  </div>
                   <div className="flex flex-wrap gap-1.5 p-2.5 border border-gray-200 rounded-lg max-h-36 overflow-y-auto">
                     {stores.map((store) => {
                       const selected = form.linkedStoreIds.includes(store.id);

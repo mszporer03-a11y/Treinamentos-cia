@@ -237,10 +237,10 @@ export const PORTAL_TUTORIAL_STEPS: TutorialStep[] = [
   },
   {
     icon: "💬",
-    title: "Suporte (Chat)",
+    title: "Chat Emergencial",
     description:
-      "Precisa de ajuda? Use o chat para entrar em contato diretamente com a equipe da Cia do Churrasco e resolver qualquer dúvida rapidamente.",
-    hint: "Menu → Suporte",
+      "Para pedidos e dúvidas, use as Solicitações Rápidas. Quando o caso precisar de atenção individual, a Franquia abre o Chat Emergencial com você — você recebe notificação e e-mail e pode responder enquanto a sessão estiver aberta.",
+    hint: "Menu → Chat Emergencial",
     target: "nav-chat",
   },
   {

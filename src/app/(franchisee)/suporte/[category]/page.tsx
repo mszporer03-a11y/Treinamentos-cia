@@ -72,7 +72,7 @@ export default function SupporteCategoryPage() {
       <div className="p-4 sm:p-6">
         <p className="text-gray-500">Categoria não encontrada.</p>
         <Link href="/chat" className="text-orange-600 text-sm mt-2 inline-block hover:underline">
-          Voltar ao Suporte
+          Voltar
         </Link>
       </div>
     );
@@ -126,7 +126,7 @@ export default function SupporteCategoryPage() {
       if (!msgRes.ok) throw new Error("Falha ao enviar mensagem");
 
       setDone(true);
-      setTimeout(() => router.push("/chat"), 2000);
+      setTimeout(() => router.push("/chat"), 3000);
     } catch {
       setSubmitting(false);
     }
@@ -137,7 +137,7 @@ export default function SupporteCategoryPage() {
       <div className="p-4 sm:p-6 flex flex-col items-center justify-center min-h-[60vh] text-center">
         <CheckCircle2 className="h-16 w-16 text-emerald-500 mb-4" />
         <h2 className="text-xl font-bold text-gray-900 mb-1">Solicitação enviada!</h2>
-        <p className="text-gray-500 text-sm">Redirecionando para o Suporte…</p>
+        <p className="text-gray-500 text-sm">A Franquia responderá pelo Chat Emergencial. Você será avisado por notificação e e-mail.</p>
       </div>
     );
   }
@@ -150,7 +150,7 @@ export default function SupporteCategoryPage() {
         className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition mb-5"
       >
         <ChevronLeft className="h-4 w-4" />
-        Voltar ao Suporte
+        Voltar
       </Link>
 
       {/* Header */}

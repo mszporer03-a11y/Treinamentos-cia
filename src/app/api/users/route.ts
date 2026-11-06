@@ -10,6 +10,8 @@ const userSchema = z.object({
   name: z.string().min(1).max(100),
   email: z.string().email(),
   password: z.string().min(6),
+  phone: z.string().max(30).optional().nullable(),
+  storeIds: z.array(z.string()).optional(),
   role: z.enum(["ADMIN", "FRANCHISEE"]).default("FRANCHISEE"),
 });
 
@@ -18,8 +20,10 @@ const userSelectFields = {
   name: true,
   email: true,
   role: true,
+  phone: true,
   active: true,
   createdAt: true,
+  stores: { include: { store: { select: { id: true, name: true, code: true } } } },
 };
 
 export async function GET() {
@@ -63,8 +67,15 @@ export async function POST(req: Request) {
     }
 
     const hashedPassword = await bcrypt.hash(data.password, 12);
+    const { storeIds = [], ...userData } = data;
     const user = await db.user.create({
-      data: { ...data, password: hashedPassword },
+      data: {
+        ...userData,
+        password: hashedPassword,
+        stores: storeIds.length > 0
+          ? { create: storeIds.map((storeId) => ({ storeId })) }
+          : undefined,
+      },
       select: userSelectFields,
     });
     return NextResponse.json(user, { status: 201 });

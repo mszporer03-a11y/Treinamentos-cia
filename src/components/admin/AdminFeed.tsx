@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Play, FileText, Image as ImageIcon, File, Megaphone } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Play, FileText, Image as ImageIcon, File, Megaphone, Trash2 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { MaterialViewer } from "@/components/franchisee/MaterialViewer";
 
@@ -46,7 +47,15 @@ const typeLabel: Record<string, string> = {
   NOTICE: "Aviso",
 };
 
-function FeedCard({ material, onOpen }: { material: Material; onOpen: () => void }) {
+function FeedCard({
+  material,
+  onOpen,
+  onDelete,
+}: {
+  material: Material;
+  onOpen: () => void;
+  onDelete: () => void;
+}) {
   const Icon = typeIcon[material.fileType] ?? File;
   const color = typeColor[material.fileType] ?? typeColor.OTHER;
 
@@ -74,6 +83,13 @@ function FeedCard({ material, onOpen }: { material: Material; onOpen: () => void
         >
           {material.published ? "Publicado" : "Rascunho"}
         </span>
+        <button
+          onClick={onDelete}
+          className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition flex-shrink-0"
+          title="Apagar postagem"
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
       </div>
 
       {/* Preview */}
@@ -110,8 +126,25 @@ function FeedCard({ material, onOpen }: { material: Material; onOpen: () => void
 
 export function AdminFeed({ materials }: { materials: Material[] }) {
   const [viewing, setViewing] = useState<Material | null>(null);
+  const [deleted, setDeleted] = useState<Set<string>>(new Set());
+  const router = useRouter();
 
-  if (materials.length === 0) {
+  // Passo 7 — moderação colaborativa: qualquer admin apaga qualquer postagem
+  async function handleDelete(mat: Material) {
+    const author = mat.createdBy?.name ? ` (postado por ${mat.createdBy.name})` : "";
+    if (!confirm(`Apagar a postagem "${mat.title}"${author}?`)) return;
+    const res = await fetch(`/api/materials/${mat.id}`, { method: "DELETE" });
+    if (res.ok) {
+      setDeleted((prev) => new Set(prev).add(mat.id));
+      router.refresh();
+    } else {
+      alert("Erro ao apagar a postagem");
+    }
+  }
+
+  const visible = materials.filter((m) => !deleted.has(m.id));
+
+  if (visible.length === 0) {
     return (
       <div className="text-center py-16 bg-white rounded-2xl">
         <FileText className="h-10 w-10 text-gray-300 mx-auto mb-2" />
@@ -123,8 +156,13 @@ export function AdminFeed({ materials }: { materials: Material[] }) {
   return (
     <>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {materials.map((mat) => (
-          <FeedCard key={mat.id} material={mat} onOpen={() => setViewing(mat)} />
+        {visible.map((mat) => (
+          <FeedCard
+            key={mat.id}
+            material={mat}
+            onOpen={() => setViewing(mat)}
+            onDelete={() => handleDelete(mat)}
+          />
         ))}
       </div>
 

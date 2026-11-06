@@ -1,6 +1,7 @@
 ﻿"use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { Support3LMBanner } from "@/components/franchisee/Support3LM";
 import Link from "next/link";
 import Image from "next/image";
 import { useSession } from "next-auth/react";
@@ -57,53 +58,86 @@ const typeColor: Record<string, string> = {
   NOTICE: "bg-amber-50 text-amber-600",
 };
 
-function FeedCard({ material, onOpen }: { material: Material; onOpen: () => void }) {
+// Passo 6 — post-card no estilo feed (similar ao Facebook)
+function FeedCard({
+  material,
+  onOpen,
+  onView,
+}: {
+  material: Material;
+  onOpen: () => void;
+  onView: () => void;
+}) {
   const Icon = typeIcon[material.fileType] ?? File;
   const color = typeColor[material.fileType] ?? typeColor.OTHER;
+  const cardRef = useRef<HTMLDivElement>(null);
+  const isNotice = material.fileType === "NOTICE";
+
+  // Aviso é lido direto no feed: registra a visualização quando o card aparece na tela
+  useEffect(() => {
+    if (!isNotice || !cardRef.current || typeof IntersectionObserver === "undefined") return;
+    const el = cardRef.current;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          onView();
+          obs.disconnect();
+        }
+      },
+      { threshold: 0.6 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [isNotice, onView]);
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden hover:border-gray-200 hover:shadow-md transition-all group">
-      <div className="flex items-center gap-2.5 px-4 pt-3 pb-2">
-        <div className="w-8 h-8 rounded-full bg-orange-600 flex items-center justify-center flex-shrink-0">
-          <span className="text-white text-xs font-bold">
-            {(material.createdBy?.name ?? "A").charAt(0).toUpperCase()}
-          </span>
+    <div ref={cardRef} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="flex items-start justify-between gap-3 px-4 py-3 border-b border-gray-50">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="bg-red-700 text-white text-[11px] font-bold px-2 py-0.5 rounded">
+              {material.category.icon} {material.category.name}
+            </span>
+            <span className="text-xs text-gray-400">por {material.createdBy?.name ?? "Franquia"}</span>
+          </div>
+          <p className="font-bold text-gray-900 mt-1.5 leading-snug">{material.title}</p>
         </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-gray-900 truncate">
-            {material.createdBy?.name ?? "Admin"}
-          </p>
-          <p className="text-xs text-gray-400">
-            {material.category.icon} {material.category.name} · {formatDate(material.createdAt)}
-          </p>
-        </div>
+        <span className="text-xs text-gray-400 flex-shrink-0 mt-0.5">{formatDate(material.createdAt)}</span>
       </div>
 
-      <button onClick={onOpen} className="w-full text-left focus:outline-none">
-        {material.fileType === "IMAGE" ? (
-          <div className="mx-3 rounded-xl overflow-hidden bg-gray-100 aspect-video">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={material.fileUrl ?? ""} alt={material.title}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-          </div>
-        ) : (
-          <div className={`mx-3 rounded-xl aspect-video flex flex-col items-center justify-center gap-2 ${color} group-hover:opacity-80 transition-opacity`}>
-            <Icon className="h-10 w-10 sm:h-14 sm:w-14 opacity-60" />
-            <span className="text-xs sm:text-sm font-medium opacity-70">{typeLabel[material.fileType] ?? "Arquivo"}</span>
-          </div>
+      <div className="px-4 py-3">
+        {material.description && (
+          <p className={`text-sm text-gray-700 whitespace-pre-wrap ${isNotice ? "" : "mb-3"}`}>
+            {material.description}
+          </p>
         )}
-        <div className="px-4 pt-2.5 pb-4">
-          <p className="font-semibold text-gray-900 text-sm leading-snug line-clamp-2 group-hover:text-orange-600 transition-colors">
-            {material.title}
-          </p>
-          {material.description && (
-            <p className="text-xs text-gray-500 mt-1 line-clamp-2">{material.description}</p>
-          )}
-          <p className="text-xs text-orange-600 font-medium mt-2 flex items-center gap-0.5">
-            Abrir <ChevronRight className="h-3 w-3" />
-          </p>
-        </div>
-      </button>
+
+        {material.fileType === "VIDEO" && material.fileUrl ? (
+          <video
+            src={material.fileUrl}
+            controls
+            playsInline
+            preload="metadata"
+            onPlay={onView}
+            className="w-full rounded-xl bg-black max-h-[70vh]"
+          />
+        ) : material.fileType === "IMAGE" && material.fileUrl ? (
+          <button onClick={onOpen} className="block w-full rounded-xl overflow-hidden bg-gray-100">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={material.fileUrl} alt={material.title} className="w-full max-h-[70vh] object-contain" />
+          </button>
+        ) : !isNotice ? (
+          <button
+            onClick={onOpen}
+            className={`w-full rounded-xl py-10 flex flex-col items-center justify-center gap-2 ${color} hover:opacity-80 transition-opacity`}
+          >
+            <Icon className="h-12 w-12 opacity-60" />
+            <span className="text-sm font-medium opacity-80">
+              Abrir {typeLabel[material.fileType] ?? "Arquivo"}
+            </span>
+          </button>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -128,8 +162,8 @@ const NAV_ITEMS = [
   {
     href: "/chat",
     icon: MessageSquare,
-    label: "Suporte",
-    desc: "Canal direto com a Cia do Churrasco",
+    label: "Chat Emergencial",
+    desc: "Contato individual aberto pela Franquia",
     bg: "from-sky-600 to-sky-500",
     tutorialId: "nav-chat",
   },
@@ -143,6 +177,14 @@ export default function GalleryPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [viewing, setViewing] = useState<Material | null>(null);
   const [loading, setLoading] = useState(true);
+  const viewedRef = useRef<Set<string>>(new Set());
+
+  // Passo 5 — abrir/assistir/ler o material registra a visualização automaticamente
+  const registerView = useCallback((id: string) => {
+    if (viewedRef.current.has(id)) return;
+    viewedRef.current.add(id);
+    fetch(`/api/materials/${id}/view`, { method: "POST" }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     async function load() {
@@ -216,9 +258,14 @@ export default function GalleryPage() {
         ))}
       </div>
 
+      {/* Passo 9 — atalho de suporte 3LM */}
+      <div className="mb-10">
+        <Support3LMBanner />
+      </div>
+
       {/* Materials section */}
       <div data-tutorial="materials-section" className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-bold text-gray-900">Materiais de Treinamento</h2>
+        <h2 className="text-lg font-bold text-gray-900">Feed da Universidade</h2>
         {visibleCategories.length > 0 && (
           <button
             data-tutorial="filter-btn"
@@ -274,14 +321,15 @@ export default function GalleryPage() {
           <p className="text-gray-500 mt-4 font-medium">Nenhum material nesta categoria ainda.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="max-w-2xl mx-auto space-y-5">
           {filtered.map((mat) => (
             <FeedCard
               key={mat.id}
               material={mat}
+              onView={() => registerView(mat.id)}
               onOpen={() => {
                 setViewing(mat);
-                fetch(`/api/materials/${mat.id}/view`, { method: "POST" });
+                registerView(mat.id);
               }}
             />
           ))}

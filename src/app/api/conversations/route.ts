@@ -70,6 +70,8 @@ export async function GET() {
         lastMessage: c.messages[0] ?? null,
         unreadCount: 0,
         pendingStores: pendingStoresByConv.get(c.id) ?? [],
+        isOpen: c.isOpen,
+        openedAt: c.openedAt,
         updatedAt: c.updatedAt,
       }))
     );
@@ -80,7 +82,7 @@ export async function GET() {
     where: { franchiseeId: session.user.id },
     create: { franchiseeId: session.user.id },
     update: {},
-    select: { id: true },
+    select: { id: true, isOpen: true, openedAt: true, closedAt: true },
   });
 
   return NextResponse.json(conv);
@@ -115,13 +117,16 @@ export async function POST(req: Request) {
     where: { franchiseeId },
     create: { franchiseeId },
     update: {},
-    select: { id: true, updatedAt: true },
+    select: { id: true, updatedAt: true, isOpen: true, openedAt: true },
   });
 
   return NextResponse.json({
     id: conv.id,
     franchisee,
     lastMessage: null,
+    pendingStores: [],
+    isOpen: conv.isOpen,
+    openedAt: conv.openedAt,
     updatedAt: conv.updatedAt,
   });
 }

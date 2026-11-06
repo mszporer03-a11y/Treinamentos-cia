@@ -12,16 +12,26 @@ import { usePushNotifications } from "@/hooks/usePushNotifications";
 export default function FranchiseeChatPage() {
   const { data: session } = useSession();
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const [sessionOpen, setSessionOpen] = useState(false);
   const [myStores, setMyStores] = useState<{ id: string; name: string; code: string }[]>([]);
   const { permission, subscribe } = usePushNotifications();
 
   useEffect(() => {
-    fetch("/api/conversations")
-      .then((r) => r.json())
-      .then((data) => setConversationId(data.id));
+    // Estado da sessão emergencial (aberta/encerrada pelo admin) — atualizado periodicamente
+    const loadConversation = () =>
+      fetch("/api/conversations")
+        .then((r) => r.json())
+        .then((data) => {
+          setConversationId(data.id);
+          setSessionOpen(!!data.isOpen);
+        })
+        .catch(() => {});
+    loadConversation();
+    const id = setInterval(loadConversation, 5000);
     fetch("/api/stores")
       .then((r) => r.json())
       .then((data) => setMyStores(Array.isArray(data) ? data.map((s: { id: string; name: string; code: string }) => ({ id: s.id, name: s.name, code: s.code })) : []));
+    return () => clearInterval(id);
   }, []);
 
   return (
@@ -31,7 +41,10 @@ export default function FranchiseeChatPage() {
           <Link href="/gallery" className="text-gray-400 hover:text-gray-700 transition">
             <ChevronLeft className="h-5 w-5" />
           </Link>
-          <h1 className="font-bold text-gray-900">Chat com Admin</h1>
+          <div>
+            <h1 className="font-bold text-gray-900">Chat Emergencial</h1>
+            <p className="text-[11px] text-gray-400">Contato individual iniciado pela Franquia</p>
+          </div>
         </div>
         {permission !== "granted" && (
           <button
@@ -53,8 +66,9 @@ export default function FranchiseeChatPage() {
             conversationId={conversationId}
             currentUserId={session?.user?.id ?? ""}
             currentUserRole="FRANCHISEE"
-            recipientName="Admin"
+            recipientName="Franquia Companhia do Churrasco"
             availableStores={myStores}
+            sessionOpen={sessionOpen}
           />
         </div>
       )}

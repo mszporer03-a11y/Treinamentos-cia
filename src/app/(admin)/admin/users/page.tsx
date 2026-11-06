@@ -11,14 +11,60 @@ interface UserData {
   name: string;
   email: string;
   role: "ADMIN" | "FRANCHISEE";
+  phone: string | null;
   active: boolean;
   createdAt: string;
+  stores: { store: { id: string; name: string; code: string } }[];
+}
+
+interface StoreOption {
+  id: string;
+  name: string;
+}
+
+function StorePicker({
+  stores,
+  value,
+  onChange,
+}: {
+  stores: StoreOption[];
+  value: string[];
+  onChange: (ids: string[]) => void;
+}) {
+  if (stores.length === 0) {
+    return <p className="text-xs text-gray-400">Nenhuma loja cadastrada. Cadastre em Lojas.</p>;
+  }
+  return (
+    <div className="flex flex-wrap gap-1.5 p-2.5 border border-gray-200 rounded-lg max-h-36 overflow-y-auto">
+      {stores.map((store) => {
+        const selected = value.includes(store.id);
+        return (
+          <button
+            key={store.id}
+            type="button"
+            onClick={() =>
+              onChange(selected ? value.filter((id) => id !== store.id) : [...value, store.id])
+            }
+            className={`px-2.5 py-1 rounded-full text-xs font-medium border transition ${
+              selected
+                ? "bg-blue-600 text-white border-blue-600"
+                : "bg-white border-gray-200 text-gray-600 hover:border-blue-300"
+            }`}
+          >
+            {store.name}
+          </button>
+        );
+      })}
+    </div>
+  );
 }
 
 const DEFAULT_FORM = {
   name: "",
   email: "",
   password: "",
+  phone: "",
+  storeIds: [] as string[],
   role: "FRANCHISEE" as "ADMIN" | "FRANCHISEE",
 };
 
@@ -33,9 +79,12 @@ export default function UsersPage() {
     name: "",
     email: "",
     password: "",
+    phone: "",
+    storeIds: [] as string[],
     role: "FRANCHISEE" as "ADMIN" | "FRANCHISEE",
     active: true,
   });
+  const [stores, setStores] = useState<StoreOption[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -48,6 +97,11 @@ export default function UsersPage() {
 
   useEffect(() => {
     fetchUsers();
+    fetch("/api/stores")
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) setStores(data.map((s: StoreOption) => ({ id: s.id, name: s.name })));
+      });
   }, [fetchUsers]);
 
   function openCreate() {
@@ -62,6 +116,8 @@ export default function UsersPage() {
       name: user.name,
       email: user.email,
       password: "",
+      phone: user.phone ?? "",
+      storeIds: user.stores.map((s) => s.store.id),
       role: user.role,
       active: user.active,
     });
@@ -71,6 +127,10 @@ export default function UsersPage() {
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
+    if (form.role === "FRANCHISEE" && form.storeIds.length === 0) {
+      setError("Selecione a loja (vínculo) do franqueado/gerente");
+      return;
+    }
     setSaving(true);
     setError("");
 
@@ -103,6 +163,8 @@ export default function UsersPage() {
       email: editForm.email,
       role: editForm.role,
       active: editForm.active,
+      phone: editForm.phone || null,
+      storeIds: editForm.storeIds,
     };
     if (editForm.password) payload.password = editForm.password;
 
@@ -177,6 +239,9 @@ export default function UsersPage() {
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-gray-900 text-sm truncate">{user.name}</p>
                   <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                  {user.stores.length > 0 && (
+                    <p className="text-xs text-blue-600 truncate">🏪 {user.stores.map((s) => s.store.name).join(", ")}</p>
+                  )}
                   <div className="flex items-center gap-1.5 mt-1.5">
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                       user.role === "ADMIN" ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-600"
@@ -244,7 +309,13 @@ export default function UsersPage() {
                       </div>
                       <div>
                         <p className="font-medium text-gray-900">{user.name}</p>
-                        <p className="text-xs text-gray-500">{user.email}</p>
+                        <p className="text-xs text-gray-500">
+                          {user.email}
+                          {user.phone && <> · 📱 {user.phone}</>}
+                        </p>
+                        {user.stores.length > 0 && (
+                          <p className="text-xs text-blue-600">🏪 {user.stores.map((s) => s.store.name).join(", ")}</p>
+                        )}
                       </div>
                     </div>
                   </td>
@@ -319,7 +390,7 @@ export default function UsersPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Email *
+                  E-mail * <span className="text-xs font-normal text-gray-400">(usado como login)</span>
                 </label>
                 <input
                   required
@@ -344,6 +415,28 @@ export default function UsersPage() {
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                   placeholder="Mínimo 6 caracteres"
                   minLength={6}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Telefone WhatsApp
+                </label>
+                <input
+                  type="tel"
+                  value={form.phone}
+                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  placeholder="(XX) 9XXXX-XXXX"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Loja (vínculo){form.role === "FRANCHISEE" ? " *" : ""}
+                </label>
+                <StorePicker
+                  stores={stores}
+                  value={form.storeIds}
+                  onChange={(ids) => setForm({ ...form, storeIds: ids })}
                 />
               </div>
               <div>
@@ -440,6 +533,28 @@ export default function UsersPage() {
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                   placeholder="••••••••"
                   minLength={6}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Telefone WhatsApp
+                </label>
+                <input
+                  type="tel"
+                  value={editForm.phone}
+                  onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  placeholder="(XX) 9XXXX-XXXX"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Loja (vínculo)
+                </label>
+                <StorePicker
+                  stores={stores}
+                  value={editForm.storeIds}
+                  onChange={(ids) => setEditForm({ ...editForm, storeIds: ids })}
                 />
               </div>
               <div>

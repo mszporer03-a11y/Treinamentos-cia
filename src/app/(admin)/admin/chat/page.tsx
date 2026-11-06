@@ -35,6 +35,17 @@ interface ConversationItem {
   lastMessage: LastMessage | null;
   updatedAt: string;
   pendingStores: PendingStore[];
+  isOpen: boolean;
+  openedAt: string | null;
+}
+
+function groupByStore(list: Franchisee[]): [string, Franchisee[]][] {
+  const groups = new Map<string, Franchisee[]>();
+  for (const f of list) {
+    const names = f.stores.length > 0 ? f.stores.map((s) => s.store.name) : ["Sem loja vinculada"];
+    for (const n of names) groups.set(n, [...(groups.get(n) ?? []), f]);
+  }
+  return Array.from(groups.entries()).sort(([a], [b]) => a.localeCompare(b, "pt-BR"));
 }
 
 export default function AdminChatPage() {
@@ -107,6 +118,16 @@ export default function AdminChatPage() {
     setShowPicker(false);
   }
 
+  async function endSession(conv: ConversationItem) {
+    if (!confirm(`Encerrar o chat emergencial com ${conv.franchisee.name}? A loja não poderá enviar novas mensagens até a Franquia iniciar um novo contato.`)) return;
+    const res = await fetch(`/api/conversations/${conv.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "close" }),
+    });
+    if (res.ok) await fetchConversations();
+  }
+
   // Franchisees that don't yet have a conversation shown in the list
   const franchiseesWithConv = new Set(conversations.map((c) => c.franchisee.id));
   const pickerFranchisees = allFranchisees.filter(
@@ -142,11 +163,14 @@ export default function AdminChatPage() {
       >
         <div className="p-4 border-b border-gray-100">
           <div className="flex items-center justify-between mb-3">
-            <h1 className="text-lg font-bold text-gray-900">Chat</h1>
+            <div>
+              <h1 className="text-lg font-bold text-gray-900">Chat Emergencial</h1>
+              <p className="text-[11px] text-gray-400">Somente a Franquia inicia e encerra conversas</p>
+            </div>
             <button
               onClick={openPicker}
               className="p-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition"
-              title="Nova conversa"
+              title="Falar com loja"
             >
               <Plus className="h-4 w-4" />
             </button>
@@ -166,7 +190,7 @@ export default function AdminChatPage() {
         {showPicker && (
           <div className="border-b border-gray-100 bg-gray-50">
             <div className="flex items-center justify-between px-4 pt-3 pb-2">
-              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Nova conversa</span>
+              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Falar com &quot;Lojas&quot;</span>
               <button onClick={() => setShowPicker(false)} className="text-gray-400 hover:text-gray-600">
                 <X className="h-4 w-4" />
               </button>
@@ -186,21 +210,26 @@ export default function AdminChatPage() {
                   {allFranchisees.length === 0 ? "Carregando…" : "Nenhum franqueado sem conversa"}
                 </p>
               ) : (
-                pickerFranchisees.map((f) => (
-                  <button
-                    key={f.id}
-                    disabled={creating}
-                    onClick={() => startConversation(f)}
-                    className="w-full text-left px-4 py-2.5 hover:bg-blue-50 transition flex items-center gap-3 border-b border-gray-100 last:border-0"
-                  >
-                    <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 font-semibold text-xs flex items-center justify-center flex-shrink-0">
-                      {f.name[0]?.toUpperCase()}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">{f.name}</p>
-                      <p className="text-xs text-gray-400 truncate">{f.email}</p>
-                    </div>
-                  </button>
+                groupByStore(pickerFranchisees).map(([storeName, list]) => (
+                  <div key={storeName}>
+                    <p className="px-4 py-1.5 text-[11px] font-bold text-gray-600 bg-gray-100 border-b border-gray-200">
+                      ▼ {storeName}
+                    </p>
+                    {list.map((f) => (
+                      <button
+                        key={`${storeName}-${f.id}`}
+                        disabled={creating}
+                        onClick={() => startConversation(f)}
+                        className="w-full text-left pl-8 pr-4 py-2 hover:bg-red-50 transition flex items-center gap-3 border-b border-gray-100 last:border-0"
+                      >
+                        <span>👤</span>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">{f.name}</p>
+                          <p className="text-xs text-gray-400 truncate">{f.email}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
                 ))
               )}
             </div>
@@ -257,6 +286,9 @@ export default function AdminChatPage() {
                           {conv.franchisee.stores.map((s) => s.store.name).join(", ")}
                         </p>
                       ) : null}
+                      {conv.isOpen && (
+                        <p className="text-[10px] font-semibold text-red-700 mb-0.5">● Chat emergencial aberto</p>
+                      )}
                       <p className={`text-xs truncate ${unread ? "text-gray-800 font-medium" : "text-gray-500"}`}>
                         {getLastMessagePreview(conv.lastMessage)}
                       </p>
@@ -288,7 +320,13 @@ export default function AdminChatPage() {
               conversationId={selected.id}
               currentUserId={session?.user?.id ?? ""}
               currentUserRole="ADMIN"
-              recipientName={selected.franchisee.name}
+              recipientName={`${selected.franchisee.name}${
+                selected.franchisee.stores.length > 0
+                  ? ` (${selected.franchisee.stores.map((s) => s.store.name).join(", ")})`
+                  : ""
+              }`}
+              sessionOpen={selected.isOpen}
+              onEndSession={() => endSession(selected)}
               availableStores={selected.franchisee.stores.map((s) => ({
                 id: s.store.id,
                 name: s.store.name,

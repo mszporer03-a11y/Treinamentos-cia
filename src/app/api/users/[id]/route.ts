@@ -10,6 +10,8 @@ const updateSchema = z.object({
   name: z.string().min(1).max(100).optional(),
   email: z.string().email().optional(),
   password: z.string().min(6).optional(),
+  phone: z.string().max(30).optional().nullable(),
+  storeIds: z.array(z.string()).optional(),
   role: z.enum(["ADMIN", "FRANCHISEE"]).optional(),
   active: z.boolean().optional(),
 });
@@ -19,8 +21,10 @@ const userSelectFields = {
   name: true,
   email: true,
   role: true,
+  phone: true,
   active: true,
   createdAt: true,
+  stores: { include: { store: { select: { id: true, name: true, code: true } } } },
 };
 
 export async function PATCH(
@@ -36,9 +40,16 @@ export async function PATCH(
     const body = await req.json();
     const data = updateSchema.parse(body);
 
-    const updateData: Record<string, unknown> = { ...data };
-    if (data.password) {
-      updateData.password = await bcrypt.hash(data.password, 12);
+    const { storeIds, ...fields } = data;
+    const updateData: Record<string, unknown> = { ...fields };
+    if (fields.password) {
+      updateData.password = await bcrypt.hash(fields.password, 12);
+    }
+    if (storeIds) {
+      updateData.stores = {
+        deleteMany: {},
+        create: storeIds.map((storeId) => ({ storeId })),
+      };
     }
 
     const user = await db.user.update({

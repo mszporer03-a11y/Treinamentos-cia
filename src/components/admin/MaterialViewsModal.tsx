@@ -32,13 +32,15 @@ export function MaterialViewsModal({
   onClose,
 }: MaterialViewsModalProps) {
   const [views, setViews] = useState<ViewEntry[]>([]);
+  const [pending, setPending] = useState<ViewUser[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetch(`/api/materials/${materialId}/views`)
       .then((r) => r.json())
       .then((data) => {
-        setViews(data);
+        setViews(Array.isArray(data?.views) ? data.views : []);
+        setPending(Array.isArray(data?.pending) ? data.pending : []);
         setLoading(false);
       });
   }, [materialId]);
@@ -61,39 +63,37 @@ export function MaterialViewsModal({
             <div className="flex justify-center py-10">
               <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
             </div>
-          ) : views.length === 0 ? (
-            <div className="text-center py-10">
-              <Eye className="h-8 w-8 text-gray-300 mx-auto mb-2" />
-              <p className="text-gray-400 text-sm">Nenhuma visualização registrada</p>
-            </div>
           ) : (
             <div className="space-y-3">
-              <p className="text-xs text-gray-400 font-medium">{views.length} visualização{views.length !== 1 ? "ções" : ""}</p>
+              <p className="text-xs text-gray-500 font-medium">
+                👁️ {views.length} visualizaç{views.length !== 1 ? "ões" : "ão"} · ❌ {pending.length} pendente{pending.length !== 1 ? "s" : ""}
+              </p>
+              {views.length === 0 && (
+                <div className="text-center py-6">
+                  <Eye className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+                  <p className="text-gray-400 text-sm">Nenhuma visualização registrada</p>
+                </div>
+              )}
               {views.map((v) => (
-                <div key={v.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold flex items-center justify-center flex-shrink-0">
-                      {v.user.name[0]?.toUpperCase()}
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{v.user.name}</p>
-                      <div className="flex gap-2">
-                        <p className="text-xs text-gray-500">{v.user.email}</p>
-                        {v.user.stores.length > 0 && (
-                          <p className="text-xs text-blue-600">
-                            {v.user.stores.map((s) => s.store.name).join(", ")}
-                          </p>
-                        )}
-                      </div>
-                    </div>
+                <div key={v.id} className="flex items-center justify-between p-3 bg-green-50 rounded-xl">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-green-800">
+                      👁️ {v.user.name}
+                      {v.user.stores.length > 0 && (
+                        <span className="font-normal"> ({v.user.stores.map((s) => s.store.name).join(", ")})</span>
+                      )}
+                    </p>
+                    <p className="text-xs text-gray-500 truncate">{v.user.email}</p>
                   </div>
-                  <p className="text-xs text-gray-400 text-right flex-shrink-0 ml-3">
+                  <p className="text-xs text-gray-500 text-right flex-shrink-0 ml-3">
+                    visualizou em{" "}
                     {new Date(v.viewedAt).toLocaleDateString("pt-BR", {
                       day: "2-digit",
                       month: "2-digit",
                       year: "numeric",
                     })}
                     <br />
+                    às{" "}
                     {new Date(v.viewedAt).toLocaleTimeString("pt-BR", {
                       hour: "2-digit",
                       minute: "2-digit",
@@ -101,6 +101,19 @@ export function MaterialViewsModal({
                   </p>
                 </div>
               ))}
+              {pending.length > 0 && (
+                <>
+                  <p className="text-xs text-red-600 font-semibold pt-2">Pendentes de leitura</p>
+                  {pending.map((u) => (
+                    <div key={u.id} className="p-3 bg-red-50 rounded-xl">
+                      <p className="text-sm text-red-700 italic">
+                        ❌ {u.name}
+                        {u.stores.length > 0 && <> ({u.stores.map((s) => s.store.name).join(", ")})</>} — Pendente de leitura
+                      </p>
+                    </div>
+                  ))}
+                </>
+              )}
             </div>
           )}
         </div>

@@ -17,6 +17,7 @@ import {
   HelpCircle,
   KeyRound,
   MonitorCog,
+  Wrench,
 } from "lucide-react";
 
 interface FranchiseeSidebarProps {
@@ -25,6 +26,7 @@ interface FranchiseeSidebarProps {
     email?: string | null;
   };
   onOpenTutorial?: () => void;
+  onOpen3LM?: () => void;
 }
 
 const sections: { label: string; items: { href: string; label: string; icon: React.ElementType; exact?: boolean }[] }[] = [
@@ -37,7 +39,7 @@ const sections: { label: string; items: { href: string; label: string; icon: Rea
   {
     label: "Suporte",
     items: [
-      { href: "/chat", label: "Suporte (Chat)", icon: MessageSquare },
+      { href: "/chat", label: "Chat Emergencial", icon: MessageSquare },
     ],
   },
   {
@@ -66,7 +68,7 @@ const sections: { label: string; items: { href: string; label: string; icon: Rea
   },
 ];
 
-export function FranchiseeSidebar({ user, onOpenTutorial }: FranchiseeSidebarProps) {
+export function FranchiseeSidebar({ user, onOpenTutorial, onOpen3LM }: FranchiseeSidebarProps) {
   const pathname = usePathname();
 
   return (
@@ -84,6 +86,15 @@ export function FranchiseeSidebar({ user, onOpenTutorial }: FranchiseeSidebarPro
 
       {/* Navigation */}
       <nav className="flex-1 p-3 space-y-5 overflow-y-auto">
+        {onOpen3LM && (
+          <button
+            onClick={onOpen3LM}
+            className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-semibold bg-[#004b87] hover:bg-[#003666] text-white transition"
+          >
+            <Wrench className="h-4 w-4 flex-shrink-0" />
+            Suporte Sistema 3LM
+          </button>
+        )}
         {sections.map((section) => (
           <div key={section.label}>
             <p className="px-3 mb-1 text-[10px] font-semibold text-gray-500 uppercase tracking-widest">

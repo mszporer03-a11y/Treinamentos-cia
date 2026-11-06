@@ -15,18 +15,18 @@ import {
 import { useUploadThing } from "@/lib/uploadthing-components";
 import { formatDate } from "@/lib/utils";
 
+// Categorias das Solicitações Rápidas (slugs de /suporte/[category]) + valores antigos
 const MESSAGE_CATEGORIES = [
-  { value: "Solicitacoes", label: "Solicitações", color: "bg-blue-100 text-blue-700" },
-  { value: "Marketing", label: "Marketing", color: "bg-purple-100 text-purple-700" },
-  { value: "SenhasUsuarios", label: "Senhas e usuários", color: "bg-orange-100 text-orange-700" },
-  { value: "SuporteSistema", label: "Suporte Sistema", color: "bg-red-100 text-red-700" },
-] as const;
-
-type MessageCategoryValue = typeof MESSAGE_CATEGORIES[number]["value"];
+  { values: ["solicitacoes", "Solicitacoes"], label: "Solicitações", color: "bg-blue-100 text-blue-700" },
+  { values: ["marketing", "Marketing"], label: "Marketing", color: "bg-purple-100 text-purple-700" },
+  { values: ["senhas-usuarios", "SenhasUsuarios"], label: "Senhas e usuários", color: "bg-orange-100 text-orange-700" },
+  { values: ["suporte-sistema", "SuporteSistema"], label: "Suporte Sistema", color: "bg-red-100 text-red-700" },
+  { values: ["outros"], label: "Outros", color: "bg-gray-100 text-gray-700" },
+];
 
 function categoryBadge(value: string | null | undefined) {
   if (!value) return null;
-  const cat = MESSAGE_CATEGORIES.find((c) => c.value === value);
+  const cat = MESSAGE_CATEGORIES.find((c) => c.values.includes(value));
   if (!cat) return null;
   return (
     <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${cat.color}`}>
@@ -67,6 +67,10 @@ interface ChatWindowProps {
   recipientName?: string;
   pollInterval?: number;
   availableStores?: LinkedStore[];
+  /** Sessão do chat emergencial aberta pelo admin */
+  sessionOpen?: boolean;
+  /** Admin: encerra a sessão */
+  onEndSession?: () => void;
 }
 
 function FilePreview({ url, type, name }: { url: string; type: string | null; name: string | null }) {
@@ -105,12 +109,15 @@ export function ChatWindow({
   recipientName = "Admin",
   pollInterval = 4000,
   availableStores = [],
+  sessionOpen = false,
+  onEndSession,
 }: ChatWindowProps) {
+  const isAdmin = currentUserRole === "ADMIN";
+  const canSend = isAdmin || sessionOpen;
+  const [sendError, setSendError] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
-  const [category, setCategory] = useState<MessageCategoryValue | "">("");
-  const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [selectedStoreIds, setSelectedStoreIds] = useState<string[]>([]);
   const [showStorePicker, setShowStorePicker] = useState(false);
   const [pendingFile, setPendingFile] = useState<{
@@ -162,8 +169,9 @@ export function ChatWindow({
   async function handleSend() {
     if (!text.trim() && !pendingFile) return;
     setSending(true);
+    setSendError("");
 
-    await fetch(`/api/conversations/${conversationId}/messages`, {
+    const res = await fetch(`/api/conversations/${conversationId}/messages`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -172,16 +180,20 @@ export function ChatWindow({
         fileKey: pendingFile?.key ?? null,
         fileType: pendingFile?.type ?? null,
         fileName: pendingFile?.name ?? null,
-        category: category || null,
         linkedStoreIds: selectedStoreIds,
       }),
     });
 
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setSendError(data.error ?? "Não foi possível enviar a mensagem");
+      setSending(false);
+      return;
+    }
+
     setText("");
     setPendingFile(null);
-    setCategory("");
     setSelectedStoreIds([]);
-    setShowCategoryPicker(false);
     setShowStorePicker(false);
     setSending(false);
     await fetchMessages();
@@ -209,19 +221,32 @@ export function ChatWindow({
         <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-semibold text-sm flex-shrink-0">
           {recipientName[0]?.toUpperCase()}
         </div>
-        <div>
-          <p className="font-semibold text-gray-900 text-sm">{recipientName}</p>
-          <p className="text-xs text-gray-400">
-            {currentUserRole === "ADMIN" ? "Franqueado" : "Admin"}
+        <div className="flex-1 min-w-0">
+          <span className="inline-block bg-red-700 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mb-0.5">
+            CHAT EMERGENCIAL
+          </span>
+          <p className="font-semibold text-gray-900 text-sm truncate">{recipientName}</p>
+          <p className={`text-xs ${sessionOpen ? "text-emerald-600" : "text-gray-400"}`}>
+            {sessionOpen ? "● Sessão aberta pela Franquia" : "Sessão inativa"}
           </p>
         </div>
+        {isAdmin && sessionOpen && onEndSession && (
+          <button
+            onClick={onEndSession}
+            className="flex-shrink-0 px-3 py-1.5 bg-red-700 hover:bg-red-800 text-white text-xs font-semibold rounded-lg transition"
+          >
+            🔒 Encerrar Chat
+          </button>
+        )}
       </div>
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
         {messages.length === 0 && (
           <div className="text-center py-16 text-gray-400 text-sm">
-            Nenhuma mensagem ainda. Diga olá! 👋
+            {isAdmin
+              ? "Nenhuma mensagem ainda. Ao enviar, a sessão emergencial é aberta e o franqueado é avisado por push e e-mail."
+              : "Nenhuma mensagem ainda."}
           </div>
         )}
         {messages.map((msg) => {
@@ -302,7 +327,17 @@ export function ChatWindow({
       )}
 
       {/* Input bar */}
+      {!canSend ? (
+        <div className="px-4 py-4 bg-gray-100 border-t border-gray-200 text-center text-sm text-gray-500 flex-shrink-0">
+          🔒 Chat inativo. Somente a Franquia pode iniciar uma conversa emergencial.
+          <br />
+          <span className="text-xs">Para pedidos e dúvidas, use as <strong>Solicitações Rápidas</strong> no menu.</span>
+        </div>
+      ) : (
       <div className="px-4 py-3 bg-white border-t border-gray-200 flex-shrink-0">
+        {sendError && (
+          <p className="mb-2 text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{sendError}</p>
+        )}
         {/* Store picker */}
         {availableStores.length > 0 && showStorePicker && (
           <div className="flex flex-wrap gap-1.5 mb-2 p-2 bg-emerald-50 rounded-xl border border-emerald-100">
@@ -347,44 +382,6 @@ export function ChatWindow({
           </div>
         )}
 
-        {/* Category picker (shows when open) */}
-        {showCategoryPicker && (
-          <div className="flex flex-wrap gap-1.5 mb-2">
-            <button
-              onClick={() => { setCategory(""); setShowCategoryPicker(false); }}
-              className={`px-2.5 py-1 rounded-full text-xs font-medium border transition ${
-                category === "" ? "bg-gray-200 border-gray-400 text-gray-800" : "bg-white border-gray-200 text-gray-500 hover:bg-gray-50"
-              }`}
-            >
-              Sem categoria
-            </button>
-            {MESSAGE_CATEGORIES.map((cat) => (
-              <button
-                key={cat.value}
-                onClick={() => { setCategory(cat.value); setShowCategoryPicker(false); }}
-                className={`px-2.5 py-1 rounded-full text-xs font-medium border transition ${
-                  category === cat.value ? cat.color + " border-transparent" : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
-                }`}
-              >
-                {cat.label}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Selected category badge */}
-        {category && !showCategoryPicker && (
-          <div className="flex items-center gap-1.5 mb-2">
-            {categoryBadge(category)}
-            <button
-              onClick={() => setCategory("")}
-              className="text-gray-400 hover:text-gray-600"
-            >
-              <X className="h-3 w-3" />
-            </button>
-          </div>
-        )}
-
         <div className="flex items-end gap-2">
           <button
             type="button"
@@ -406,20 +403,6 @@ export function ChatWindow({
             className="hidden"
             onChange={handleFileSelect}
           />
-
-          {/* Category tag button */}
-          <button
-            type="button"
-            onClick={() => setShowCategoryPicker((v) => !v)}
-            className={`p-2 rounded-xl transition flex-shrink-0 ${
-              category
-                ? "text-blue-600 bg-blue-50"
-                : "text-gray-400 hover:text-blue-600 hover:bg-blue-50"
-            }`}
-            title="Categorizar mensagem"
-          >
-            <Tag className="h-5 w-5" />
-          </button>
 
           {/* Link to store button */}
           {availableStores.length > 0 && (
@@ -456,6 +439,7 @@ export function ChatWindow({
           </button>
         </div>
       </div>
+      )}
     </div>
   );
 }

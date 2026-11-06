@@ -2,7 +2,9 @@ import { auth } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 import { db } from "@/lib/db";
-import { sendPushToAll } from "@/lib/push";
+import { sendPushToUser } from "@/lib/push";
+import { sendEmail, newContentEmail } from "@/lib/email";
+import { getTargetFranchisees } from "@/lib/audience";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -97,15 +99,20 @@ export async function POST(req: Request) {
     });
 
     if (data.published) {
+      // Passo 4 — push + e-mail somente para as lojas selecionadas (ou todas)
       const isNotice = data.fileType === "NOTICE";
-      await sendPushToAll(
-        {
-          title: isNotice ? "Novo aviso!" : "Novo material disponivel!",
-          body: data.title,
-          url: "/gallery",
-        },
-        "FRANCHISEE"
-      );
+      const targets = await getTargetFranchisees(linkedStoreIds);
+      const email = newContentEmail(data.title);
+      await Promise.allSettled([
+        ...targets.map((u) =>
+          sendPushToUser(u.id, {
+            title: isNotice ? "Novo aviso!" : "Novo material disponível!",
+            body: data.title,
+            url: "/gallery",
+          })
+        ),
+        sendEmail(targets.map((u) => u.email), email.subject, email.html),
+      ]);
     }
 
     return NextResponse.json(material, { status: 201 });
