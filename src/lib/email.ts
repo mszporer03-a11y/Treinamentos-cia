@@ -1,7 +1,28 @@
-// Envio de e-mails transacionais via API HTTP da Resend (https://resend.com).
-// Sem RESEND_API_KEY/EMAIL_FROM configurados, o envio é ignorado silenciosamente.
+// Envio de e-mails transacionais. Dois provedores, escolhidos pelas variáveis de ambiente:
+//   1. SMTP (nodemailer): SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM, (SMTP_SECURE)
+//   2. API HTTP da Resend (https://resend.com): RESEND_API_KEY, EMAIL_FROM
+// SMTP tem prioridade quando SMTP_HOST está definido. Sem nenhum dos dois, o envio é
+// ignorado (apenas registrado no log).
+import nodemailer from "nodemailer";
+import type { Transporter } from "nodemailer";
 
 const RED = "#b71c1c";
+
+let smtpTransporter: Transporter | null = null;
+
+function getSmtpTransporter(): Transporter | null {
+  if (!process.env.SMTP_HOST) return null;
+  if (!smtpTransporter) {
+    const port = Number(process.env.SMTP_PORT ?? 587);
+    smtpTransporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port,
+      secure: process.env.SMTP_SECURE ? process.env.SMTP_SECURE === "true" : port === 465,
+      auth: process.env.SMTP_USER ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS } : undefined,
+    });
+  }
+  return smtpTransporter;
+}
 
 export function appUrl(path = "/"): string {
   const base = (process.env.AUTH_URL ?? process.env.NEXTAUTH_URL ?? "").replace(/\/$/, "");
@@ -44,12 +65,27 @@ export function brandedEmail(opts: {
 }
 
 export async function sendEmail(to: string | string[], subject: string, html: string): Promise<void> {
-  const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.EMAIL_FROM;
   const recipients = (Array.isArray(to) ? to : [to]).filter(Boolean);
-  if (!apiKey || !from || recipients.length === 0) return;
+  if (recipients.length === 0) return;
 
   // Um envio por destinatário para não expor os e-mails entre franqueados
+  const smtp = getSmtpTransporter();
+  if (smtp) {
+    const from = process.env.SMTP_FROM ?? process.env.EMAIL_FROM ?? process.env.SMTP_USER ?? "intranet@localhost";
+    const results = await Promise.allSettled(recipients.map((email) => smtp.sendMail({ from, to: email, subject, html })));
+    results.forEach((r, i) => {
+      if (r.status === "rejected") console.error(`[email] falha ao enviar para ${recipients[i]}:`, r.reason);
+    });
+    return;
+  }
+
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.EMAIL_FROM;
+  if (!apiKey || !from) {
+    console.warn(`[email] nenhum provedor configurado — "${subject}" não enviado (${recipients.length} destinatário(s))`);
+    return;
+  }
+
   await Promise.allSettled(
     recipients.map((email) =>
       fetch("https://api.resend.com/emails", {

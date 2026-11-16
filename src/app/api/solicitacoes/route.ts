@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { sendPushToUser } from "@/lib/push";
+import { appUrl, brandedEmail, escapeHtml, sendEmail } from "@/lib/email";
 import { randomUUID } from "crypto";
 import { attachmentsSchema, attachmentsSummary, legacyNamedFileFields } from "@/lib/attachments";
 
@@ -175,7 +176,7 @@ export async function POST(req: Request) {
   // Valida os destinatários
   const admins = await db.user.findMany({
     where: { id: { in: adminIds }, role: "ADMIN", active: true },
-    select: { id: true },
+    select: { id: true, email: true },
   });
   if (admins.length === 0) {
     return NextResponse.json({ error: "Nenhum administrador válido" }, { status: 400 });
@@ -224,6 +225,30 @@ export async function POST(req: Request) {
       url: "/admin/solicitacoes",
     }).catch(() => {});
   }
+
+  // Nova solicitação → e-mail para os administradores destinatários
+  const storeNames =
+    storeIds.length > 0
+      ? (await db.store.findMany({ where: { id: { in: storeIds } }, select: { name: true } }))
+          .map((s) => s.name)
+          .join(", ")
+      : "";
+  await sendEmail(
+    admins.map((a) => a.email),
+    `Nova solicitação de ${senderName}`,
+    brandedEmail({
+      heading: "NOVA SOLICITAÇÃO NA INTRANET",
+      paragraphs: [
+        `<strong>${escapeHtml(senderName)}</strong> enviou uma nova solicitação${
+          category ? ` (${escapeHtml(category)})` : ""
+        }.`,
+        ...(storeNames ? [`Loja(s): ${escapeHtml(storeNames)}`] : []),
+      ],
+      quote: notifBody,
+      buttonLabel: "🔗 Ver solicitação",
+      buttonUrl: appUrl("/admin/solicitacoes"),
+    })
+  ).catch((e) => console.error("[solicitacoes] falha no e-mail aos admins", e));
 
   return NextResponse.json({ ok: true, count: admins.length }, { status: 201 });
 }
