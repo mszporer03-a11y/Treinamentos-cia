@@ -13,6 +13,7 @@ import {
   LogOut,
   BookOpen,
   UserCircle2,
+  Siren,
 } from "lucide-react";
 
 interface AdminShellProps {
@@ -25,6 +26,7 @@ const navItems = [
   { href: "/admin/solicitacoes", label: "Solicitações", icon: Inbox },
   { href: "/admin/comunicados", label: "Comunicados", icon: Megaphone },
   { href: "/admin/registros", label: "Registros", icon: ClipboardList },
+  { href: "/admin/emergencia", label: "SOS", icon: Siren },
   { href: "/admin/perfil", label: "Perfil", icon: UserCircle2, exact: true },
 ];
 

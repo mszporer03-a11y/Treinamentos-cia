@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { z } from "zod";
+import { attachmentsSchema, legacyNamedFileFields } from "@/lib/attachments";
 
 const updateSchema = z.object({
   title: z.string().min(1).max(200).optional(),
@@ -10,6 +11,7 @@ const updateSchema = z.object({
   fileKey: z.string().nullable().optional(),
   fileName: z.string().nullable().optional(),
   fileType: z.string().nullable().optional(),
+  attachments: attachmentsSchema.optional(),
 });
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
@@ -21,9 +23,10 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   const parsed = updateSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
 
+  const { attachments, ...data } = parsed.data;
   const updated = await db.nonComplianceAlert.update({
     where: { id: params.id },
-    data: parsed.data,
+    data: { ...data, ...(attachments ? { attachments, ...legacyNamedFileFields(attachments) } : {}) },
     include: { store: { select: { id: true, name: true } } },
   });
 

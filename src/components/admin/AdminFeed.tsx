@@ -2,6 +2,11 @@
 
 import { useState } from "react";
 import { PdfThumbnail } from "@/components/PdfPreview";
+import { useRouter } from "next/navigation";
+import { Trash2 } from "lucide-react";
+import { materialAttachments } from "@/lib/attachments";
+import { AttachmentMosaic } from "@/components/attachments/AttachmentMosaic";
+import { materialUsesMosaic } from "@/components/attachments/MaterialFeedMedia";
 import { Play, FileText, Image as ImageIcon, File, Megaphone } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { MaterialViewer } from "@/components/franchisee/MaterialViewer";
@@ -14,6 +19,7 @@ interface Material {
   fileType: string;
   fileSize?: number | null;
   mimeType?: string | null;
+  attachments?: unknown;
   published: boolean;
   createdAt: Date | string;
   category: { id: string; name: string; icon: string | null };
@@ -47,7 +53,15 @@ const typeLabel: Record<string, string> = {
   NOTICE: "Aviso",
 };
 
-function FeedCard({ material, onOpen }: { material: Material; onOpen: () => void }) {
+function FeedCard({
+  material,
+  onOpen,
+  onDelete,
+}: {
+  material: Material;
+  onOpen: () => void;
+  onDelete: () => void;
+}) {
   const Icon = typeIcon[material.fileType] ?? File;
   const color = typeColor[material.fileType] ?? typeColor.OTHER;
 
@@ -79,7 +93,11 @@ function FeedCard({ material, onOpen }: { material: Material; onOpen: () => void
 
       {/* Preview */}
       <button onClick={onOpen} className="w-full text-left focus:outline-none group">
-        {material.fileType === "PDF" && material.fileUrl ? (
+        {materialUsesMosaic(material) ? (
+          <div className="mx-3">
+            <AttachmentMosaic attachments={materialAttachments(material)} />
+          </div>
+        ) : material.fileType === "PDF" && material.fileUrl ? (
           <PdfThumbnail url={material.fileUrl} className="mx-3 rounded-xl aspect-video group-hover:opacity-90 transition-opacity" />
         ) : material.fileType === "IMAGE" ? (
           <div className="mx-3 rounded-xl overflow-hidden bg-gray-100 aspect-video">
@@ -97,22 +115,48 @@ function FeedCard({ material, onOpen }: { material: Material; onOpen: () => void
           </div>
         )}
 
-        <div className="px-4 pt-2.5 pb-3">
+        <div className="px-4 pt-2.5 pb-1">
           <p className="font-semibold text-gray-900 text-sm leading-snug line-clamp-2 group-hover:text-blue-600 transition-colors">
             {material.title}
           </p>
           {material.description && (
             <p className="text-xs text-gray-500 mt-1 line-clamp-2">{material.description}</p>
           )}
-          <p className="text-xs text-blue-600 font-medium mt-2">Clique para abrir →</p>
         </div>
       </button>
+
+      <div className="flex items-center justify-between px-4 pb-3">
+        <button onClick={onOpen} className="text-xs text-blue-600 font-medium hover:underline">
+          Clique para abrir →
+        </button>
+        <button
+          onClick={onDelete}
+          className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+          title="Apagar postagem (qualquer administrador pode moderar)"
+        >
+          <Trash2 className="h-3.5 w-3.5" /> Apagar
+        </button>
+      </div>
     </div>
   );
 }
 
-export function AdminFeed({ materials }: { materials: Material[] }) {
+export function AdminFeed({ materials: initial }: { materials: Material[] }) {
+  const router = useRouter();
+  const [materials, setMaterials] = useState(initial);
   const [viewing, setViewing] = useState<Material | null>(null);
+
+  // Moderação colaborativa: qualquer admin pode apagar qualquer postagem
+  async function handleDelete(mat: Material) {
+    if (!confirm(`Apagar a postagem "${mat.title}"${mat.createdBy?.name ? ` (postado por ${mat.createdBy.name})` : ""}?`)) return;
+    const res = await fetch(`/api/materials/${mat.id}`, { method: "DELETE" });
+    if (res.ok) {
+      setMaterials((prev) => prev.filter((m) => m.id !== mat.id));
+      router.refresh();
+    } else {
+      alert("Erro ao apagar a postagem");
+    }
+  }
 
   if (materials.length === 0) {
     return (
@@ -127,7 +171,7 @@ export function AdminFeed({ materials }: { materials: Material[] }) {
     <>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {materials.map((mat) => (
-          <FeedCard key={mat.id} material={mat} onOpen={() => setViewing(mat)} />
+          <FeedCard key={mat.id} material={mat} onOpen={() => setViewing(mat)} onDelete={() => handleDelete(mat)} />
         ))}
       </div>
 

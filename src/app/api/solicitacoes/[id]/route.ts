@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { sendPushToUser } from "@/lib/push";
+import { attachmentsSchema, attachmentsSummary, legacyNamedFileFields } from "@/lib/attachments";
 
 export const dynamic = "force-dynamic";
 
@@ -67,8 +68,23 @@ export async function PATCH(
   if (status === "IN_PROGRESS") statusData.inProgressAt = now;
   if (status === "DONE")        statusData.doneAt = now;
 
+  // Resposta com vários anexos (a lista completa fica em adminReplyAttachments)
+  const parsedReply = attachmentsSchema.safeParse(body.replyAttachments ?? []);
+  if (!parsedReply.success) {
+    return NextResponse.json({ error: "Anexos inválidos" }, { status: 400 });
+  }
+  const replyAttachments = parsedReply.data;
+  const replyLegacy = replyAttachments.length > 0 ? legacyNamedFileFields(replyAttachments) : null;
+
   // Resposta da equipe fica só na cópia do admin que respondeu
   const replyData: Record<string, unknown> = {};
+  if (status === "DONE" && replyLegacy) {
+    replyData.adminReplyAttachments = replyAttachments;
+    replyData.adminReplyFileUrl = replyLegacy.fileUrl;
+    replyData.adminReplyFileKey = replyLegacy.fileKey;
+    replyData.adminReplyFileName = replyLegacy.fileName;
+    replyData.adminReplyFileType = replyLegacy.fileType;
+  }
   if (status === "DONE") {
     if (reply?.trim())  replyData.adminReplyContent  = reply.trim();
     if (replyFileUrl)   replyData.adminReplyFileUrl  = replyFileUrl;
@@ -92,17 +108,18 @@ export async function PATCH(
     : await db.message.findUnique({ where: { id: params.id } });
 
   // If DONE and there's a reply (text or file) → create chat message
-  const hasReply = reply?.trim() || replyFileUrl;
+  const hasReply = reply?.trim() || replyFileUrl || replyAttachments.length > 0;
   if (status === "DONE" && hasReply) {
     const replyMsg = await db.message.create({
       data: {
         conversationId: message.conversation.id,
         senderId: session.user.id,
         content: reply?.trim() || null,
-        fileUrl:  replyFileUrl  || null,
-        fileKey:  replyFileKey  || null,
-        fileName: replyFileName || null,
-        fileType: replyFileType || null,
+        fileUrl:  replyLegacy?.fileUrl  ?? (replyFileUrl  || null),
+        fileKey:  replyLegacy?.fileKey  ?? (replyFileKey  || null),
+        fileName: replyLegacy?.fileName ?? (replyFileName || null),
+        fileType: replyLegacy ? (replyAttachments[0].kind === "IMAGE" ? "image" : "document") : replyFileType || null,
+        attachments: replyAttachments,
         readByAdmin: true,
         readByFranchisee: false,
       },
@@ -119,7 +136,9 @@ export async function PATCH(
 
     const notifBody = reply?.trim()
       ? reply.trim()
-      : `📎 ${replyFileName ?? "Arquivo enviado"}`;
+      : replyAttachments.length > 0
+        ? attachmentsSummary(replyAttachments)
+        : `📎 ${replyFileName ?? "Arquivo enviado"}`;
 
     await sendPushToUser(message.conversation.franchiseeId, {
       title: "Solicitação concluída!",

@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { attachmentsSchema, legacyNamedFileFields } from "@/lib/attachments";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,7 @@ const updateSchema = z.object({
   fileKey: z.string().nullable().optional(),
   fileName: z.string().nullable().optional(),
   fileType: z.string().nullable().optional(),
+  attachments: attachmentsSchema.optional(),
 });
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
@@ -24,9 +26,10 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   const parsed = updateSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
 
+  const { attachments, ...data } = parsed.data;
   const updated = await db.comunicado.update({
     where: { id: params.id },
-    data: parsed.data,
+    data: { ...data, ...(attachments ? { attachments, ...legacyNamedFileFields(attachments) } : {}) },
     include: { createdBy: { select: { name: true } }, _count: { select: { views: true } } },
   });
 

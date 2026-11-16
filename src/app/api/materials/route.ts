@@ -2,7 +2,8 @@ import { auth } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 import { db } from "@/lib/db";
-import { sendPushToAll } from "@/lib/push";
+import { notifyMaterialPublished } from "@/lib/notify";
+import { attachmentsSchema, attachmentsSummary, legacyFileFields } from "@/lib/attachments";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -18,6 +19,7 @@ const materialSchema = z.object({
   published: z.boolean().optional().default(true),
   color: z.enum(["amber", "blue"]).optional(),
   linkedStoreIds: z.array(z.string()).optional().default([]),
+  attachments: attachmentsSchema.optional(),
 });
 
 export async function GET(req: Request) {
@@ -82,10 +84,25 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const data = materialSchema.parse(body);
-    const { linkedStoreIds, ...rest } = data;
+    const { linkedStoreIds, attachments: rawAttachments, ...rest } = data;
+
+    // Vários anexos por post: os campos legados (fileUrl…) espelham o primeiro anexo
+    const attachments =
+      rawAttachments ??
+      (rest.fileUrl
+        ? [{ url: rest.fileUrl, key: rest.fileKey, name: rest.title, kind: rest.fileType === "NOTICE" ? ("OTHER" as const) : rest.fileType, mimeType: rest.mimeType, size: rest.fileSize }]
+        : []);
+    if (rest.fileType !== "NOTICE" && attachments.length === 0) {
+      return NextResponse.json({ error: "Anexe pelo menos um arquivo" }, { status: 400 });
+    }
+    const fileType = rest.fileType === "NOTICE" ? "NOTICE" : attachments[0].kind;
+
     const material = await db.material.create({
       data: {
         ...rest,
+        ...legacyFileFields(attachments),
+        fileType,
+        attachments,
         createdById: session.user.id,
         linkedStores: linkedStoreIds.length > 0
           ? { create: linkedStoreIds.map((storeId) => ({ storeId })) }
@@ -98,15 +115,13 @@ export async function POST(req: Request) {
     });
 
     if (data.published) {
-      const isNotice = data.fileType === "NOTICE";
-      await sendPushToAll(
-        {
-          title: isNotice ? "Novo aviso!" : "Novo material disponivel!",
-          body: data.title,
-          url: "/gallery",
-        },
-        "NON_ADMIN"
-      );
+      // Push + e-mail só para quem tem acesso (lojas selecionadas), sem bloquear a resposta
+      notifyMaterialPublished({
+        id: material.id,
+        title: material.title,
+        fileType: material.fileType,
+        summary: attachments.length > 0 ? attachmentsSummary(attachments) : undefined,
+      }).catch((err) => console.error("[notify] material", err));
     }
 
     return NextResponse.json(material, { status: 201 });

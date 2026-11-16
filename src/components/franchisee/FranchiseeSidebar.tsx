@@ -19,7 +19,9 @@ import {
   Newspaper,
   GraduationCap,
   MessageSquare,
+  Siren,
 } from "lucide-react";
+import { Support3LMButton } from "./Support3LM";
 
 interface FranchiseeSidebarProps {
   user: {
@@ -50,6 +52,7 @@ const sections: { label: string; items: NavItem[] }[] = [
     label: "Solicitações",
     items: [
       { href: "/chat", label: "Chat com a equipe", icon: MessageSquare },
+      { href: "/emergencia", label: "Chat Emergencial", icon: Siren },
       { href: "/solicitacoes", label: "Acompanhamento", icon: Inbox },
       { href: "/solicitar", label: "Nova solicitação", icon: Send },
     ],
@@ -98,6 +101,7 @@ export function FranchiseeSidebar({ user, onOpenTutorial }: FranchiseeSidebarPro
 
       {/* Navigation */}
       <nav className="flex-1 p-3 space-y-5 overflow-y-auto">
+        <Support3LMButton variant="sidebar" />
         {sections
           .map((section) => ({
             ...section,

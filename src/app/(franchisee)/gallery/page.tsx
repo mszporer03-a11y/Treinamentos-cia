@@ -3,10 +3,14 @@
 import { useState, useEffect } from "react";
 import { PdfThumbnail } from "@/components/PdfPreview";
 import { ComunicadoCard, comunicadoToViewer, type ComunicadoItem } from "@/components/franchisee/ComunicadoCard";
+import { Support3LMButton } from "@/components/franchisee/Support3LM";
 import Link from "next/link";
 import Image from "next/image";
 import { useSession } from "next-auth/react";
 import { MaterialViewer } from "@/components/franchisee/MaterialViewer";
+import { AttachmentMosaic } from "@/components/attachments/AttachmentMosaic";
+import { materialUsesMosaic } from "@/components/attachments/MaterialFeedMedia";
+import { materialAttachments } from "@/lib/attachments";
 import { Play, FileText, Image as ImageIcon, File, ClipboardList, BookOpen, ChevronRight, SlidersHorizontal, Megaphone, Inbox, UtensilsCrossed, Newspaper, GraduationCap, Send, MessageSquare } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { useBadges, BADGE_KEY } from "@/hooks/useBadges";
@@ -28,6 +32,7 @@ interface Material {
   fileType: string;
   fileSize?: number | null;
   mimeType?: string | null;
+  attachments?: unknown;
   createdAt: string;
   category: Category;
   createdBy?: { name: string } | null;
@@ -83,7 +88,11 @@ function FeedCard({ material, onOpen }: { material: Material; onOpen: () => void
       </div>
 
       <button onClick={onOpen} className="w-full text-left focus:outline-none">
-        {material.fileType === "PDF" && material.fileUrl ? (
+        {materialUsesMosaic(material) ? (
+          <div className="mx-3">
+            <AttachmentMosaic attachments={materialAttachments(material)} />
+          </div>
+        ) : material.fileType === "PDF" && material.fileUrl ? (
           <PdfThumbnail url={material.fileUrl} className="mx-3 rounded-xl aspect-video group-hover:opacity-90 transition-opacity" />
         ) : material.fileType === "IMAGE" ? (
           <div className="mx-3 rounded-xl overflow-hidden bg-gray-100 aspect-video">
@@ -298,6 +307,9 @@ export default function GalleryPage() {
           );
         })}
       </div>
+
+      {/* Atalho de suporte ao sistema 3LM */}
+      <Support3LMButton variant="banner" className="-mt-4 mb-10" />
 
       {/* Novidades em destaque */}
       {novidades.length > 0 && (

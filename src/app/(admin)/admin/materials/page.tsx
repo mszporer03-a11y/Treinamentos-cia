@@ -3,11 +3,16 @@
 export const dynamic = "force-dynamic";
 
 import { useState, useEffect, useCallback } from "react";
-import { Plus, Pencil, Trash2, Eye, EyeOff, FileText, Upload, CheckCircle, ExternalLink, Users } from "lucide-react";
-import { UploadButton } from "@/lib/uploadthing-components";
-import { getFileType, formatFileSize, formatDate, fileTypeIcon } from "@/lib/utils";
+import { Plus, Pencil, Trash2, Eye, EyeOff, FileText, ExternalLink, Users, Play, Image as ImageIcon, File, Megaphone, Paperclip } from "lucide-react";
+import { formatFileSize, formatDate } from "@/lib/utils";
+import { materialAttachments } from "@/lib/attachments";
+import { AttachmentMosaic } from "@/components/attachments/AttachmentMosaic";
+import { AttachmentPicker } from "@/components/attachments/AttachmentPicker";
+import { useAttachmentUploader } from "@/components/attachments/useAttachmentUploader";
+import { materialUsesMosaic } from "@/components/attachments/MaterialFeedMedia";
 import { MaterialViewer } from "@/components/franchisee/MaterialViewer";
 import { MaterialViewsModal } from "@/components/admin/MaterialViewsModal";
+import { PdfThumbnail } from "@/components/PdfPreview";
 
 interface Category {
   id: string;
@@ -29,20 +34,42 @@ interface Material {
   fileUrl: string | null;
   fileType: string;
   fileSize?: number | null;
+  mimeType?: string | null;
+  attachments?: unknown;
   published: boolean;
   categoryId: string;
   category: Category;
   linkedStores: { store: StoreRef }[];
   createdAt: string;
+  createdBy?: { name: string } | null;
 }
 
-interface UploadedFile {
-  url: string;
-  key: string;
-  name: string;
-  size: number;
-  type: string;
-}
+const typeIcon: Record<string, React.ElementType> = {
+  VIDEO: Play,
+  PDF: FileText,
+  IMAGE: ImageIcon,
+  DOCUMENT: FileText,
+  OTHER: File,
+  NOTICE: Megaphone,
+};
+
+const typeColor: Record<string, string> = {
+  VIDEO: "bg-red-100 text-red-500",
+  PDF: "bg-orange-100 text-orange-500",
+  IMAGE: "bg-green-100 text-green-500",
+  DOCUMENT: "bg-blue-100 text-blue-500",
+  OTHER: "bg-gray-100 text-gray-500",
+  NOTICE: "bg-amber-100 text-amber-600",
+};
+
+const typeLabel: Record<string, string> = {
+  VIDEO: "Vídeo",
+  PDF: "PDF",
+  IMAGE: "Imagem",
+  DOCUMENT: "Documento",
+  OTHER: "Arquivo",
+  NOTICE: "Aviso",
+};
 
 const DEFAULT_FORM = {
   title: "",
@@ -61,7 +88,7 @@ export default function MaterialsPage() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [editing, setEditing] = useState<Material | null>(null);
   const [form, setForm] = useState(DEFAULT_FORM);
-  const [uploadedFile, setUploadedFile] = useState<UploadedFile | null>(null);
+  const uploader = useAttachmentUploader("materialUploader");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [filterCategory, setFilterCategory] = useState("");
@@ -87,7 +114,7 @@ export default function MaterialsPage() {
 
   function openCreate() {
     setForm(DEFAULT_FORM);
-    setUploadedFile(null);
+    uploader.reset();
     setError("");
     setShowCreateModal(true);
   }
@@ -99,8 +126,9 @@ export default function MaterialsPage() {
       description: mat.description ?? "",
       categoryId: mat.categoryId,
       published: mat.published,
-      linkedStoreIds: [],
+      linkedStoreIds: (mat.linkedStores ?? []).map(({ store }) => store.id),
     });
+    uploader.reset(materialAttachments(mat));
     setError("");
     setShowEditModal(true);
   }
@@ -116,25 +144,24 @@ export default function MaterialsPage() {
         setError("Escreva a descrição do aviso");
         return;
       }
-    } else if (!uploadedFile) {
-      setError("Selecione um arquivo para upload");
+    } else if (uploader.attachments.length === 0) {
+      setError("Selecione pelo menos um arquivo para upload");
+      return;
+    }
+    if (uploader.busy) {
+      setError("Aguarde o envio dos arquivos terminar");
       return;
     }
 
     setSaving(true);
     setError("");
 
-    const body = isAviso
-      ? { ...form, fileType: "NOTICE", linkedStoreIds: form.linkedStoreIds }
-      : {
-          ...form,
-          fileUrl: uploadedFile!.url,
-          fileKey: uploadedFile!.key,
-          fileType: getFileType(uploadedFile!.type),
-          mimeType: uploadedFile!.type,
-          fileSize: uploadedFile!.size,
-          linkedStoreIds: form.linkedStoreIds,
-        };
+    const body = {
+      ...form,
+      ...(isAviso ? { fileType: "NOTICE" } : {}),
+      attachments: uploader.attachments,
+      linkedStoreIds: form.linkedStoreIds,
+    };
 
     const res = await fetch("/api/materials", {
       method: "POST",
@@ -157,6 +184,14 @@ export default function MaterialsPage() {
   async function handleEdit(e: React.FormEvent) {
     e.preventDefault();
     if (!editing) return;
+    if (uploader.busy) {
+      setError("Aguarde o envio dos arquivos terminar");
+      return;
+    }
+    if (editing.fileType !== "NOTICE" && uploader.attachments.length === 0) {
+      setError("O material precisa de pelo menos um anexo");
+      return;
+    }
     setSaving(true);
     setError("");
 
@@ -168,6 +203,8 @@ export default function MaterialsPage() {
         description: form.description,
         categoryId: form.categoryId,
         published: form.published,
+        attachments: uploader.attachments,
+        linkedStoreIds: form.linkedStoreIds,
       }),
     });
 
@@ -206,6 +243,62 @@ export default function MaterialsPage() {
 
   const selectedCategory = categories.find((c) => c.id === form.categoryId);
   const isAviso = selectedCategory?.slug === "avisos";
+  const allStoresSelected = stores.length > 0 && form.linkedStoreIds.length === stores.length;
+
+  // Segmentação: lojas que terão acesso ao conteúdo
+  const storePicker = stores.length > 0 && (
+    <div>
+      <div className="flex items-center justify-between mb-1.5">
+        <label className="block text-sm font-medium text-gray-700">
+          Lojas com acesso
+          <span className="ml-1.5 text-xs font-normal text-gray-400">(nenhuma marcada = todas)</span>
+        </label>
+        <button
+          type="button"
+          onClick={() =>
+            setForm((f) => ({ ...f, linkedStoreIds: allStoresSelected ? [] : stores.map((st) => st.id) }))
+          }
+          className="text-xs font-medium text-blue-600 hover:text-blue-800"
+        >
+          {allStoresSelected ? "Desmarcar todas" : "✓ Marcar todas as lojas"}
+        </button>
+      </div>
+      <div className="flex flex-wrap gap-1.5 p-2.5 border border-gray-200 rounded-lg max-h-36 overflow-y-auto">
+        {stores.map((store) => {
+          const selected = form.linkedStoreIds.includes(store.id);
+          return (
+            <button
+              key={store.id}
+              type="button"
+              onClick={() =>
+                setForm((f) => ({
+                  ...f,
+                  linkedStoreIds: selected
+                    ? f.linkedStoreIds.filter((id) => id !== store.id)
+                    : [...f.linkedStoreIds, store.id],
+                }))
+              }
+              className={`px-2.5 py-1 rounded-full text-xs font-medium border transition ${
+                selected
+                  ? "bg-blue-600 text-white border-blue-600"
+                  : "bg-white border-gray-200 text-gray-600 hover:border-blue-300"
+              }`}
+            >
+              {store.name}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  // Preenche o título com o nome do primeiro arquivo enviado
+  const firstAttachmentName = uploader.attachments[0]?.name;
+  useEffect(() => {
+    if (showCreateModal && firstAttachmentName) {
+      setForm((f) => (f.title ? f : { ...f, title: firstAttachmentName.replace(/\.[^/.]+$/, "") }));
+    }
+  }, [showCreateModal, firstAttachmentName]);
 
   return (
     <div className="p-4 sm:p-6 md:p-8">
@@ -272,146 +365,109 @@ export default function MaterialsPage() {
         </div>
       ) : (
         <>
-          {/* Mobile card list */}
-          <div className="md:hidden space-y-3">
-            {filtered.map((mat) => (
-              <div key={mat.id} className="bg-white rounded-xl shadow-sm p-4 flex items-start gap-3">
-                <span className="text-2xl flex-shrink-0 mt-0.5">{fileTypeIcon(mat.fileType)}</span>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-gray-900 text-sm leading-snug">{mat.title}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    {mat.category.icon} {mat.category.name}
-                    {mat.fileSize ? ` · ${formatFileSize(mat.fileSize)}` : ""}
-                  </p>
-                  <div className="flex items-center gap-2 mt-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {filtered.map((mat) => {
+              const TypeIcon = typeIcon[mat.fileType] ?? File;
+              const color = typeColor[mat.fileType] ?? typeColor.OTHER;
+              return (
+                <div
+                  key={mat.id}
+                  className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all flex flex-col"
+                >
+                  {/* Cabeçalho do post */}
+                  <div className="flex items-center gap-2.5 px-4 pt-3 pb-2">
+                    <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
+                      <span className="text-white text-xs font-bold">
+                        {(mat.createdBy?.name ?? "A").charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-gray-900 truncate">
+                        {mat.createdBy?.name ?? "Admin"}
+                      </p>
+                      <p className="text-xs text-gray-400 truncate">
+                        {mat.category.icon} {mat.category.name} · {formatDate(mat.createdAt)}
+                      </p>
+                    </div>
                     <button
                       onClick={() => togglePublish(mat)}
-                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium transition ${
+                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium transition flex-shrink-0 ${
                         mat.published
-                          ? "bg-green-100 text-green-700"
-                          : "bg-gray-100 text-gray-600"
+                          ? "bg-green-100 text-green-700 hover:bg-green-200"
+                          : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                       }`}
+                      title={mat.published ? "Clique para despublicar" : "Clique para publicar"}
                     >
                       {mat.published ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
                       {mat.published ? "Publicado" : "Rascunho"}
                     </button>
                   </div>
-                </div>
-                <div className="flex gap-1 flex-shrink-0">
-                  <button
-                    onClick={() => setViewing(mat)}
-                    className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition"
-                    title="Abrir arquivo"
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={() => setViewingViews(mat)}
-                    className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition"
-                    title="Ver visualizações"
-                  >
-                    <Users className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={() => openEdit(mat)}
-                    className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(mat.id, mat.title)}
-                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
 
-          {/* Desktop table */}
-          <div className="hidden md:block bg-white rounded-xl shadow-sm overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-100">
-              <tr>
-                <th className="px-5 py-3 text-left font-medium text-gray-500">
-                  Material
-                </th>
-                <th className="px-5 py-3 text-left font-medium text-gray-500">
-                  Categoria
-                </th>
-                <th className="px-5 py-3 text-left font-medium text-gray-500">
-                  Tamanho
-                </th>
-                <th className="px-5 py-3 text-left font-medium text-gray-500">
-                  Status
-                </th>
-                <th className="px-5 py-3 text-left font-medium text-gray-500">
-                  Data
-                </th>
-                <th className="px-5 py-3 text-right font-medium text-gray-500">
-                  Ações
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {filtered.map((mat) => (
-                <tr key={mat.id} className="hover:bg-gray-50 transition">
-                  <td className="px-5 py-4">
-                    <div className="flex items-center gap-3">
-                      <span className="text-xl">{fileTypeIcon(mat.fileType)}</span>
-                      <div className="min-w-0">
-                        <p className="font-medium text-gray-900 truncate max-w-xs">
-                          {mat.title}
-                        </p>
-                        {mat.description && (
-                          <p className="text-xs text-gray-400 truncate max-w-xs">
-                            {mat.description}
-                          </p>
-                        )}
-                        {mat.linkedStores && mat.linkedStores.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-1">
-                            {mat.linkedStores.map(({ store }) => (
-                              <span key={store.id} className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-100 text-emerald-700">
-                                {store.name}
-                              </span>
-                            ))}
-                          </div>
-                        )}
+                  {/* Capa */}
+                  <button onClick={() => setViewing(mat)} className="w-full text-left focus:outline-none group">
+                    {materialUsesMosaic(mat) ? (
+                      <div className="mx-3">
+                        <AttachmentMosaic attachments={materialAttachments(mat)} />
                       </div>
+                    ) : mat.fileType === "PDF" && mat.fileUrl ? (
+                      <PdfThumbnail
+                        url={mat.fileUrl}
+                        className="mx-3 rounded-xl aspect-video group-hover:opacity-90 transition-opacity"
+                      />
+                    ) : mat.fileType === "IMAGE" && mat.fileUrl ? (
+                      <div className="mx-3 rounded-xl overflow-hidden bg-gray-100 aspect-video">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={mat.fileUrl}
+                          alt={mat.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                      </div>
+                    ) : (
+                      <div
+                        className={`mx-3 rounded-xl aspect-video flex flex-col items-center justify-center gap-2 ${color} group-hover:opacity-80 transition-opacity`}
+                      >
+                        <TypeIcon className="h-10 w-10 sm:h-14 sm:w-14 opacity-70" />
+                        <span className="text-xs sm:text-sm font-medium opacity-80">
+                          {typeLabel[mat.fileType] ?? "Arquivo"}
+                        </span>
+                      </div>
+                    )}
+                    <div className="px-4 pt-2.5 pb-2">
+                      <p className="font-semibold text-gray-900 text-sm leading-snug line-clamp-2 group-hover:text-blue-600 transition-colors">
+                        {mat.title}
+                      </p>
+                      {mat.description && (
+                        <p className="text-xs text-gray-500 mt-1 line-clamp-2">{mat.description}</p>
+                      )}
                     </div>
-                  </td>
-                  <td className="px-5 py-4 text-gray-600">
-                    {mat.category.icon} {mat.category.name}
-                  </td>
-                  <td className="px-5 py-4 text-gray-500">
-                    {mat.fileSize ? formatFileSize(mat.fileSize) : "—"}
-                  </td>
-                  <td className="px-5 py-4">
-                    <button
-                      onClick={() => togglePublish(mat)}
-                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition ${
-                        mat.published
-                          ? "bg-green-100 text-green-700 hover:bg-green-200"
-                          : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                      }`}
-                    >
-                      {mat.published ? (
+                  </button>
+
+                  {mat.linkedStores && mat.linkedStores.length > 0 && (
+                    <div className="flex flex-wrap gap-1 px-4 pb-2">
+                      {mat.linkedStores.map(({ store }) => (
+                        <span
+                          key={store.id}
+                          className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-100 text-emerald-700"
+                        >
+                          {store.name}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Rodapé: tamanho e ações */}
+                  <div className="mt-auto px-4 pb-3 pt-1 flex items-center justify-between border-t border-gray-50">
+                    <span className="text-xs text-gray-400 inline-flex items-center gap-1">
+                      {mat.fileSize ? formatFileSize(mat.fileSize) : "—"}
+                      {materialAttachments(mat).length > 1 && (
                         <>
-                          <Eye className="h-3 w-3" /> Publicado
-                        </>
-                      ) : (
-                        <>
-                          <EyeOff className="h-3 w-3" /> Rascunho
+                          {" · "}
+                          <Paperclip className="h-3 w-3" /> {materialAttachments(mat).length}
                         </>
                       )}
-                    </button>
-                  </td>
-                  <td className="px-5 py-4 text-gray-500">
-                    {formatDate(mat.createdAt)}
-                  </td>
-                  <td className="px-5 py-4 text-right">
-                    <div className="flex items-center justify-end gap-1">
+                    </span>
+                    <div className="flex items-center gap-0.5">
                       <button
                         onClick={() => setViewing(mat)}
                         className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition"
@@ -429,22 +485,23 @@ export default function MaterialsPage() {
                       <button
                         onClick={() => openEdit(mat)}
                         className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                        title="Editar"
                       >
                         <Pencil className="h-4 w-4" />
                       </button>
                       <button
                         onClick={() => handleDelete(mat.id, mat.title)}
                         className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                        title="Excluir"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </>
       )}
 
@@ -477,70 +534,21 @@ export default function MaterialsPage() {
                 </select>
                 {isAviso && (
                   <p className="text-xs text-gray-500 mt-1.5">
-                    Avisos são apenas texto — preencha o título e a descrição abaixo, sem anexar arquivo.
+                    Avisos são texto — preencha o título e a descrição; anexos são opcionais.
                   </p>
                 )}
               </div>
 
-              {/* File Upload — hidden for text-only "Avisos" */}
-              {!isAviso && (
+              {/* Anexos — vários arquivos por post (opcional para Avisos) */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Arquivo *
+                  {isAviso ? "Anexos (opcional)" : "Arquivos *"}
                 </label>
-                {uploadedFile ? (
-                  <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-lg">
-                    <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">
-                        {uploadedFile.name}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {formatFileSize(uploadedFile.size)}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setUploadedFile(null)}
-                      className="text-xs text-red-500 hover:text-red-700 flex-shrink-0"
-                    >
-                      Remover
-                    </button>
-                  </div>
-                ) : (
-                  <div className="border-2 border-dashed border-gray-200 rounded-xl p-5 flex flex-col items-center text-center">
-                    <Upload className="h-8 w-8 text-gray-300 mb-2" />
-                    <p className="text-sm text-gray-500 mb-3">
-                      Vídeos (até 2GB), PDFs, Imagens, Documentos
-                    </p>
-                    <UploadButton
-                      endpoint="materialUploader"
-                      onClientUploadComplete={(res) => {
-                        if (res && res[0]) {
-                          const file = res[0];
-                          setUploadedFile({
-                            url: file.url,
-                            key: file.key,
-                            name: file.name,
-                            size: file.size,
-                            type: file.type ?? "",
-                          });
-                          if (!form.title) {
-                            setForm((f) => ({
-                              ...f,
-                              title: file.name.replace(/\.[^/.]+$/, ""),
-                            }));
-                          }
-                        }
-                      }}
-                      onUploadError={(err) => {
-                        setError(`Erro no upload: ${err.message}`);
-                      }}
-                    />
-                  </div>
-                )}
+                <AttachmentPicker
+                  uploader={uploader}
+                  hint="Vídeos (até 2GB), PDFs, imagens e documentos — vários de uma vez"
+                />
               </div>
-              )}
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -570,41 +578,7 @@ export default function MaterialsPage() {
                 />
               </div>
 
-              {/* Store picker */}
-              {stores.length > 0 && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Visível para lojas
-                    <span className="ml-1.5 text-xs font-normal text-gray-400">(vazio = todas)</span>
-                  </label>
-                  <div className="flex flex-wrap gap-1.5 p-2.5 border border-gray-200 rounded-lg max-h-36 overflow-y-auto">
-                    {stores.map((store) => {
-                      const selected = form.linkedStoreIds.includes(store.id);
-                      return (
-                        <button
-                          key={store.id}
-                          type="button"
-                          onClick={() =>
-                            setForm((f) => ({
-                              ...f,
-                              linkedStoreIds: selected
-                                ? f.linkedStoreIds.filter((id) => id !== store.id)
-                                : [...f.linkedStoreIds, store.id],
-                            }))
-                          }
-                          className={`px-2.5 py-1 rounded-full text-xs font-medium border transition ${
-                            selected
-                              ? "bg-blue-600 text-white border-blue-600"
-                              : "bg-white border-gray-200 text-gray-600 hover:border-blue-300"
-                          }`}
-                        >
-                          {store.name}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
+              {storePicker}
 
               <div className="flex items-center gap-2">
                 <input
@@ -640,10 +614,10 @@ export default function MaterialsPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={saving || (!isAviso && !uploadedFile)}
+                  disabled={saving || uploader.busy || (!isAviso && uploader.attachments.length === 0)}
                   className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-lg transition text-sm"
                 >
-                  {saving ? "Salvando..." : isAviso ? "Publicar Aviso" : "Salvar Material"}
+                  {saving ? "Salvando..." : uploader.busy ? "Enviando arquivos..." : isAviso ? "Publicar Aviso" : "Salvar Material"}
                 </button>
               </div>
             </form>
@@ -654,7 +628,7 @@ export default function MaterialsPage() {
       {/* Edit Modal */}
       {showEditModal && editing && (
         <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50">
-          <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full sm:max-w-md p-6 max-h-[95vh] overflow-y-auto">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full sm:max-w-lg p-6 max-h-[95vh] overflow-y-auto">
             <h2 className="text-xl font-bold text-gray-900 mb-5">
               Editar Material
             </h2>
@@ -704,6 +678,15 @@ export default function MaterialsPage() {
                 </select>
               </div>
 
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  {editing.fileType === "NOTICE" ? "Anexos (opcional)" : "Arquivos *"}
+                </label>
+                <AttachmentPicker uploader={uploader} />
+              </div>
+
+              {storePicker}
+
               <div className="flex items-center gap-2">
                 <input
                   type="checkbox"
@@ -735,7 +718,7 @@ export default function MaterialsPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={saving}
+                  disabled={saving || uploader.busy}
                   className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-lg transition text-sm"
                 >
                   {saving ? "Salvando..." : "Salvar"}

@@ -1,11 +1,19 @@
 ﻿"use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
-import { CheckSquare, Plus, X, CheckCircle2, Circle } from "lucide-react";
+import { CheckSquare, Plus, X, CheckCircle2, Circle, Paperclip, Loader2 } from "lucide-react";
+import { MaterialViewer } from "@/components/franchisee/MaterialViewer";
+import { postAttachments } from "@/lib/attachments";
+import { AttachmentMosaic } from "@/components/attachments/AttachmentMosaic";
+import { uploadAttachments } from "@/components/attachments/useAttachmentUploader";
 
 type Store = { id: string; name: string; code: string };
-type Step = { id: string; title: string; description: string | null; phase: string; responsible: string | null; order: number; completedAt: string | null };
+type Step = {
+  id: string; title: string; description: string | null; phase: string; responsible: string | null; order: number; completedAt: string | null;
+  fileUrl: string | null; fileName: string | null; fileType: string | null;
+  attachments?: unknown;
+};
 type Onboarding = {
   id: string;
   isNewStore: boolean;
@@ -30,6 +38,27 @@ export default function OnboardingPage() {
   const [form, setForm] = useState({ storeId: "", isNewStore: true });
   const [saving, setSaving] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [viewing, setViewing] = useState<Step | null>(null);
+  const [uploadingStep, setUploadingStep] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  // Etapa que receberá o próximo arquivo escolhido (guardada em ref para o callback do upload)
+  const targetRef = useRef<{ onboardingId: string; stepId: string } | null>(null);
+
+  // Envia os arquivos escolhidos e acrescenta aos anexos já existentes da etapa
+  async function uploadToStep(files: File[]) {
+    const target = targetRef.current;
+    if (!target || files.length === 0) return;
+    setUploadingStep(target.stepId);
+    const added = await uploadAttachments("chatAttachment", files);
+    const step = onboardings.find((o) => o.id === target.onboardingId)?.steps.find((st) => st.id === target.stepId);
+    if (added.length > 0) {
+      await patchStep(target.onboardingId, {
+        stepId: target.stepId,
+        attachments: [...(step ? postAttachments(step) : []), ...added],
+      });
+    }
+    setUploadingStep(null);
+  }
 
   useEffect(() => {
     Promise.all([
@@ -52,13 +81,23 @@ export default function OnboardingPage() {
     setSaving(false);
   }
 
-  async function toggleStep(onboardingId: string, stepId: string, completed: boolean) {
+  async function patchStep(onboardingId: string, body: Record<string, unknown>) {
     const res = await fetch(`/api/onboarding/${onboardingId}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ stepId, completed }),
+      body: JSON.stringify(body),
     });
+    if (!res.ok) return;
     const updated = await res.json();
     setOnboardings((prev) => prev.map((o) => (o.id === onboardingId ? updated : o)));
+  }
+
+  function toggleStep(onboardingId: string, stepId: string, completed: boolean) {
+    return patchStep(onboardingId, { stepId, completed });
+  }
+
+  function pickFile(onboardingId: string, stepId: string) {
+    targetRef.current = { onboardingId, stepId };
+    fileInputRef.current?.click();
   }
 
   const existingStoreIds = new Set(onboardings.map((o) => o.store.id));
@@ -150,7 +189,20 @@ export default function OnboardingPage() {
                             </div>
                             {step.description && <p className="text-xs text-gray-500 mt-0.5">{step.description}</p>}
                             {step.responsible && <p className="text-xs text-teal-600 mt-0.5">Responsável: {step.responsible}</p>}
+                            {postAttachments(step).length > 0 && (
+                              <div className="mt-2 flex items-start gap-2">
+                                <div className="w-48">
+                                  <AttachmentMosaic variant="chat" attachments={postAttachments(step)} onOpen={() => setViewing(step)} />
+                                </div>
+                                <button type="button" title="Remover anexos" onClick={() => confirm("Remover os anexos desta etapa?") && patchStep(o.id, { stepId: step.id, attachments: [] })} className="p-1 text-gray-400 hover:text-red-500"><X className="h-4 w-4" /></button>
+                              </div>
+                            )}
                           </div>
+                          <button type="button" disabled={uploadingStep === step.id} onClick={() => pickFile(o.id, step.id)}
+                            className="shrink-0 inline-flex items-center gap-1 text-xs text-gray-500 hover:text-teal-600 disabled:opacity-50" title="Anexar imagens, vídeos ou PDFs (vários)">
+                            {uploadingStep === step.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Paperclip className="h-3.5 w-3.5" />}
+                            {postAttachments(step).length > 0 ? "Adicionar" : "Anexar"}
+                          </button>
                         </div>
                       ))}
                     </div>
@@ -161,6 +213,27 @@ export default function OnboardingPage() {
           </div>
         )}
       </div>
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        className="hidden"
+        accept="image/*,video/*,.pdf,.doc,.docx"
+        multiple
+        onChange={(e) => {
+          uploadToStep(Array.from(e.target.files ?? []));
+          e.target.value = "";
+        }}
+      />
+      {viewing && (
+        <MaterialViewer
+          material={{
+            id: viewing.id, title: viewing.title, body: viewing.description ?? "", fileUrl: viewing.fileUrl,
+            fileName: viewing.fileName, fileType: "OTHER", attachments: postAttachments(viewing),
+          }}
+          onClose={() => setViewing(null)}
+        />
+      )}
     </>
   );
 }

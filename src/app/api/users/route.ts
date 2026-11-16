@@ -13,12 +13,20 @@ const userSchema = z.object({
   role: z.enum(["ADMIN", "FRANCHISEE", "MANAGER"]).default("FRANCHISEE"),
   phone: z.string().max(30).optional(),
   storeIds: z.array(z.string()).optional(),
+  // Login alternativo ao e-mail (ex.: joao.franqueado)
+  username: z
+    .string()
+    .trim()
+    .regex(/^[a-zA-Z0-9._-]{3,40}$/, "Login deve ter 3-40 caracteres (letras, números, ponto, hífen)")
+    .optional()
+    .or(z.literal("")),
 });
 
 const userSelectFields = {
   id: true,
   name: true,
   email: true,
+  username: true,
   role: true,
   phone: true,
   active: true,
@@ -72,7 +80,8 @@ export async function POST(req: Request) {
       }
     }
 
-    const storeIds = data.storeIds ?? [];
+    // Administradores não ficam vinculados a lojas
+    const storeIds = data.role === "ADMIN" ? [] : data.storeIds ?? [];
 
     const existing = await db.user.findUnique({
       where: { email: data.email },
@@ -84,11 +93,19 @@ export async function POST(req: Request) {
       );
     }
 
+    if (data.username) {
+      const taken = await db.user.findFirst({ where: { username: { equals: data.username, mode: "insensitive" } } });
+      if (taken) {
+        return NextResponse.json({ error: "Login já está em uso" }, { status: 400 });
+      }
+    }
+
     const hashedPassword = await bcrypt.hash(data.password, 12);
     const user = await db.user.create({
       data: {
         name: data.name,
         email: data.email,
+        username: data.username || null,
         password: hashedPassword,
         role: data.role,
         phone: data.phone?.trim() || null,

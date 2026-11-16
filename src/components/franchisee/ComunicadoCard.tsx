@@ -3,6 +3,8 @@
 import { Megaphone, FileText, Play, File } from "lucide-react";
 import { PdfThumbnail } from "@/components/PdfPreview";
 import { formatDate } from "@/lib/utils";
+import { postAttachments } from "@/lib/attachments";
+import { AttachmentMosaic, AttachmentThumb } from "@/components/attachments/AttachmentMosaic";
 
 export interface ComunicadoItem {
   id: string;
@@ -11,6 +13,7 @@ export interface ComunicadoItem {
   fileUrl: string | null;
   fileName: string | null;
   fileType: string | null;
+  attachments?: unknown;
   createdAt: string;
   createdBy?: { name: string } | null;
   views?: { id: string }[];
@@ -36,31 +39,63 @@ export function comunicadoToViewer(item: ComunicadoItem) {
     fileUrl: item.fileUrl,
     fileName: item.fileName,
     fileType: comunicadoFileKind(item) ?? "NOTICE",
+    attachments: postAttachments(item),
   };
 }
+
+const TONES = {
+  sky: {
+    ring: "border-sky-300 ring-1 ring-sky-200",
+    fallback: "from-sky-600 to-sky-500",
+    badge: "bg-sky-600",
+    hover: "group-hover:text-sky-700",
+    link: "text-sky-600",
+  },
+  orange: {
+    ring: "border-orange-300 ring-1 ring-orange-200",
+    fallback: "from-orange-600 to-orange-500",
+    badge: "bg-orange-600",
+    hover: "group-hover:text-orange-700",
+    link: "text-orange-600",
+  },
+} as const;
 
 export function ComunicadoCard({
   item,
   onOpen,
   isNew,
   featured,
+  tone = "sky",
+  icon: FallbackIcon = Megaphone,
 }: {
   item: ComunicadoItem;
   onOpen: () => void;
   isNew?: boolean;
   featured?: boolean;
+  tone?: keyof typeof TONES;
+  /** Ícone exibido quando não há anexo */
+  icon?: React.ElementType;
 }) {
   const kind = comunicadoFileKind(item);
+  const t = TONES[tone];
+  const attachments = postAttachments(item);
+  const frame = featured ? "aspect-[16/9]" : "aspect-video";
 
   return (
     <button
       onClick={onOpen}
       className={`w-full text-left bg-white rounded-2xl border overflow-hidden hover:shadow-lg transition-all group focus:outline-none ${
-        isNew ? "border-sky-300 ring-1 ring-sky-200" : "border-gray-100"
+        isNew ? t.ring : "border-gray-100"
       }`}
     >
-      {/* Destaque visual: imagem, 1ª página do PDF ou ícone */}
-      {kind === "IMAGE" && item.fileUrl ? (
+      {/* Destaque visual: mosaico (vários anexos), imagem, capa do vídeo, 1ª página do PDF ou ícone */}
+      {attachments.length > 1 ? (
+        <AttachmentMosaic attachments={attachments} className={`rounded-none ${frame}`} />
+      ) : attachments[0]?.kind === "VIDEO" ? (
+        <div className={frame}>
+          <AttachmentThumb attachment={attachments[0]} />
+        </div>
+      ) : kind === "IMAGE" && item.fileUrl ? (
         <div className={`bg-gray-100 overflow-hidden ${featured ? "aspect-[16/9]" : "aspect-video"}`}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -73,7 +108,7 @@ export function ComunicadoCard({
         <PdfThumbnail url={item.fileUrl} className={featured ? "aspect-[16/9]" : "aspect-video"} />
       ) : (
         <div
-          className={`bg-gradient-to-br from-sky-600 to-sky-500 flex items-center justify-center text-white/90 ${
+          className={`bg-gradient-to-br ${t.fallback} flex items-center justify-center text-white/90 ${
             featured ? "aspect-[16/9]" : "aspect-video"
           }`}
         >
@@ -82,7 +117,7 @@ export function ComunicadoCard({
           ) : kind ? (
             kind === "DOCUMENT" ? <FileText className="h-14 w-14" /> : <File className="h-14 w-14" />
           ) : (
-            <Megaphone className="h-14 w-14" />
+            <FallbackIcon className="h-14 w-14" />
           )}
         </div>
       )}
@@ -90,7 +125,7 @@ export function ComunicadoCard({
       <div className="p-4">
         <div className="flex items-center gap-2 mb-1.5">
           {isNew && (
-            <span className="text-[10px] font-bold uppercase tracking-wide bg-sky-600 text-white px-2 py-0.5 rounded-full">
+            <span className={`text-[10px] font-bold uppercase tracking-wide ${t.badge} text-white px-2 py-0.5 rounded-full`}>
               Novo
             </span>
           )}
@@ -99,15 +134,19 @@ export function ComunicadoCard({
           </span>
         </div>
         <p
-          className={`font-bold text-gray-900 leading-snug group-hover:text-sky-700 transition-colors ${
+          className={`font-bold text-gray-900 leading-snug ${t.hover} transition-colors ${
             featured ? "text-lg" : "text-base"
           }`}
         >
           {item.title}
         </p>
         <p className="text-sm text-gray-600 mt-1 line-clamp-3 whitespace-pre-wrap">{item.body}</p>
-        <p className="text-xs text-sky-600 font-medium mt-3">
-          {kind ? "Abrir e visualizar anexo →" : "Ler completo →"}
+        <p className={`text-xs ${t.link} font-medium mt-3`}>
+          {attachments.length > 1
+            ? `Abrir galeria (${attachments.length} anexos) →`
+            : kind
+              ? "Abrir e visualizar anexo →"
+              : "Ler completo →"}
         </p>
       </div>
     </button>

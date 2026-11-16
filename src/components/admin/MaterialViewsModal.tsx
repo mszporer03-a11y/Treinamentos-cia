@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Eye, Loader2 } from "lucide-react";
+import { X, Eye, Loader2, Clock } from "lucide-react";
 
 interface StoreRef {
   store: { name: string; code: string };
@@ -20,6 +20,13 @@ interface ViewEntry {
   viewedAt: string;
 }
 
+interface PendingUser {
+  id: string;
+  name: string;
+  email: string;
+  stores: StoreRef[];
+}
+
 interface MaterialViewsModalProps {
   materialId: string;
   materialTitle: string;
@@ -32,13 +39,15 @@ export function MaterialViewsModal({
   onClose,
 }: MaterialViewsModalProps) {
   const [views, setViews] = useState<ViewEntry[]>([]);
+  const [pending, setPending] = useState<PendingUser[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetch(`/api/materials/${materialId}/views`)
       .then((r) => r.json())
       .then((data) => {
-        setViews(data);
+        setViews(Array.isArray(data) ? data : data.views ?? []);
+        setPending(Array.isArray(data) ? [] : data.pending ?? []);
         setLoading(false);
       });
   }, [materialId]);
@@ -61,14 +70,16 @@ export function MaterialViewsModal({
             <div className="flex justify-center py-10">
               <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
             </div>
-          ) : views.length === 0 ? (
+          ) : views.length === 0 && pending.length === 0 ? (
             <div className="text-center py-10">
               <Eye className="h-8 w-8 text-gray-300 mx-auto mb-2" />
               <p className="text-gray-400 text-sm">Nenhuma visualização registrada</p>
             </div>
           ) : (
             <div className="space-y-3">
-              <p className="text-xs text-gray-400 font-medium">{views.length} visualização{views.length !== 1 ? "ções" : ""}</p>
+              <p className="text-xs text-gray-400 font-medium">
+                {views.length} visualizaç{views.length !== 1 ? "ões" : "ão"} · {pending.length} pendente{pending.length !== 1 ? "s" : ""}
+              </p>
               {views.map((v) => (
                 <div key={v.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
                   <div className="flex items-center gap-3">
@@ -101,6 +112,25 @@ export function MaterialViewsModal({
                   </p>
                 </div>
               ))}
+              {pending.length > 0 && (
+                <>
+                  <p className="text-xs font-semibold text-red-600 pt-2">Pendentes de leitura</p>
+                  {pending.map((u) => (
+                    <div key={u.id} className="flex items-center gap-3 p-3 bg-red-50 rounded-xl">
+                      <Clock className="h-4 w-4 text-red-400 flex-shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-red-800">
+                          {u.name}
+                          {u.stores.length > 0 && (
+                            <span className="font-normal text-red-600"> ({u.stores.map((s) => s.store.name).join(", ")})</span>
+                          )}
+                        </p>
+                        <p className="text-xs text-red-500 truncate">{u.email}</p>
+                      </div>
+                    </div>
+                  ))}
+                </>
+              )}
             </div>
           )}
         </div>

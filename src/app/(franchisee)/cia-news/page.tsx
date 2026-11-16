@@ -5,6 +5,9 @@ import { PdfThumbnail } from "@/components/PdfPreview";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { MaterialViewer } from "@/components/franchisee/MaterialViewer";
+import { AttachmentMosaic } from "@/components/attachments/AttachmentMosaic";
+import { materialUsesMosaic } from "@/components/attachments/MaterialFeedMedia";
+import { materialAttachments } from "@/lib/attachments";
 import {
   Play,
   FileText,
@@ -36,6 +39,7 @@ interface Material {
   fileType: string;
   fileSize?: number | null;
   mimeType?: string | null;
+  attachments?: unknown;
   createdAt: string;
   category: Category;
   createdBy?: { name: string } | null;
@@ -97,7 +101,11 @@ function FeedCard({ material, onOpen }: { material: Material; onOpen: () => void
       </div>
 
       <button onClick={onOpen} className="w-full text-left focus:outline-none">
-        {material.fileType === "PDF" && material.fileUrl ? (
+        {materialUsesMosaic(material) ? (
+          <div className="mx-3">
+            <AttachmentMosaic attachments={materialAttachments(material)} />
+          </div>
+        ) : material.fileType === "PDF" && material.fileUrl ? (
           <PdfThumbnail url={material.fileUrl} className="mx-3 rounded-xl aspect-video group-hover:opacity-90 transition-opacity" />
         ) : material.fileType === "IMAGE" ? (
           <div className="mx-3 rounded-xl overflow-hidden bg-gray-100 aspect-video">

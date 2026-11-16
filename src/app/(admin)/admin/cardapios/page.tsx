@@ -2,10 +2,16 @@
 
 export const dynamic = "force-dynamic";
 
-import { useState, useEffect, useCallback, useRef } from "react";
-import { UtensilsCrossed, Plus, Trash2, Loader2, FileText, Image as ImageIcon, X, Search, Eye, EyeOff } from "lucide-react";
-import { useUploadThing } from "@/lib/uploadthing-components";
+import { useState, useEffect, useCallback } from "react";
+import { UtensilsCrossed, Plus, Trash2, FileText, X, Search, Eye, EyeOff } from "lucide-react";
+import { materialAttachments } from "@/lib/attachments";
+import { MaterialViewer } from "@/components/franchisee/MaterialViewer";
+import { AttachmentMosaic } from "@/components/attachments/AttachmentMosaic";
+import { AttachmentPicker } from "@/components/attachments/AttachmentPicker";
+import { useAttachmentUploader } from "@/components/attachments/useAttachmentUploader";
+import { materialUsesMosaic } from "@/components/attachments/MaterialFeedMedia";
 import { formatDate } from "@/lib/utils";
+import { PdfThumbnail } from "@/components/PdfPreview";
 
 interface Category {
   id: string;
@@ -19,6 +25,9 @@ interface Material {
   description?: string | null;
   fileUrl: string | null;
   fileType: string;
+  mimeType?: string | null;
+  fileSize?: number | null;
+  attachments?: unknown;
   published: boolean;
   color?: string | null;
   createdAt: string;
@@ -63,33 +72,11 @@ export default function AdminCardapiosPage() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [color, setColor] = useState<CardColor>("amber");
-  const [pendingFile, setPendingFile] = useState<{
-    url: string; key: string; name: string; size: number; mime: string;
-  } | null>(null);
-  const [uploading, setUploading] = useState(false);
+  const uploader = useAttachmentUploader("materialUploader");
+  const uploading = uploader.busy;
+  const [viewing, setViewing] = useState<Material | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const { startUpload } = useUploadThing("materialUploader", {
-    onClientUploadComplete: (res) => {
-      const file = res?.[0];
-      if (file) {
-        setPendingFile({
-          url: file.url,
-          key: file.key,
-          name: file.name,
-          size: file.size,
-          mime: file.type ?? "",
-        });
-      }
-      setUploading(false);
-    },
-    onUploadError: () => {
-      setUploading(false);
-      setError("Falha no upload do arquivo");
-    },
-  });
 
   const fetchData = useCallback(async () => {
     const [matRes, catRes] = await Promise.all([
@@ -133,14 +120,14 @@ export default function AdminCardapiosPage() {
     setTitle("");
     setDescription("");
     setColor("amber");
-    setPendingFile(null);
+    uploader.reset();
     setError("");
     setShowModal(true);
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!title.trim() || !pendingFile) return;
+    if (!title.trim() || uploader.attachments.length === 0 || uploading) return;
     setSaving(true);
     setError("");
 
@@ -151,26 +138,13 @@ export default function AdminCardapiosPage() {
       return;
     }
 
-    const ext = pendingFile.name.split(".").pop()?.toLowerCase() ?? "";
-    const fileType = ext === "pdf"
-      ? "PDF"
-      : ["jpg", "jpeg", "png", "gif", "webp"].includes(ext)
-      ? "IMAGE"
-      : ["mp4", "mov", "avi", "webm"].includes(ext)
-      ? "VIDEO"
-      : "DOCUMENT";
-
     const res = await fetch("/api/materials", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         title: title.trim(),
         description: description.trim() || undefined,
-        fileUrl: pendingFile.url,
-        fileKey: pendingFile.key,
-        fileType,
-        mimeType: pendingFile.mime || undefined,
-        fileSize: pendingFile.size,
+        attachments: uploader.attachments,
         categoryId: cat.id,
         published: true,
         color,
@@ -275,15 +249,23 @@ export default function AdminCardapiosPage() {
                   material.published ? "border-gray-100" : "border-gray-200 ring-1 ring-gray-200"
                 }`}
               >
-                {/* Card clicável — abre o cardápio */}
-                <a
-                  href={material.fileUrl ?? "#"}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block group cursor-pointer hover:bg-gray-50/50 transition"
+                {/* Card clicável — abre o cardápio (galeria quando há vários anexos) */}
+                <button
+                  type="button"
+                  onClick={() => setViewing(material)}
+                  className="block w-full text-left group cursor-pointer hover:bg-gray-50/50 transition"
                 >
                   <div className="relative">
-                    {material.fileType === "IMAGE" && material.fileUrl ? (
+                    {materialUsesMosaic(material) ? (
+                      <div className={material.published ? "" : "opacity-50 grayscale"}>
+                        <AttachmentMosaic attachments={materialAttachments(material)} className="rounded-none" />
+                      </div>
+                    ) : material.fileType === "PDF" && material.fileUrl ? (
+                      <PdfThumbnail
+                        url={material.fileUrl}
+                        className={`aspect-video ${material.published ? "" : "opacity-50 grayscale"}`}
+                      />
+                    ) : material.fileType === "IMAGE" && material.fileUrl ? (
                       <div className={`aspect-video bg-gray-100 ${material.published ? "" : "opacity-50 grayscale"}`}>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
@@ -312,7 +294,7 @@ export default function AdminCardapiosPage() {
                       <p className="text-xs text-gray-500 mt-1 line-clamp-2">{material.description}</p>
                     )}
                   </div>
-                </a>
+                </button>
 
                 {/* Rodapé de ações (fora do link) */}
                 <div className="px-4 pb-4 flex items-center justify-between">
@@ -401,47 +383,7 @@ export default function AdminCardapiosPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Arquivo *</label>
-                {pendingFile ? (
-                  <div className="flex items-center gap-3 p-3 bg-amber-50 rounded-xl border border-amber-200">
-                    {/\.(jpg|jpeg|png|gif|webp)$/i.test(pendingFile.name) ? (
-                      <ImageIcon className="h-4 w-4 text-amber-600 flex-shrink-0" />
-                    ) : (
-                      <FileText className="h-4 w-4 text-amber-600 flex-shrink-0" />
-                    )}
-                    <span className="text-sm text-gray-700 truncate flex-1">{pendingFile.name}</span>
-                    <button
-                      type="button"
-                      onClick={() => setPendingFile(null)}
-                      className="text-gray-400 hover:text-red-500 transition"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={uploading}
-                    className="flex items-center gap-2 px-4 py-2.5 border border-dashed border-gray-300 rounded-xl text-sm text-gray-500 hover:border-amber-400 hover:text-amber-600 transition w-full justify-center"
-                  >
-                    {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                    {uploading ? "Enviando arquivo…" : "Anexar cardápio (PDF ou imagem)"}
-                  </button>
-                )}
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  className="hidden"
-                  accept="image/*,.pdf,.doc,.docx,.ppt,.pptx"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      setUploading(true);
-                      startUpload([file]);
-                    }
-                    e.target.value = "";
-                  }}
-                />
+                <AttachmentPicker uploader={uploader} accept="image/*,video/*,.pdf,.doc,.docx,.ppt,.pptx" />
               </div>
 
               {error && (
@@ -458,7 +400,7 @@ export default function AdminCardapiosPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={saving || uploading || !pendingFile || !title.trim()}
+                  disabled={saving || uploading || uploader.attachments.length === 0 || !title.trim()}
                   className="flex-1 py-2.5 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white font-medium rounded-lg transition text-sm"
                 >
                   {saving ? "Salvando..." : "Publicar Cardápio"}
@@ -468,6 +410,7 @@ export default function AdminCardapiosPage() {
           </div>
         </div>
       )}
+      {viewing && <MaterialViewer material={viewing} onClose={() => setViewing(null)} />}
     </div>
   );
 }

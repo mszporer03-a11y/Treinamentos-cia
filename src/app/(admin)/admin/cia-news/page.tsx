@@ -2,9 +2,14 @@
 
 export const dynamic = "force-dynamic";
 
-import { useState, useEffect, useCallback, useRef } from "react";
-import { Newspaper, Plus, Trash2, Loader2, FileText, Play, X, Search, Eye, EyeOff } from "lucide-react";
-import { useUploadThing } from "@/lib/uploadthing-components";
+import { useState, useEffect, useCallback } from "react";
+import { Newspaper, Plus, Trash2, FileText, Play, X, Search, Eye, EyeOff } from "lucide-react";
+import { materialAttachments } from "@/lib/attachments";
+import { MaterialViewer } from "@/components/franchisee/MaterialViewer";
+import { AttachmentMosaic } from "@/components/attachments/AttachmentMosaic";
+import { AttachmentPicker } from "@/components/attachments/AttachmentPicker";
+import { useAttachmentUploader } from "@/components/attachments/useAttachmentUploader";
+import { materialUsesMosaic } from "@/components/attachments/MaterialFeedMedia";
 import { formatDate } from "@/lib/utils";
 
 interface Category {
@@ -19,6 +24,9 @@ interface Material {
   description?: string | null;
   fileUrl: string | null;
   fileType: string;
+  mimeType?: string | null;
+  fileSize?: number | null;
+  attachments?: unknown;
   published: boolean;
   createdAt: string;
   category: Category;
@@ -39,33 +47,11 @@ export default function AdminCiaNewsPage() {
   const [showModal, setShowModal] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [pendingFile, setPendingFile] = useState<{
-    url: string; key: string; name: string; size: number; mime: string;
-  } | null>(null);
-  const [uploading, setUploading] = useState(false);
+  const uploader = useAttachmentUploader("materialUploader");
+  const uploading = uploader.busy;
+  const [viewing, setViewing] = useState<Material | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const { startUpload } = useUploadThing("materialUploader", {
-    onClientUploadComplete: (res) => {
-      const file = res?.[0];
-      if (file) {
-        setPendingFile({
-          url: file.url,
-          key: file.key,
-          name: file.name,
-          size: file.size,
-          mime: file.type ?? "",
-        });
-      }
-      setUploading(false);
-    },
-    onUploadError: () => {
-      setUploading(false);
-      setError("Falha no upload do arquivo");
-    },
-  });
 
   const fetchData = useCallback(async () => {
     const [matRes, catRes] = await Promise.all([
@@ -108,14 +94,14 @@ export default function AdminCiaNewsPage() {
   function openCreate() {
     setTitle("");
     setDescription("");
-    setPendingFile(null);
+    uploader.reset();
     setError("");
     setShowModal(true);
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!title.trim() || !pendingFile) return;
+    if (!title.trim() || uploader.attachments.length === 0 || uploading) return;
     setSaving(true);
     setError("");
 
@@ -126,26 +112,13 @@ export default function AdminCiaNewsPage() {
       return;
     }
 
-    const ext = pendingFile.name.split(".").pop()?.toLowerCase() ?? "";
-    const fileType = ["mp4", "mov", "avi", "webm", "mkv"].includes(ext)
-      ? "VIDEO"
-      : ext === "pdf"
-      ? "PDF"
-      : ["jpg", "jpeg", "png", "gif", "webp"].includes(ext)
-      ? "IMAGE"
-      : "DOCUMENT";
-
     const res = await fetch("/api/materials", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         title: title.trim(),
         description: description.trim() || undefined,
-        fileUrl: pendingFile.url,
-        fileKey: pendingFile.key,
-        fileType,
-        mimeType: pendingFile.mime || undefined,
-        fileSize: pendingFile.size,
+        attachments: uploader.attachments,
         categoryId: cat.id,
         published: true,
       }),
@@ -246,7 +219,15 @@ export default function AdminCiaNewsPage() {
               }`}
             >
               <div className="relative">
-                {material.fileType === "IMAGE" && material.fileUrl ? (
+                {materialUsesMosaic(material) ? (
+                  <div className={material.published ? "" : "opacity-50 grayscale"}>
+                    <AttachmentMosaic
+                      attachments={materialAttachments(material)}
+                      onOpen={() => setViewing(material)}
+                      className="rounded-none"
+                    />
+                  </div>
+                ) : material.fileType === "IMAGE" && material.fileUrl ? (
                   <div className={`aspect-video bg-gray-100 ${material.published ? "" : "opacity-50 grayscale"}`}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
@@ -282,14 +263,12 @@ export default function AdminCiaNewsPage() {
                   <span className="text-xs text-gray-400">{formatDate(material.createdAt)}</span>
                   <div className="flex items-center gap-1">
                     {material.fileUrl && (
-                      <a
-                        href={material.fileUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                      <button
+                        onClick={() => setViewing(material)}
                         className="px-2.5 py-1 text-xs font-medium text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-lg transition"
                       >
                         Abrir
-                      </a>
+                      </button>
                     )}
                     <button
                       onClick={() => toggleVisibility(material)}
@@ -352,47 +331,7 @@ export default function AdminCiaNewsPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Imagem, vídeo ou arquivo *</label>
-                {pendingFile ? (
-                  <div className="flex items-center gap-3 p-3 bg-rose-50 rounded-xl border border-rose-200">
-                    {/\.(mp4|mov|avi|webm|mkv)$/i.test(pendingFile.name) ? (
-                      <Play className="h-4 w-4 text-rose-600 flex-shrink-0" />
-                    ) : (
-                      <FileText className="h-4 w-4 text-rose-600 flex-shrink-0" />
-                    )}
-                    <span className="text-sm text-gray-700 truncate flex-1">{pendingFile.name}</span>
-                    <button
-                      type="button"
-                      onClick={() => setPendingFile(null)}
-                      className="text-gray-400 hover:text-red-500 transition"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={uploading}
-                    className="flex items-center gap-2 px-4 py-2.5 border border-dashed border-gray-300 rounded-xl text-sm text-gray-500 hover:border-rose-400 hover:text-rose-600 transition w-full justify-center"
-                  >
-                    {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                    {uploading ? "Enviando arquivo…" : "Anexar imagem, vídeo ou PDF"}
-                  </button>
-                )}
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  className="hidden"
-                  accept="image/*,video/*,.pdf,.ppt,.pptx"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      setUploading(true);
-                      startUpload([file]);
-                    }
-                    e.target.value = "";
-                  }}
-                />
+                <AttachmentPicker uploader={uploader} accept="video/*,image/*,.pdf,.ppt,.pptx" />
                 <p className="text-xs text-gray-400 mt-1.5">Imagens, vídeos (até 2GB) ou PDF.</p>
               </div>
 
@@ -410,7 +349,7 @@ export default function AdminCiaNewsPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={saving || uploading || !pendingFile || !title.trim()}
+                  disabled={saving || uploading || uploader.attachments.length === 0 || !title.trim()}
                   className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white font-medium rounded-lg transition text-sm"
                 >
                   {saving ? "Salvando..." : "Publicar"}
@@ -420,6 +359,7 @@ export default function AdminCiaNewsPage() {
           </div>
         </div>
       )}
+      {viewing && <MaterialViewer material={viewing} onClose={() => setViewing(null)} />}
     </div>
   );
 }
