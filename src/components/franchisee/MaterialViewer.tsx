@@ -1,6 +1,6 @@
 "use client";
 
-import { X } from "lucide-react";
+import { X, Download } from "lucide-react";
 
 interface Material {
   id: string;
@@ -14,6 +14,24 @@ interface Material {
 interface MaterialViewerProps {
   material: Material;
   onClose: () => void;
+}
+
+async function downloadFile(url: string, title: string) {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("download");
+    const blob = await res.blob();
+    const ext = url.split("?")[0].split(".").pop();
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = ext && ext.length <= 5 && !title.toLowerCase().endsWith(`.${ext}`) ? `${title}.${ext}` : title;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(a.href);
+  } catch {
+    window.open(url, "_blank", "noopener");
+  }
 }
 
 export function MaterialViewer({ material, onClose }: MaterialViewerProps) {
@@ -108,6 +126,16 @@ export function MaterialViewer({ material, onClose }: MaterialViewerProps) {
             )}
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
+            {material.fileUrl && material.fileType !== "NOTICE" && (
+              <button
+                onClick={() => downloadFile(material.fileUrl!, material.title)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-orange-700 bg-orange-50 hover:bg-orange-100 rounded-lg transition"
+                title="Baixar arquivo"
+              >
+                <Download className="h-4 w-4" />
+                <span className="hidden sm:inline">Baixar</span>
+              </button>
+            )}
             <button
               onClick={onClose}
               className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition"

@@ -7,6 +7,7 @@ import { useSession } from "next-auth/react";
 import { MaterialViewer } from "@/components/franchisee/MaterialViewer";
 import { Play, FileText, Image as ImageIcon, File, MessageSquare, BarChart2, ClipboardList, ChevronRight, SlidersHorizontal, Megaphone } from "lucide-react";
 import { formatDate } from "@/lib/utils";
+import { PdfThumb } from "@/components/PdfThumb";
 
 export const dynamic = "force-dynamic";
 
@@ -86,6 +87,8 @@ function FeedCard({ material, onOpen }: { material: Material; onOpen: () => void
             <img src={material.fileUrl ?? ""} alt={material.title}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
           </div>
+        ) : material.fileType === "PDF" && material.fileUrl ? (
+          <PdfThumb url={material.fileUrl} className="mx-3 rounded-xl aspect-video group-hover:opacity-80 transition-opacity" />
         ) : (
           <div className={`mx-3 rounded-xl aspect-video flex flex-col items-center justify-center gap-2 ${color} group-hover:opacity-80 transition-opacity`}>
             <Icon className="h-10 w-10 sm:h-14 sm:w-14 opacity-60" />

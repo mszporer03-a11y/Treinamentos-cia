@@ -143,6 +143,9 @@ model Store {
   name           String
   code           String               @unique
   city           String?
+  contactName    String?
+  phone          String?
+  email          String?
   lat            Float?
   lng            Float?
   active         Boolean              @default(true)

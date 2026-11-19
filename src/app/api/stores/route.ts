@@ -10,6 +10,9 @@ const storeSchema = z.object({
   code: z.string().min(1).max(40),
   city: z.string().max(80).optional(),
   active: z.boolean().optional(),
+  contactName: z.string().max(120).optional().nullable(),
+  phone: z.string().max(40).optional().nullable(),
+  email: z.string().max(120).optional().nullable(),
   lat: z.number().optional().nullable(),
   lng: z.number().optional().nullable(),
 });

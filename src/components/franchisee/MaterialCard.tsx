@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Play, FileText, Image, File, Megaphone } from "lucide-react";
 import { formatFileSize, formatDate } from "@/lib/utils";
 import { MaterialViewer } from "./MaterialViewer";
+import { PdfThumb } from "@/components/PdfThumb";
 
 interface Material {
   id: string;
@@ -61,6 +62,10 @@ export function MaterialCard({ material }: MaterialCardProps) {
               alt={material.title}
               className="w-full h-full object-cover hover:scale-105 transition-transform"
             />
+          </div>
+        ) : material.fileType === "PDF" && material.fileUrl ? (
+          <div className="cursor-pointer" onClick={() => setShowViewer(true)}>
+            <PdfThumb url={material.fileUrl} className="h-36 rounded-t-2xl" />
           </div>
         ) : (
           <div

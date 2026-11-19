@@ -3,7 +3,8 @@
 export const dynamic = "force-dynamic";
 
 import { useState, useEffect, useCallback } from "react";
-import { Plus, Pencil, Trash2, Store as StoreIcon, Users, X, UserPlus } from "lucide-react";
+import Link from "next/link";
+import { Plus, Pencil, Trash2, Store as StoreIcon, Users, X, UserPlus, Phone, Mail, MessageCircle, MessageSquare } from "lucide-react";
 
 interface UserRef {
   id: string;
@@ -20,6 +21,9 @@ interface StoreData {
   name: string;
   code: string;
   city: string | null;
+  contactName: string | null;
+  phone: string | null;
+  email: string | null;
   active: boolean;
   users: StoreUser[];
 }
@@ -31,7 +35,16 @@ interface AllUser {
   role: string;
 }
 
-const DEFAULT_FORM = { name: "", code: "", city: "", active: true };
+const DEFAULT_FORM = { name: "", code: "", city: "", contactName: "", phone: "", email: "", active: true };
+
+function storePhoneDigits(p: string) {
+  const d = p.replace(/\D/g, "");
+  return d.length <= 11 ? `55${d}` : d;
+}
+
+function contactPayload(f: typeof DEFAULT_FORM) {
+  return { ...f, city: f.city || undefined, contactName: f.contactName || null, phone: f.phone || null, email: f.email || null };
+}
 
 export default function StoresPage() {
   const [stores, setStores] = useState<StoreData[]>([]);
@@ -66,7 +79,7 @@ export default function StoresPage() {
 
   function openEdit(s: StoreData) {
     setEditing(s);
-    setForm({ name: s.name, code: s.code, city: s.city ?? "", active: s.active });
+    setForm({ name: s.name, code: s.code, city: s.city ?? "", contactName: s.contactName ?? "", phone: s.phone ?? "", email: s.email ?? "", active: s.active });
     setError("");
     setShowEdit(true);
   }
@@ -78,7 +91,7 @@ export default function StoresPage() {
     const res = await fetch("/api/stores", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...form, city: form.city || undefined }),
+      body: JSON.stringify(contactPayload(form)),
     });
     setSaving(false);
     if (!res.ok) { const d = await res.json(); setError(d.error ?? "Erro"); return; }
@@ -94,7 +107,7 @@ export default function StoresPage() {
     const res = await fetch(`/api/stores/${editing.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...form, city: form.city || undefined }),
+      body: JSON.stringify(contactPayload(form)),
     });
     setSaving(false);
     if (!res.ok) { const d = await res.json(); setError(d.error ?? "Erro"); return; }
@@ -149,6 +162,20 @@ export default function StoresPage() {
         <input value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })}
           className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
       </div>
+      <div className="pt-1 border-t border-gray-100">
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Contato da loja</p>
+        <div className="space-y-3">
+          <input value={form.contactName} onChange={(e) => setForm({ ...form, contactName: e.target.value })}
+            placeholder="Responsável / gerente"
+            className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })}
+            placeholder="Telefone / WhatsApp (com DDD)" inputMode="tel"
+            className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })}
+            placeholder="E-mail da loja" type="email"
+            className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        </div>
+      </div>
       <label className="flex items-center gap-2 cursor-pointer">
         <input type="checkbox" checked={form.active} onChange={(e) => setForm({ ...form, active: e.target.checked })}
           className="rounded" />
@@ -197,6 +224,39 @@ export default function StoresPage() {
               <div className="flex items-center gap-1.5 text-sm text-gray-500 mb-4">
                 <Users className="h-4 w-4" />
                 <span>{store.users.length} franqueado{store.users.length !== 1 ? "s" : ""}</span>
+              </div>
+
+              <div className="mb-4 rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-600 space-y-1">
+                {store.contactName || store.phone || store.email ? (
+                  <>
+                    {store.contactName && <p className="font-medium text-gray-800">{store.contactName}</p>}
+                    <div className="flex flex-wrap gap-2">
+                      {store.phone && (
+                        <>
+                          <a href={`tel:${store.phone.replace(/[^\d+]/g, "")}`} className="inline-flex items-center gap-1 text-blue-600 hover:underline">
+                            <Phone className="h-3 w-3" />{store.phone}
+                          </a>
+                          <a href={`https://wa.me/${storePhoneDigits(store.phone)}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-emerald-600 hover:underline">
+                            <MessageCircle className="h-3 w-3" />WhatsApp
+                          </a>
+                        </>
+                      )}
+                      {store.email && (
+                        <a href={`mailto:${store.email}`} className="inline-flex items-center gap-1 text-blue-600 hover:underline">
+                          <Mail className="h-3 w-3" />{store.email}
+                        </a>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-gray-400">Sem contato cadastrado</p>
+                )}
+                {store.users.length > 0 && (
+                  <Link href={`/admin/chat?franchiseeId=${store.users[0].user.id}&storeId=${store.id}`}
+                    className="inline-flex items-center gap-1 text-orange-600 font-medium hover:underline">
+                    <MessageSquare className="h-3 w-3" />Enviar mensagem pelo portal
+                  </Link>
+                )}
               </div>
 
               {store.users.length > 0 && (

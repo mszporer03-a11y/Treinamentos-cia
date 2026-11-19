@@ -76,6 +76,28 @@ export default function AdminChatPage() {
     return () => clearInterval(id);
   }, [fetchConversations]);
 
+  // Deep link: /admin/chat?franchiseeId=...  (usado pelo cartão da loja)
+  const deepLinkDone = useRef(false);
+  useEffect(() => {
+    if (deepLinkDone.current || loading) return;
+    const fid = new URLSearchParams(window.location.search).get("franchiseeId");
+    if (!fid) { deepLinkDone.current = true; return; }
+    deepLinkDone.current = true;
+    const existing = conversations.find((c) => c.franchisee.id === fid);
+    if (existing) { setSelected(existing); return; }
+    fetch("/api/conversations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ franchiseeId: fid }),
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((conv) => {
+        if (!conv) return;
+        setConversations((prev) => (prev.find((c) => c.id === conv.id) ? prev : [conv, ...prev]));
+        setSelected(conv);
+      });
+  }, [loading, conversations]);
+
   async function openPicker() {
     setPickerSearch("");
     setShowPicker(true);
