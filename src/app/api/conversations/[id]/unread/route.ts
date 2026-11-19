@@ -15,6 +15,16 @@ export async function GET(
 
   const isAdmin = session.user.role === "ADMIN";
 
+  if (!isAdmin) {
+    const conv = await db.conversation.findUnique({
+      where: { id: params.id },
+      select: { franchiseeId: true },
+    });
+    if (!conv || conv.franchiseeId !== session.user.id) {
+      return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
+    }
+  }
+
   const count = await db.message.count({
     where: {
       conversationId: params.id,
