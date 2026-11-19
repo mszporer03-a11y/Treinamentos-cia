@@ -111,20 +111,17 @@ export default function MaterialsPage() {
       setError("Selecione uma categoria");
       return;
     }
-    if (isAviso) {
-      if (!form.description.trim()) {
-        setError("Escreva a descrição do aviso");
-        return;
-      }
-    } else if (!uploadedFile) {
-      setError("Selecione um arquivo para upload");
+    // Padrão post-card: título + descrição + imagem/anexo (anexo opcional).
+    // Sem anexo, o post precisa ter descrição e é salvo como texto (NOTICE).
+    if (!uploadedFile && !form.description.trim()) {
+      setError("Escreva a descrição ou anexe um arquivo/imagem");
       return;
     }
 
     setSaving(true);
     setError("");
 
-    const body = isAviso
+    const body = !uploadedFile
       ? { ...form, fileType: "NOTICE", linkedStoreIds: form.linkedStoreIds }
       : {
           ...form,
@@ -205,7 +202,6 @@ export default function MaterialsPage() {
     : materials;
 
   const selectedCategory = categories.find((c) => c.id === form.categoryId);
-  const isAviso = selectedCategory?.slug === "avisos";
 
   return (
     <div className="p-4 sm:p-6 md:p-8">
@@ -453,10 +449,10 @@ export default function MaterialsPage() {
         <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50">
           <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full sm:max-w-lg p-6 max-h-[95vh] overflow-y-auto">
             <h2 className="text-xl font-bold text-gray-900 mb-5">
-              {isAviso ? "Novo Aviso" : "Novo Material"}
+              Novo Post
             </h2>
             <form onSubmit={handleCreate} className="space-y-4">
-              {/* Category — first, so "Avisos" toggles the text-only mode */}
+              {/* Categoria */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Categoria *
@@ -475,18 +471,12 @@ export default function MaterialsPage() {
                     </option>
                   ))}
                 </select>
-                {isAviso && (
-                  <p className="text-xs text-gray-500 mt-1.5">
-                    Avisos são apenas texto — preencha o título e a descrição abaixo, sem anexar arquivo.
-                  </p>
-                )}
               </div>
 
-              {/* File Upload — hidden for text-only "Avisos" */}
-              {!isAviso && (
+              {/* Imagem / anexo (opcional) */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Arquivo *
+                  Imagem / anexo <span className="text-gray-400 font-normal">(opcional)</span>
                 </label>
                 {uploadedFile ? (
                   <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-lg">
@@ -540,7 +530,6 @@ export default function MaterialsPage() {
                   </div>
                 )}
               </div>
-              )}
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -557,16 +546,16 @@ export default function MaterialsPage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {isAviso ? "Descrição *" : "Descrição"}
+                  {uploadedFile ? "Descrição" : "Descrição *"}
                 </label>
                 <textarea
                   value={form.description}
                   onChange={(e) =>
                     setForm({ ...form, description: e.target.value })
                   }
-                  rows={isAviso ? 4 : 2}
+                  rows={4}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-sm"
-                  placeholder={isAviso ? "Texto do aviso" : "Descrição opcional"}
+                  placeholder="Texto do post"
                 />
               </div>
 
@@ -640,10 +629,10 @@ export default function MaterialsPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={saving || (!isAviso && !uploadedFile)}
+                  disabled={saving}
                   className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-lg transition text-sm"
                 >
-                  {saving ? "Salvando..." : isAviso ? "Publicar Aviso" : "Salvar Material"}
+                  {saving ? "Salvando..." : "Publicar"}
                 </button>
               </div>
             </form>

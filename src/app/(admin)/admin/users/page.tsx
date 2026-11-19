@@ -13,6 +13,14 @@ interface UserData {
   role: "ADMIN" | "FRANCHISEE";
   active: boolean;
   createdAt: string;
+  stores?: { store: { id: string; name: string; code: string } }[];
+}
+
+interface StoreOption {
+  id: string;
+  name: string;
+  code: string;
+  city: string | null;
 }
 
 const DEFAULT_FORM = {
@@ -20,7 +28,57 @@ const DEFAULT_FORM = {
   email: "",
   password: "",
   role: "FRANCHISEE" as "ADMIN" | "FRANCHISEE",
+  storeIds: [] as string[],
 };
+
+function StorePicker({
+  stores,
+  selected,
+  onChange,
+}: {
+  stores: StoreOption[];
+  selected: string[];
+  onChange: (ids: string[]) => void;
+}) {
+  const [q, setQ] = useState("");
+  const list = stores.filter((s) =>
+    `${s.name} ${s.code} ${s.city ?? ""}`.toLowerCase().includes(q.toLowerCase())
+  );
+  return (
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1">
+        Loja(s) do usuário{" "}
+        <span className="text-gray-400 font-normal">({selected.length} selecionada{selected.length !== 1 ? "s" : ""})</span>
+      </label>
+      <input
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        placeholder="Buscar loja..."
+        className="w-full px-3 py-1.5 border border-gray-200 rounded-lg text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+      />
+      <div className="max-h-44 overflow-y-auto border border-gray-200 rounded-lg divide-y divide-gray-50">
+        {list.length === 0 ? (
+          <p className="p-3 text-xs text-gray-400">Nenhuma loja encontrada</p>
+        ) : (
+          list.map((s) => (
+            <label key={s.id} className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-gray-50">
+              <input
+                type="checkbox"
+                checked={selected.includes(s.id)}
+                onChange={(e) =>
+                  onChange(e.target.checked ? [...selected, s.id] : selected.filter((id) => id !== s.id))
+                }
+                className="rounded border-gray-300"
+              />
+              <span className="flex-1 min-w-0 truncate text-gray-800">{s.name}</span>
+              {s.city && <span className="text-xs text-gray-400 truncate">{s.city}</span>}
+            </label>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function UsersPage() {
   const [users, setUsers] = useState<UserData[]>([]);
@@ -35,7 +93,9 @@ export default function UsersPage() {
     password: "",
     role: "FRANCHISEE" as "ADMIN" | "FRANCHISEE",
     active: true,
+    storeIds: [] as string[],
   });
+  const [stores, setStores] = useState<StoreOption[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -48,6 +108,9 @@ export default function UsersPage() {
 
   useEffect(() => {
     fetchUsers();
+    fetch("/api/stores")
+      .then((r) => r.json())
+      .then((d) => Array.isArray(d) && setStores(d));
   }, [fetchUsers]);
 
   function openCreate() {
@@ -64,6 +127,7 @@ export default function UsersPage() {
       password: "",
       role: user.role,
       active: user.active,
+      storeIds: (user.stores ?? []).map((s) => s.store.id),
     });
     setError("");
     setShowEditModal(true);
@@ -103,6 +167,7 @@ export default function UsersPage() {
       email: editForm.email,
       role: editForm.role,
       active: editForm.active,
+      storeIds: editForm.role === "FRANCHISEE" ? editForm.storeIds : [],
     };
     if (editForm.password) payload.password = editForm.password;
 
@@ -177,6 +242,9 @@ export default function UsersPage() {
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-gray-900 text-sm truncate">{user.name}</p>
                   <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                  {user.stores && user.stores.length > 0 && (
+                    <p className="text-[11px] text-orange-600 truncate">🏪 {user.stores.map((s) => s.store.name).join(", ")}</p>
+                  )}
                   <div className="flex items-center gap-1.5 mt-1.5">
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                       user.role === "ADMIN" ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-600"
@@ -245,6 +313,9 @@ export default function UsersPage() {
                       <div>
                         <p className="font-medium text-gray-900">{user.name}</p>
                         <p className="text-xs text-gray-500">{user.email}</p>
+                        {user.stores && user.stores.length > 0 && (
+                          <p className="text-[11px] text-orange-600 max-w-xs truncate">🏪 {user.stores.map((s) => s.store.name).join(", ")}</p>
+                        )}
                       </div>
                     </div>
                   </td>
@@ -365,6 +436,14 @@ export default function UsersPage() {
                 </select>
               </div>
 
+              {form.role === "FRANCHISEE" && (
+                <StorePicker
+                  stores={stores}
+                  selected={form.storeIds}
+                  onChange={(storeIds) => setForm({ ...form, storeIds })}
+                />
+              )}
+
               {error && (
                 <p className="text-sm text-red-600 bg-red-50 rounded-lg p-3">
                   {error}
@@ -474,6 +553,14 @@ export default function UsersPage() {
                   Usuário ativo
                 </label>
               </div>
+
+              {editForm.role === "FRANCHISEE" && (
+                <StorePicker
+                  stores={stores}
+                  selected={editForm.storeIds}
+                  onChange={(storeIds) => setEditForm({ ...editForm, storeIds })}
+                />
+              )}
 
               {error && (
                 <p className="text-sm text-red-600 bg-red-50 rounded-lg p-3">

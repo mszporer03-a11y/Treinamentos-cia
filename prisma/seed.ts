@@ -66,6 +66,13 @@ async function main() {
       description: "Gestão financeira e controles",
       icon: "📊",
     },
+    { name: "Comunicados", slug: "comunicados", description: "Comunicados oficiais da franqueadora", icon: "📣" },
+    { name: "Registros", slug: "registros", description: "Registros e atas da rede", icon: "🗂️" },
+    { name: "CIA News", slug: "cia-news", description: "Novidades, avisos e comunicados internos da Cia do Churrasco", icon: "📰" },
+    { name: "Treinamentos", slug: "treinamentos", description: "Vídeos, manuais e materiais de capacitação", icon: "🎓" },
+    { name: "Cardápios do Mês", slug: "cardapio-do-mes", description: "Cardápios, promoções e novidades mensais", icon: "🍖" },
+    { name: "Universidade", slug: "universidade", description: "Universidade Corporativa Cia do Churrasco", icon: "🏫" },
+    { name: "Inauguração", slug: "inauguracao", description: "Novidades e materiais de inauguração de lojas", icon: "🎉" },
     {
       name: "Avisos",
       slug: "avisos",

@@ -5,9 +5,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { useSession } from "next-auth/react";
 import { MaterialViewer } from "@/components/franchisee/MaterialViewer";
-import { Play, FileText, Image as ImageIcon, File, MessageSquare, BarChart2, ClipboardList, ChevronRight, SlidersHorizontal, Megaphone } from "lucide-react";
-import { formatDate } from "@/lib/utils";
-import { PdfThumb } from "@/components/PdfThumb";
+import { MessageSquare, BarChart2, ClipboardList, ChevronRight, SlidersHorizontal } from "lucide-react";
+import { PostCard } from "@/components/PostCard";
 
 export const dynamic = "force-dynamic";
 
@@ -29,86 +28,6 @@ interface Material {
   createdAt: string;
   category: Category;
   createdBy?: { name: string } | null;
-}
-
-const typeIcon: Record<string, React.ElementType> = {
-  VIDEO: Play,
-  PDF: FileText,
-  IMAGE: ImageIcon,
-  DOCUMENT: FileText,
-  OTHER: File,
-  NOTICE: Megaphone,
-};
-
-const typeLabel: Record<string, string> = {
-  VIDEO: "Video",
-  PDF: "PDF",
-  IMAGE: "Imagem",
-  DOCUMENT: "Documento",
-  OTHER: "Arquivo",
-  NOTICE: "Aviso",
-};
-
-const typeColor: Record<string, string> = {
-  VIDEO: "bg-red-50 text-red-500",
-  PDF: "bg-orange-50 text-orange-500",
-  IMAGE: "bg-sky-50 text-sky-500",
-  DOCUMENT: "bg-blue-50 text-blue-500",
-  OTHER: "bg-gray-50 text-gray-400",
-  NOTICE: "bg-amber-50 text-amber-600",
-};
-
-function FeedCard({ material, onOpen }: { material: Material; onOpen: () => void }) {
-  const Icon = typeIcon[material.fileType] ?? File;
-  const color = typeColor[material.fileType] ?? typeColor.OTHER;
-
-  return (
-    <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden hover:border-gray-200 hover:shadow-md transition-all group">
-      <div className="flex items-center gap-2.5 px-4 pt-3 pb-2">
-        <div className="w-8 h-8 rounded-full bg-orange-600 flex items-center justify-center flex-shrink-0">
-          <span className="text-white text-xs font-bold">
-            {(material.createdBy?.name ?? "A").charAt(0).toUpperCase()}
-          </span>
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-gray-900 truncate">
-            {material.createdBy?.name ?? "Admin"}
-          </p>
-          <p className="text-xs text-gray-400">
-            {material.category.icon} {material.category.name} · {formatDate(material.createdAt)}
-          </p>
-        </div>
-      </div>
-
-      <button onClick={onOpen} className="w-full text-left focus:outline-none">
-        {material.fileType === "IMAGE" ? (
-          <div className="mx-3 rounded-xl overflow-hidden bg-gray-100 aspect-video">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={material.fileUrl ?? ""} alt={material.title}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-          </div>
-        ) : material.fileType === "PDF" && material.fileUrl ? (
-          <PdfThumb url={material.fileUrl} className="mx-3 rounded-xl aspect-video group-hover:opacity-80 transition-opacity" />
-        ) : (
-          <div className={`mx-3 rounded-xl aspect-video flex flex-col items-center justify-center gap-2 ${color} group-hover:opacity-80 transition-opacity`}>
-            <Icon className="h-10 w-10 sm:h-14 sm:w-14 opacity-60" />
-            <span className="text-xs sm:text-sm font-medium opacity-70">{typeLabel[material.fileType] ?? "Arquivo"}</span>
-          </div>
-        )}
-        <div className="px-4 pt-2.5 pb-4">
-          <p className="font-semibold text-gray-900 text-sm leading-snug line-clamp-2 group-hover:text-orange-600 transition-colors">
-            {material.title}
-          </p>
-          {material.description && (
-            <p className="text-xs text-gray-500 mt-1 line-clamp-2">{material.description}</p>
-          )}
-          <p className="text-xs text-orange-600 font-medium mt-2 flex items-center gap-0.5">
-            Abrir <ChevronRight className="h-3 w-3" />
-          </p>
-        </div>
-      </button>
-    </div>
-  );
 }
 
 const NAV_ITEMS = [
@@ -279,7 +198,7 @@ export default function GalleryPage() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filtered.map((mat) => (
-            <FeedCard
+            <PostCard
               key={mat.id}
               material={mat}
               onOpen={() => {

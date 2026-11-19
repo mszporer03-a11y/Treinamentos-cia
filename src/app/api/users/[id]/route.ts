@@ -12,6 +12,7 @@ const updateSchema = z.object({
   password: z.string().min(6).optional(),
   role: z.enum(["ADMIN", "FRANCHISEE"]).optional(),
   active: z.boolean().optional(),
+  storeIds: z.array(z.string()).optional(),
 });
 
 const userSelectFields = {
@@ -21,6 +22,7 @@ const userSelectFields = {
   role: true,
   active: true,
   createdAt: true,
+  stores: { select: { store: { select: { id: true, name: true, code: true } } } },
 };
 
 export async function PATCH(
@@ -36,15 +38,28 @@ export async function PATCH(
     const body = await req.json();
     const data = updateSchema.parse(body);
 
-    const updateData: Record<string, unknown> = { ...data };
+    const { storeIds, ...fields } = data;
+    const updateData: Record<string, unknown> = { ...fields };
     if (data.password) {
       updateData.password = await bcrypt.hash(data.password, 12);
     }
 
-    const user = await db.user.update({
-      where: { id: params.id },
-      data: updateData,
-      select: userSelectFields,
+    // Substitui os vínculos de loja (multi-loja) quando storeIds é enviado
+    const user = await db.$transaction(async (tx) => {
+      if (storeIds) {
+        await tx.userStore.deleteMany({ where: { userId: params.id } });
+        if (storeIds.length > 0) {
+          await tx.userStore.createMany({
+            data: storeIds.map((storeId) => ({ userId: params.id, storeId })),
+            skipDuplicates: true,
+          });
+        }
+      }
+      return tx.user.update({
+        where: { id: params.id },
+        data: updateData,
+        select: userSelectFields,
+      });
     });
     return NextResponse.json(user);
   } catch (e) {
