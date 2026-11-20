@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
+import { canAccessConversation } from "@/lib/access";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,10 @@ export async function GET(
 ) {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+
+  const { conv, allowed } = await canAccessConversation(session.user, params.id);
+  if (!conv) return NextResponse.json({ error: "Conversa não encontrada" }, { status: 404 });
+  if (!allowed) return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
 
   const isAdmin = session.user.role === "ADMIN";
 

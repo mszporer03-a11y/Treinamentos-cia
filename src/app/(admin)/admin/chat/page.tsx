@@ -31,6 +31,8 @@ interface PendingStore { id: string; name: string; code: string; }
 
 interface ConversationItem {
   id: string;
+  store: { id: string; name: string; code: string } | null;
+  unreadCount: number;
   franchisee: Franchisee;
   lastMessage: LastMessage | null;
   updatedAt: string;
@@ -76,6 +78,30 @@ export default function AdminChatPage() {
     return () => clearInterval(id);
   }, [fetchConversations]);
 
+  // Deep links: ?c=<conversa> (push) ou ?franchiseeId=..&storeId=.. (botão "Chat" da aba Lojas)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const c = params.get("c");
+    const franchiseeId = params.get("franchiseeId");
+    const storeId = params.get("storeId");
+    if (franchiseeId) {
+      fetch("/api/conversations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ franchiseeId, storeId: storeId || undefined }),
+      })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((conv: ConversationItem | null) => conv && setSelected(conv));
+    } else if (c) {
+      fetch("/api/conversations")
+        .then((r) => r.json())
+        .then((list: ConversationItem[]) => {
+          const found = Array.isArray(list) ? list.find((x) => x.id === c) : null;
+          if (found) setSelected(found);
+        });
+    }
+  }, []);
+
   async function openPicker() {
     setPickerSearch("");
     setShowPicker(true);
@@ -83,17 +109,21 @@ export default function AdminChatPage() {
       const res = await fetch("/api/users");
       if (res.ok) {
         const users = await res.json();
-        setAllFranchisees(users.filter((u: Franchisee & { role: string }) => u.role === "FRANCHISEE"));
+        setAllFranchisees(
+          users
+            .filter((u: Franchisee & { role: string }) => u.role === "FRANCHISEE")
+            .map((u: Franchisee) => ({ ...u, stores: u.stores ?? [] }))
+        );
       }
     }
   }
 
-  async function startConversation(franchisee: Franchisee) {
+  async function startConversation(franchisee: Franchisee, storeId?: string) {
     setCreating(true);
     const res = await fetch("/api/conversations", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ franchiseeId: franchisee.id }),
+      body: JSON.stringify({ franchiseeId: franchisee.id, storeId }),
     });
     if (res.ok) {
       const conv: ConversationItem = await res.json();
@@ -107,22 +137,31 @@ export default function AdminChatPage() {
     setShowPicker(false);
   }
 
-  // Franchisees that don't yet have a conversation shown in the list
-  const franchiseesWithConv = new Set(conversations.map((c) => c.franchisee.id));
-  const pickerFranchisees = allFranchisees.filter(
-    (f) =>
-      !franchiseesWithConv.has(f.id) &&
-      (f.name.toLowerCase().includes(pickerSearch.toLowerCase()) ||
-        f.email.toLowerCase().includes(pickerSearch.toLowerCase()))
-  );
+  // Canais (loja + franqueado) ainda sem conversa
+  const existingKeys = new Set(conversations.map((c) => `${c.franchisee.id}:${c.store?.id ?? ""}`));
+  const q = pickerSearch.toLowerCase();
+  const pickerOptions = allFranchisees
+    .flatMap((f) =>
+      f.stores.length > 0
+        ? f.stores.map((s) => ({ franchisee: f, store: s.store }))
+        : [{ franchisee: f, store: null as StoreRef["store"] | null }]
+    )
+    .filter((o) => !existingKeys.has(`${o.franchisee.id}:${o.store?.id ?? ""}`))
+    .filter(
+      (o) =>
+        o.franchisee.name.toLowerCase().includes(q) ||
+        o.franchisee.email.toLowerCase().includes(q) ||
+        (o.store?.name.toLowerCase().includes(q) ?? false) ||
+        (o.store?.code.toLowerCase().includes(q) ?? false)
+    );
 
+  const sq = search.toLowerCase();
   const filtered = conversations.filter(
     (c) =>
-      c.franchisee.name.toLowerCase().includes(search.toLowerCase()) ||
-      c.franchisee.email.toLowerCase().includes(search.toLowerCase()) ||
-      c.franchisee.stores.some((s) =>
-        s.store.name.toLowerCase().includes(search.toLowerCase())
-      )
+      c.franchisee.name.toLowerCase().includes(sq) ||
+      c.franchisee.email.toLowerCase().includes(sq) ||
+      (c.store?.name.toLowerCase().includes(sq) ?? false) ||
+      (c.store?.code.toLowerCase().includes(sq) ?? false)
   );
 
   function getLastMessagePreview(lm: LastMessage | null): string {
@@ -156,7 +195,7 @@ export default function AdminChatPage() {
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar franqueado ou loja..."
+              placeholder="Buscar loja ou franqueado..."
               className="w-full pl-9 pr-3 py-2 bg-gray-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -176,29 +215,33 @@ export default function AdminChatPage() {
                 autoFocus
                 value={pickerSearch}
                 onChange={(e) => setPickerSearch(e.target.value)}
-                placeholder="Buscar franqueado..."
+                placeholder="Buscar loja ou franqueado..."
                 className="w-full px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
             <div className="max-h-52 overflow-y-auto">
-              {pickerFranchisees.length === 0 ? (
+              {pickerOptions.length === 0 ? (
                 <p className="px-4 py-3 text-xs text-gray-400">
-                  {allFranchisees.length === 0 ? "Carregando…" : "Nenhum franqueado sem conversa"}
+                  {allFranchisees.length === 0 ? "Carregando…" : "Todos os canais já existem"}
                 </p>
               ) : (
-                pickerFranchisees.map((f) => (
+                pickerOptions.map((o) => (
                   <button
-                    key={f.id}
+                    key={`${o.franchisee.id}:${o.store?.id ?? ""}`}
                     disabled={creating}
-                    onClick={() => startConversation(f)}
+                    onClick={() => startConversation(o.franchisee, o.store?.id)}
                     className="w-full text-left px-4 py-2.5 hover:bg-blue-50 transition flex items-center gap-3 border-b border-gray-100 last:border-0"
                   >
                     <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 font-semibold text-xs flex items-center justify-center flex-shrink-0">
-                      {f.name[0]?.toUpperCase()}
+                      {(o.store?.name ?? o.franchisee.name)[0]?.toUpperCase()}
                     </div>
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">{f.name}</p>
-                      <p className="text-xs text-gray-400 truncate">{f.email}</p>
+                      <p className="text-sm font-medium text-gray-900 truncate">
+                        {o.store ? `🏪 ${o.store.name}` : o.franchisee.name}
+                      </p>
+                      <p className="text-xs text-gray-400 truncate">
+                        {o.store ? `${o.franchisee.name} · ${o.franchisee.email}` : `${o.franchisee.email} · canal geral`}
+                      </p>
                     </div>
                   </button>
                 ))
@@ -217,10 +260,7 @@ export default function AdminChatPage() {
           ) : (
             filtered.map((conv) => {
               const isActive = selected?.id === conv.id;
-              const unread =
-                conv.lastMessage &&
-                !conv.lastMessage.readByAdmin &&
-                conv.lastMessage.senderId !== session?.user?.id;
+              const unread = conv.unreadCount > 0 && selected?.id !== conv.id;
 
               return (
                 <button
@@ -232,12 +272,12 @@ export default function AdminChatPage() {
                 >
                   <div className="flex items-start gap-3">
                     <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-700 font-semibold text-sm flex items-center justify-center flex-shrink-0">
-                      {conv.franchisee.name[0]?.toUpperCase()}
+                      {(conv.store?.name ?? conv.franchisee.name)[0]?.toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
                         <span className={`text-sm font-medium text-gray-900 truncate ${unread ? "font-bold" : ""}`}>
-                          {conv.franchisee.name}
+                          {conv.store ? `🏪 ${conv.store.name}` : conv.franchisee.name}
                         </span>
                         {conv.lastMessage && (
                           <span className="text-[10px] text-gray-400 flex-shrink-0 ml-2">
@@ -248,21 +288,17 @@ export default function AdminChatPage() {
                           </span>
                         )}
                       </div>
-                      {conv.pendingStores && conv.pendingStores.length > 0 ? (
-                        <p className="text-[10px] text-emerald-600 mb-0.5 flex items-center gap-1 flex-wrap">
-                          🏪 {conv.pendingStores.map((s) => s.name).join(", ")}
-                        </p>
-                      ) : conv.franchisee.stores.length > 0 ? (
-                        <p className="text-[10px] text-gray-400 mb-0.5 truncate">
-                          {conv.franchisee.stores.map((s) => s.store.name).join(", ")}
-                        </p>
-                      ) : null}
+                      <p className="text-[10px] text-gray-400 mb-0.5 truncate">
+                        {conv.store ? `${conv.store.code} · ${conv.franchisee.name}` : "Canal geral"}
+                      </p>
                       <p className={`text-xs truncate ${unread ? "text-gray-800 font-medium" : "text-gray-500"}`}>
                         {getLastMessagePreview(conv.lastMessage)}
                       </p>
                     </div>
                     {unread && (
-                      <div className="w-2 h-2 rounded-full bg-blue-600 mt-1 flex-shrink-0" />
+                      <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-blue-600 text-white text-[10px] font-bold flex items-center justify-center mt-0.5 flex-shrink-0">
+                        {conv.unreadCount}
+                      </span>
                     )}
                   </div>
                 </button>
@@ -288,12 +324,13 @@ export default function AdminChatPage() {
               conversationId={selected.id}
               currentUserId={session?.user?.id ?? ""}
               currentUserRole="ADMIN"
-              recipientName={selected.franchisee.name}
-              availableStores={selected.franchisee.stores.map((s) => ({
-                id: s.store.id,
-                name: s.store.name,
-                code: s.store.code,
-              }))}
+              recipientName={selected.store ? `${selected.store.name} (${selected.store.code})` : selected.franchisee.name}
+              recipientSubtitle={selected.store ? `Canal exclusivo da loja · ${selected.franchisee.name}` : `Canal geral · ${selected.franchisee.email}`}
+              availableStores={
+                selected.store
+                  ? []
+                  : selected.franchisee.stores.map((s) => ({ id: s.store.id, name: s.store.name, code: s.store.code }))
+              }
             />
           </div>
         ) : (

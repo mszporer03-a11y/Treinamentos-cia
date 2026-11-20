@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { sendPushToUser } from "@/lib/push";
+import { canAccessConversation, userStoreIds } from "@/lib/access";
 
 export const dynamic = "force-dynamic";
 
@@ -13,13 +14,10 @@ export async function GET(
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
-  const conv = await db.conversation.findUnique({ where: { id: params.id } });
+  // Solicitações são privadas: somente a Franqueadora (admin) ou quem abriu o canal
+  const { conv, allowed } = await canAccessConversation(session.user, params.id);
   if (!conv) return NextResponse.json({ error: "Conversa não encontrada" }, { status: 404 });
-
-  // Somente admin ou o próprio franqueado pode ver
-  if (session.user.role !== "ADMIN" && conv.franchiseeId !== session.user.id) {
-    return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
-  }
+  if (!allowed) return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
 
   const messages = await db.message.findMany({
     where: { conversationId: params.id },
@@ -54,12 +52,10 @@ export async function POST(
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
-  const conv = await db.conversation.findUnique({ where: { id: params.id } });
+  // Solicitações são privadas: somente a Franqueadora (admin) ou quem abriu o canal
+  const { conv, allowed } = await canAccessConversation(session.user, params.id);
   if (!conv) return NextResponse.json({ error: "Conversa não encontrada" }, { status: 404 });
-
-  if (session.user.role !== "ADMIN" && conv.franchiseeId !== session.user.id) {
-    return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
-  }
+  if (!allowed) return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
 
   const body = await req.json();
   const { content, fileUrl, fileKey, fileType, fileName, category, linkedStoreIds } = body;
@@ -69,7 +65,15 @@ export async function POST(
   }
 
   const isAdmin = session.user.role === "ADMIN";
-  const storeIds: string[] = Array.isArray(linkedStoreIds) ? linkedStoreIds : [];
+  let storeIds: string[] = Array.isArray(linkedStoreIds) ? linkedStoreIds.filter((x: unknown) => typeof x === "string") : [];
+  if (conv.storeId) {
+    // Canal exclusivo de loja: a mensagem fica sempre vinculada a ela
+    storeIds = [conv.storeId];
+  } else if (!isAdmin && storeIds.length > 0) {
+    // Franqueado só pode marcar lojas às quais está vinculado
+    const mine = await userStoreIds(session.user.id);
+    storeIds = storeIds.filter((id) => mine.includes(id));
+  }
 
   const message = await db.message.create({
     data: {
@@ -121,7 +125,7 @@ export async function POST(
         sendPushToUser(admin.id, {
           title: `Nova mensagem de ${senderName}`,
           body: notifBody,
-          url: `/admin/chat/${params.id}`,
+          url: `/admin/chat?c=${params.id}`,
         })
       )
     );

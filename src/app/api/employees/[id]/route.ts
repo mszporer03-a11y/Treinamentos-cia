@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { z } from "zod";
+import { canAccessStoreRecord } from "@/lib/access";
 
 const updateSchema = z.object({
   name: z.string().min(1).max(100).optional(),
@@ -13,6 +14,9 @@ const updateSchema = z.object({
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const emp = await db.employee.findUnique({ where: { id: params.id }, select: { storeId: true } });
+  if (!emp) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!(await canAccessStoreRecord(session.user, emp.storeId))) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const body = await req.json();
   const parsed = updateSchema.safeParse(body);
@@ -28,6 +32,9 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const emp = await db.employee.findUnique({ where: { id: params.id }, select: { storeId: true } });
+  if (!emp) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!(await canAccessStoreRecord(session.user, emp.storeId))) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   await db.employee.update({ where: { id: params.id }, data: { active: false } });
   return new NextResponse(null, { status: 204 });

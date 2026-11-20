@@ -65,6 +65,7 @@ interface ChatWindowProps {
   currentUserId: string;
   currentUserRole: "ADMIN" | "FRANCHISEE";
   recipientName?: string;
+  recipientSubtitle?: string;
   pollInterval?: number;
   availableStores?: LinkedStore[];
 }
@@ -103,6 +104,7 @@ export function ChatWindow({
   currentUserId,
   currentUserRole,
   recipientName = "Admin",
+  recipientSubtitle,
   pollInterval = 4000,
   availableStores = [],
 }: ChatWindowProps) {
@@ -209,10 +211,10 @@ export function ChatWindow({
         <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-semibold text-sm flex-shrink-0">
           {recipientName[0]?.toUpperCase()}
         </div>
-        <div>
-          <p className="font-semibold text-gray-900 text-sm">{recipientName}</p>
+        <div className="min-w-0">
+          <p className="font-semibold text-gray-900 text-sm truncate">{recipientName}</p>
           <p className="text-xs text-gray-400">
-            {currentUserRole === "ADMIN" ? "Franqueado" : "Admin"}
+            {recipientSubtitle ?? (currentUserRole === "ADMIN" ? "Franqueado" : "Admin")}
           </p>
         </div>
       </div>

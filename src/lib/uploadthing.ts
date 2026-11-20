@@ -28,6 +28,19 @@ export const ourFileRouter = {
       return { uploadedBy: metadata.userId, url: file.url, key: file.key };
     }),
 
+  // Imagem de capa dos posts (enviada manualmente ou gerada da 1ª página do PDF / quadro do vídeo)
+  coverImageUploader: f({
+    image: { maxFileSize: "16MB", maxFileCount: 1 },
+  })
+    .middleware(async () => {
+      const session = await auth();
+      if (!session?.user || session.user.role !== "ADMIN") throw new Error("Unauthorized");
+      return { userId: session.user.id };
+    })
+    .onUploadComplete(async ({ metadata, file }) => {
+      return { uploadedBy: metadata.userId, url: file.url, key: file.key };
+    }),
+
   campaignImageUploader: f({
     image: { maxFileSize: "16MB", maxFileCount: 10 },
   })

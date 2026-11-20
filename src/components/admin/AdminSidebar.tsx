@@ -18,7 +18,6 @@ import {
   AlertTriangle,
   BarChart2,
   DollarSign,
-  MapPin,
   ClipboardCheck,
   CheckSquare,
   ClipboardList,
@@ -42,7 +41,7 @@ const sections = [
   {
     label: "Conteúdo",
     items: [
-      { href: "/admin/materials", label: "Materiais", icon: FileText },
+      { href: "/admin/materials", label: "Publicações", icon: FileText },
       { href: "/admin/categories", label: "Categorias", icon: FolderOpen },
       { href: "/admin/campaigns", label: "Campanhas", icon: Megaphone },
     ],
@@ -57,8 +56,7 @@ const sections = [
   {
     label: "Lojas",
     items: [
-      { href: "/admin/stores", label: "Lojas", icon: Store },
-      { href: "/admin/map", label: "Mapa de Lojas", icon: MapPin },
+      { href: "/admin/stores", label: "Lojas & Mapa", icon: Store },
       { href: "/admin/onboarding", label: "Inauguração", icon: CheckSquare },
     ],
   },

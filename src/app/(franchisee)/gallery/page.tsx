@@ -1,12 +1,13 @@
 ﻿"use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useSession } from "next-auth/react";
 import { MaterialViewer } from "@/components/franchisee/MaterialViewer";
-import { Play, FileText, Image as ImageIcon, File, MessageSquare, BarChart2, ClipboardList, ChevronRight, SlidersHorizontal, Megaphone } from "lucide-react";
-import { formatDate } from "@/lib/utils";
+import { PostCard, type PostMaterial } from "@/components/posts/PostCard";
+import { MessageSquare, BarChart2, ClipboardList, ChevronRight, LayoutGrid, ArrowLeft, Search } from "lucide-react";
+import { PORTAL_TABS } from "@/lib/portal-tabs";
 
 export const dynamic = "force-dynamic";
 
@@ -15,196 +16,116 @@ interface Category {
   name: string;
   icon: string | null;
   slug: string;
-}
-
-interface Material {
-  id: string;
-  title: string;
   description?: string | null;
-  fileUrl: string | null;
-  fileType: string;
-  fileSize?: number | null;
-  mimeType?: string | null;
-  createdAt: string;
-  category: Category;
-  createdBy?: { name: string } | null;
 }
 
-const typeIcon: Record<string, React.ElementType> = {
-  VIDEO: Play,
-  PDF: FileText,
-  IMAGE: ImageIcon,
-  DOCUMENT: FileText,
-  OTHER: File,
-  NOTICE: Megaphone,
-};
-
-const typeLabel: Record<string, string> = {
-  VIDEO: "Video",
-  PDF: "PDF",
-  IMAGE: "Imagem",
-  DOCUMENT: "Documento",
-  OTHER: "Arquivo",
-  NOTICE: "Aviso",
-};
-
-const typeColor: Record<string, string> = {
-  VIDEO: "bg-red-50 text-red-500",
-  PDF: "bg-orange-50 text-orange-500",
-  IMAGE: "bg-sky-50 text-sky-500",
-  DOCUMENT: "bg-blue-50 text-blue-500",
-  OTHER: "bg-gray-50 text-gray-400",
-  NOTICE: "bg-amber-50 text-amber-600",
-};
-
-function FeedCard({ material, onOpen }: { material: Material; onOpen: () => void }) {
-  const Icon = typeIcon[material.fileType] ?? File;
-  const color = typeColor[material.fileType] ?? typeColor.OTHER;
-
-  return (
-    <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden hover:border-gray-200 hover:shadow-md transition-all group">
-      <div className="flex items-center gap-2.5 px-4 pt-3 pb-2">
-        <div className="w-8 h-8 rounded-full bg-orange-600 flex items-center justify-center flex-shrink-0">
-          <span className="text-white text-xs font-bold">
-            {(material.createdBy?.name ?? "A").charAt(0).toUpperCase()}
-          </span>
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-gray-900 truncate">
-            {material.createdBy?.name ?? "Admin"}
-          </p>
-          <p className="text-xs text-gray-400">
-            {material.category.icon} {material.category.name} · {formatDate(material.createdAt)}
-          </p>
-        </div>
-      </div>
-
-      <button onClick={onOpen} className="w-full text-left focus:outline-none">
-        {material.fileType === "IMAGE" ? (
-          <div className="mx-3 rounded-xl overflow-hidden bg-gray-100 aspect-video">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={material.fileUrl ?? ""} alt={material.title}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-          </div>
-        ) : (
-          <div className={`mx-3 rounded-xl aspect-video flex flex-col items-center justify-center gap-2 ${color} group-hover:opacity-80 transition-opacity`}>
-            <Icon className="h-10 w-10 sm:h-14 sm:w-14 opacity-60" />
-            <span className="text-xs sm:text-sm font-medium opacity-70">{typeLabel[material.fileType] ?? "Arquivo"}</span>
-          </div>
-        )}
-        <div className="px-4 pt-2.5 pb-4">
-          <p className="font-semibold text-gray-900 text-sm leading-snug line-clamp-2 group-hover:text-orange-600 transition-colors">
-            {material.title}
-          </p>
-          {material.description && (
-            <p className="text-xs text-gray-500 mt-1 line-clamp-2">{material.description}</p>
-          )}
-          <p className="text-xs text-orange-600 font-medium mt-2 flex items-center gap-0.5">
-            Abrir <ChevronRight className="h-3 w-3" />
-          </p>
-        </div>
-      </button>
-    </div>
-  );
+interface Material extends PostMaterial {
+  category: Category;
 }
 
 const NAV_ITEMS = [
-  {
-    href: "/surveys",
-    icon: BarChart2,
-    label: "Pesquisas",
-    desc: "Responda as pesquisas da rede",
-    bg: "from-violet-600 to-violet-500",
-    tutorialId: "nav-surveys",
-  },
-  {
-    href: "/checklists",
-    icon: ClipboardList,
-    label: "Checklists",
-    desc: "Visualize e preencha checklists operacionais",
-    bg: "from-orange-600 to-orange-500",
-    tutorialId: "nav-checklists",
-  },
-  {
-    href: "/chat",
-    icon: MessageSquare,
-    label: "Suporte",
-    desc: "Canal direto com a Cia do Churrasco",
-    bg: "from-sky-600 to-sky-500",
-    tutorialId: "nav-chat",
-  },
+  { href: "/surveys", icon: BarChart2, label: "Pesquisas", desc: "Responda as pesquisas da rede", bg: "from-violet-600 to-violet-500", tutorialId: "nav-surveys" },
+  { href: "/checklists", icon: ClipboardList, label: "Checklists", desc: "Visualize e preencha checklists operacionais", bg: "from-orange-600 to-orange-500", tutorialId: "nav-checklists" },
+  { href: "/chat", icon: MessageSquare, label: "Suporte", desc: "Canal direto com a Cia do Churrasco", bg: "from-sky-600 to-sky-500", tutorialId: "nav-chat" },
 ];
+
+type TabKey = "all" | "categorias" | (typeof PORTAL_TABS)[number]["key"];
 
 export default function GalleryPage() {
   const { data: session } = useSession();
   const [materials, setMaterials] = useState<Material[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [activeCategory, setActiveCategory] = useState<string>("all");
-  const [showFilters, setShowFilters] = useState(false);
+  const [tab, setTab] = useState<TabKey>("all");
+  const [categoryId, setCategoryId] = useState<string | null>(null); // usado na aba "Categorias"
+  const [query, setQuery] = useState("");
   const [viewing, setViewing] = useState<Material | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
-      const [matRes, catRes] = await Promise.all([
-        fetch("/api/materials"),
-        fetch("/api/categories"),
-      ]);
-      const [mats, cats] = await Promise.all([matRes.json(), catRes.json()]);
-      setMaterials(mats);
-      setCategories(cats);
-      setLoading(false);
+      try {
+        const [matRes, catRes] = await Promise.all([fetch("/api/materials"), fetch("/api/categories")]);
+        const [mats, cats] = await Promise.all([matRes.json(), catRes.json()]);
+        setMaterials(Array.isArray(mats) ? mats : []);
+        setCategories(Array.isArray(cats) ? cats : []);
+      } finally {
+        setLoading(false);
+      }
     }
     load();
+    // Abre a aba indicada na URL (?aba=cia-news)
+    const aba = new URLSearchParams(window.location.search).get("aba");
+    if (aba && (aba === "categorias" || PORTAL_TABS.some((t) => t.key === aba))) setTab(aba as TabKey);
   }, []);
 
-  const filtered =
-    activeCategory === "all"
-      ? materials
-      : materials.filter((m) => m.category.id === activeCategory);
+  const countBySlug = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const mat of materials) m.set(mat.category.slug, (m.get(mat.category.slug) ?? 0) + 1);
+    return m;
+  }, [materials]);
 
-  // Only show categories that have at least one material available to this user
-  const visibleCategories = categories.filter((cat) =>
-    materials.some((m) => m.category.id === cat.id)
-  );
+  const tabCount = (slugs: string[]) => slugs.reduce((a, s) => a + (countBySlug.get(s) ?? 0), 0);
 
+  const filtered = useMemo(() => {
+    let list = materials;
+    if (tab === "categorias") {
+      list = categoryId ? list.filter((m) => m.category.id === categoryId) : [];
+    } else if (tab !== "all") {
+      const def = PORTAL_TABS.find((t) => t.key === tab);
+      list = def ? list.filter((m) => def.slugs.includes(m.category.slug)) : list;
+    }
+    const q = query.trim().toLowerCase();
+    if (q) {
+      list = list.filter(
+        (m) => m.title.toLowerCase().includes(q) || (m.description ?? "").toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }, [materials, tab, categoryId, query]);
+
+  const visibleCategories = categories.filter((c) => (countBySlug.get(c.slug) ?? 0) > 0);
+  const activeTab = PORTAL_TABS.find((t) => t.key === tab);
+  const activeCategory = categories.find((c) => c.id === categoryId);
   const firstName = session?.user?.name?.split(" ")[0] ?? "Franqueado";
+
+  function selectTab(key: TabKey) {
+    setTab(key);
+    setCategoryId(null);
+    const url = new URL(window.location.href);
+    if (key === "all") url.searchParams.delete("aba");
+    else url.searchParams.set("aba", key);
+    window.history.replaceState(null, "", url.toString());
+  }
+
+  const tabBtn = (active: boolean) =>
+    `shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-sm font-semibold border transition whitespace-nowrap ${
+      active
+        ? "bg-orange-600 text-white border-orange-600 shadow-sm"
+        : "bg-white text-gray-600 border-gray-200 hover:border-orange-300 hover:text-orange-700"
+    }`;
+
+  const showGrid = tab !== "categorias" || categoryId;
 
   return (
     <div className="p-4 sm:p-6">
       {/* Hero banner */}
       <div className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 rounded-2xl px-6 py-8 mb-8 relative overflow-hidden">
-        <div
-          className="absolute inset-0 opacity-10"
-          style={{ backgroundImage: "radial-gradient(circle at 80% 50%, #EA580C 0%, transparent 60%)" }}
-        />
-        <div className="relative">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <h1 className="text-xl sm:text-2xl font-bold text-white">
-                Olá, {firstName} 👋
-              </h1>
-              <p className="text-gray-400 text-sm mt-1">
-                Bem-vindo ao painel. Acesse suas ferramentas abaixo.
-              </p>
-            </div>
-            <Image src="/logo.png" alt="Companhia do Churrasco" width={140} height={50} className="invert brightness-0 invert opacity-90 flex-shrink-0 hidden sm:block" />
+        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "radial-gradient(circle at 80% 50%, #EA580C 0%, transparent 60%)" }} />
+        <div className="relative flex items-center justify-between gap-4">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-white">Olá, {firstName} 👋</h1>
+            <p className="text-gray-400 text-sm mt-1">Bem-vindo ao painel. Acesse suas ferramentas abaixo.</p>
           </div>
+          <Image src="/logo.png" alt="Companhia do Churrasco" width={140} height={50} className="invert brightness-0 invert opacity-90 flex-shrink-0 hidden sm:block" />
         </div>
       </div>
 
       {/* Nav cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10">
         {NAV_ITEMS.map(({ href, icon: Icon, label, desc, bg, tutorialId }) => (
-          <Link
-            key={href}
-            href={href}
-            data-tutorial={tutorialId}
-            className="group relative overflow-hidden rounded-2xl p-5 flex items-center gap-4 bg-white border border-gray-100 hover:shadow-lg hover:border-transparent transition-all duration-200"
-          >
-            <div
-              className={`w-12 h-12 rounded-xl bg-gradient-to-br ${bg} flex items-center justify-center flex-shrink-0 shadow-sm group-hover:scale-105 transition-transform`}
-            >
+          <Link key={href} href={href} data-tutorial={tutorialId}
+            className="group relative overflow-hidden rounded-2xl p-5 flex items-center gap-4 bg-white border border-gray-100 hover:shadow-lg hover:border-transparent transition-all duration-200">
+            <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${bg} flex items-center justify-center flex-shrink-0 shadow-sm group-hover:scale-105 transition-transform`}>
               <Icon className="h-6 w-6 text-white" />
             </div>
             <div className="flex-1 min-w-0">
@@ -216,76 +137,89 @@ export default function GalleryPage() {
         ))}
       </div>
 
-      {/* Materials section */}
-      <div data-tutorial="materials-section" className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-bold text-gray-900">Materiais de Treinamento</h2>
-        {visibleCategories.length > 0 && (
-          <button
-            data-tutorial="filter-btn"
-            onClick={() => { setShowFilters((v) => !v); if (showFilters) setActiveCategory("all"); }}
-            className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border transition ${
-              showFilters || activeCategory !== "all"
-                ? "bg-orange-600 text-white border-orange-600"
-                : "bg-white text-gray-600 border-gray-200 hover:border-orange-300"
-            }`}
-          >
-            <SlidersHorizontal className="h-3.5 w-3.5" />
-            {activeCategory !== "all"
-              ? visibleCategories.find((c) => c.id === activeCategory)?.name ?? "Filtro"
-              : "Filtrar"}
-          </button>
-        )}
+      {/* Feed de novidades */}
+      <div data-tutorial="materials-section" className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-4">
+        <div>
+          <h2 className="text-lg font-bold text-gray-900">Feed de Novidades</h2>
+          <p className="text-xs text-gray-500 mt-0.5">
+            {activeTab ? activeTab.description : tab === "categorias" ? "Navegue por todas as categorias" : "Tudo o que a Franqueadora publicou para você"}
+          </p>
+        </div>
+        <label className="relative sm:w-64">
+          <Search className="h-4 w-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar no feed…"
+            className="w-full pl-9 pr-3 py-2 text-sm bg-white border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-orange-500" />
+        </label>
       </div>
 
-      {showFilters && visibleCategories.length > 0 && (
-        <div className="flex flex-col gap-1 mb-5 bg-white border border-gray-100 rounded-2xl p-3 shadow-sm">
-          <button
-            onClick={() => { setActiveCategory("all"); setShowFilters(false); }}
-            className={`flex items-center gap-2 w-full px-4 py-2 rounded-xl text-sm font-medium transition-all text-left ${
-              activeCategory === "all"
-                ? "bg-orange-600 text-white shadow-sm"
-                : "text-gray-600 hover:bg-orange-50"
-            }`}
-          >
-            Todos
+      {/* Abas */}
+      <nav data-tutorial="filter-btn" className="flex items-center gap-2 overflow-x-auto pb-2 mb-5 -mx-4 px-4 sm:mx-0 sm:px-0" aria-label="Abas do feed">
+        <button onClick={() => selectTab("all")} className={tabBtn(tab === "all")}>
+          Todos <span className="opacity-70 text-xs">{materials.length}</span>
+        </button>
+        {PORTAL_TABS.map((t) => (
+          <button key={t.key} onClick={() => selectTab(t.key)} className={tabBtn(tab === t.key)}>
+            <span>{t.icon}</span> {t.label}
+            <span className="opacity-70 text-xs">{tabCount(t.slugs)}</span>
           </button>
-          {visibleCategories.map((cat) => (
-            <button
-              key={cat.id}
-              onClick={() => { setActiveCategory(cat.id); setShowFilters(false); }}
-              className={`flex items-center gap-2 w-full px-4 py-2 rounded-xl text-sm font-medium transition-all text-left ${
-                activeCategory === cat.id
-                  ? "bg-orange-600 text-white shadow-sm"
-                  : "text-gray-600 hover:bg-orange-50"
-              }`}
-            >
-              {cat.icon && <span>{cat.icon}</span>}
-              {cat.name}
-            </button>
-          ))}
-        </div>
+        ))}
+        <button onClick={() => selectTab("categorias")} className={tabBtn(tab === "categorias")}>
+          <LayoutGrid className="h-4 w-4" /> Categorias
+        </button>
+      </nav>
+
+      {/* Aba Categorias: grade de categorias */}
+      {tab === "categorias" && !categoryId && !loading && (
+        visibleCategories.length === 0 ? (
+          <div className="text-center py-16 text-gray-500">Nenhuma categoria com publicações ainda.</div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+            {visibleCategories.map((c) => (
+              <button key={c.id} onClick={() => setCategoryId(c.id)}
+                className="text-left bg-white border border-gray-100 rounded-2xl p-4 hover:shadow-md hover:border-orange-200 transition group">
+                <span className="text-3xl">{c.icon ?? "📁"}</span>
+                <p className="font-bold text-gray-900 mt-2 group-hover:text-orange-600 transition-colors">{c.name}</p>
+                {c.description && <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{c.description}</p>}
+                <p className="text-xs text-orange-600 font-semibold mt-2">
+                  {countBySlug.get(c.slug)} publicaç{countBySlug.get(c.slug) === 1 ? "ão" : "ões"}
+                </p>
+              </button>
+            ))}
+          </div>
+        )
       )}
 
-      {loading ? (
-        <div className="text-center py-16 text-gray-400">Carregando...</div>
-      ) : filtered.length === 0 ? (
-        <div className="text-center py-16">
-          <span className="text-5xl">📭</span>
-          <p className="text-gray-500 mt-4 font-medium">Nenhum material nesta categoria ainda.</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {filtered.map((mat) => (
-            <FeedCard
-              key={mat.id}
-              material={mat}
-              onOpen={() => {
-                setViewing(mat);
-                fetch(`/api/materials/${mat.id}/view`, { method: "POST" });
-              }}
-            />
-          ))}
-        </div>
+      {tab === "categorias" && activeCategory && (
+        <button onClick={() => setCategoryId(null)} className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 mb-4">
+          <ArrowLeft className="h-4 w-4" /> Todas as categorias
+          <span className="font-semibold text-gray-900 ml-1">· {activeCategory.icon} {activeCategory.name}</span>
+        </button>
+      )}
+
+      {showGrid && (
+        loading ? (
+          <div className="text-center py-16 text-gray-400">Carregando...</div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-16">
+            <span className="text-5xl">📭</span>
+            <p className="text-gray-500 mt-4 font-medium">
+              {query ? "Nada encontrado para essa busca." : "Nenhuma publicação nesta aba ainda."}
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {filtered.map((mat) => (
+              <PostCard
+                key={mat.id}
+                material={mat}
+                onOpen={() => {
+                  setViewing(mat);
+                  fetch(`/api/materials/${mat.id}/view`, { method: "POST" });
+                }}
+              />
+            ))}
+          </div>
+        )
       )}
 
       {viewing && <MaterialViewer material={viewing} onClose={() => setViewing(null)} />}

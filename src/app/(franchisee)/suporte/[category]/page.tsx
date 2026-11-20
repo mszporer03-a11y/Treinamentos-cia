@@ -36,7 +36,7 @@ export default function SupporteCategoryPage() {
   const category = CATEGORIES[params.category];
 
   const [stores, setStores] = useState<Store[]>([]);
-  const [selectedStoreIds, setSelectedStoreIds] = useState<string[]>([]);
+  const [selectedStoreId, setSelectedStoreId] = useState<string>("");
   const [message, setMessage] = useState("");
   const [pendingFile, setPendingFile] = useState<{
     url: string; key: string; type: string; name: string;
@@ -63,7 +63,10 @@ export default function SupporteCategoryPage() {
     fetch("/api/stores")
       .then((r) => r.json())
       .then((data) => {
-        if (Array.isArray(data)) setStores(data);
+        if (Array.isArray(data)) {
+          setStores(data);
+          if (data.length === 1) setSelectedStoreId(data[0].id);
+        }
       });
   }, []);
 
@@ -80,36 +83,28 @@ export default function SupporteCategoryPage() {
 
   const { label, Icon, color } = category;
 
-  function toggleStore(id: string) {
-    setSelectedStoreIds((prev) =>
-      prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
-    );
-  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!message.trim() && !pendingFile) return;
     setSubmitting(true);
     try {
-      // 1. Get (or create) the franchisee's conversation
-      const convRes = await fetch("/api/conversations");
+      // 1. Abre (ou cria) o canal exclusivo da loja selecionada
+      const convRes = await fetch(`/api/conversations?storeId=${encodeURIComponent(selectedStoreId || "geral")}`);
       if (!convRes.ok) throw new Error("Falha ao obter conversa");
       const conv = await convRes.json();
       const conversationId: string = conv.id;
 
-      // 2. Build the message content with category prefix
-      const storeNames = selectedStoreIds
-        .map((id) => stores.find((s) => s.id === id)?.name)
-        .filter(Boolean)
-        .join(", ");
-      const prefix = storeNames ? `[${label}] — Loja: ${storeNames}` : `[${label}]`;
+      // 2. Conteúdo com o prefixo da categoria
+      const storeName = stores.find((s) => s.id === selectedStoreId)?.name;
+      const prefix = storeName ? `[${label}] — Loja: ${storeName}` : `[${label}]`;
       const fullContent = message.trim() ? `${prefix}\n\n${message.trim()}` : prefix;
 
       // 3. Send message
       const body: Record<string, unknown> = {
         content: fullContent,
         category: params.category,
-        linkedStoreIds: selectedStoreIds,
+        linkedStoreIds: selectedStoreId ? [selectedStoreId] : [],
       };
       if (pendingFile) {
         body.fileUrl = pendingFile.url;
@@ -126,7 +121,7 @@ export default function SupporteCategoryPage() {
       if (!msgRes.ok) throw new Error("Falha ao enviar mensagem");
 
       setDone(true);
-      setTimeout(() => router.push("/chat"), 2000);
+      setTimeout(() => router.push(selectedStoreId ? `/chat?loja=${selectedStoreId}` : "/chat"), 2000);
     } catch {
       setSubmitting(false);
     }
@@ -165,20 +160,20 @@ export default function SupporteCategoryPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
-        {/* Store picker */}
+        {/* Store picker — cada loja tem seu canal exclusivo */}
         {stores.length > 0 && (
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Loja(s) relacionada(s) <span className="text-gray-400 font-normal">(opcional)</span>
+              Loja {stores.length > 1 && <span className="text-red-500">*</span>}
             </label>
             <div className="flex flex-wrap gap-2">
               {stores.map((store) => {
-                const sel = selectedStoreIds.includes(store.id);
+                const sel = selectedStoreId === store.id;
                 return (
                   <button
                     key={store.id}
                     type="button"
-                    onClick={() => toggleStore(store.id)}
+                    onClick={() => setSelectedStoreId(store.id)}
                     className={`px-3 py-1.5 rounded-full text-sm font-medium border transition ${
                       sel
                         ? "bg-orange-600 text-white border-orange-600"
@@ -190,6 +185,9 @@ export default function SupporteCategoryPage() {
                 );
               })}
             </div>
+            <p className="text-xs text-gray-400 mt-2">
+              🔒 Sua solicitação vai para o canal exclusivo desta loja e é visível apenas para a Franqueadora.
+            </p>
           </div>
         )}
 
@@ -258,7 +256,7 @@ export default function SupporteCategoryPage() {
         {/* Submit */}
         <button
           type="submit"
-          disabled={submitting || uploading || (!message.trim() && !pendingFile)}
+          disabled={submitting || uploading || (!message.trim() && !pendingFile) || (stores.length > 0 && !selectedStoreId)}
           className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition"
         >
           {submitting ? (

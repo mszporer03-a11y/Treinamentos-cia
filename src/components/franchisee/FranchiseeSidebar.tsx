@@ -31,7 +31,7 @@ const sections: { label: string; items: { href: string; label: string; icon: Rea
   {
     label: "Treinamentos",
     items: [
-      { href: "/gallery", label: "Materiais", icon: BookOpen, exact: true },
+      { href: "/gallery", label: "Feed de Novidades", icon: BookOpen, exact: true },
     ],
   },
   {

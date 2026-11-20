@@ -197,26 +197,26 @@ export const PORTAL_TUTORIAL_STEPS: TutorialStep[] = [
   },
   {
     icon: "📚",
-    title: "Materiais de Treinamento",
+    title: "Feed de Novidades",
     description:
-      "Aqui você encontra todos os materiais publicados pela franquia: vídeos, PDFs, documentos, imagens e comunicados organizados por categoria.",
-    hint: "Início → seção Materiais de Treinamento",
+      "Aqui você encontra tudo o que a franquia publica em formato de post: título, descrição e imagem/anexo — vídeos, PDFs (com prévia da 1ª página), documentos e comunicados.",
+    hint: "Início → Feed de Novidades",
     target: "materials-section",
   },
   {
     icon: "🔍",
-    title: "Filtrar por Categoria",
+    title: "Abas do Feed",
     description:
-      "Use o botão 'Filtrar' para ver somente os materiais de uma categoria específica — Vendas, Operações, Avisos, etc.",
-    hint: "Clique em 'Filtrar' acima dos materiais",
+      "Use as abas para navegar entre Comunicados, Registros, CIA News, Treinamentos, Cardápios do Mês, Universidade e Inauguração. Em 'Categorias' você vê todas as categorias da rede.",
+    hint: "Clique nas abas acima do feed",
     target: "filter-btn",
   },
   {
     icon: "📢",
-    title: "Avisos",
+    title: "Comunicados",
     description:
-      "Comunicados importantes da franquia são publicados como Avisos. Fique de olho nessa categoria para não perder nenhuma informação.",
-    hint: "Filtrar → Avisos",
+      "Comunicados importantes da franquia ficam na aba Comunicados. Clique em um PDF para ver o documento completo e baixá-lo.",
+    hint: "Abas → Comunicados",
     target: null,
   },
   {

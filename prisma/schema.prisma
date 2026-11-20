@@ -94,7 +94,7 @@ model User {
   updatedAt         DateTime             @updatedAt
   materials         Material[]
   stores            UserStore[]
-  conversation      Conversation?        @relation("FranchiseeConversations")
+  conversations     Conversation[]       @relation("FranchiseeConversations")
   sentMessages      Message[]            @relation("SentMessages")
   materialViews     MaterialView[]
   pushSubscriptions PushSubscription[]
@@ -125,6 +125,8 @@ model Material {
   fileType          FileType           @default(OTHER)
   mimeType          String?
   fileSize          Int?
+  coverUrl          String?
+  coverKey          String?
   published         Boolean            @default(true)
   categoryId        String
   category          Category           @relation(fields: [categoryId], references: [id], onDelete: Cascade)
@@ -145,8 +147,15 @@ model Store {
   city           String?
   lat            Float?
   lng            Float?
+  address        String?
+  contactName    String?
+  phone          String?
+  whatsapp       String?
+  email          String?
+  pinColor       String?              @default("#EA580C")
   active         Boolean              @default(true)
   users          UserStore[]
+  conversations  Conversation[]
   employees      Employee[]
   supplyRequests SupplyRequest[]
   alerts         NonComplianceAlert[]
@@ -179,13 +188,20 @@ model MaterialStore {
 }
 
 // ── Chat ────────────────────────────────────────────────────────────────
+// Uma conversa = canal privado entre UM usuário da loja e a Franqueadora.
+// storeId preenchido → canal exclusivo daquela loja; null → canal geral (legado).
 model Conversation {
   id           String    @id @default(cuid())
-  franchiseeId String    @unique
+  franchiseeId String
   franchisee   User      @relation("FranchiseeConversations", fields: [franchiseeId], references: [id], onDelete: Cascade)
+  storeId      String?
+  store        Store?    @relation(fields: [storeId], references: [id], onDelete: SetNull)
   messages     Message[]
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
+
+  @@unique([franchiseeId, storeId])
+  @@index([storeId])
 }
 
 model Message {

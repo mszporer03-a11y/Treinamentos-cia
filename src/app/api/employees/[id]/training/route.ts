@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { z } from "zod";
+import { canAccessStoreRecord } from "@/lib/access";
 
 const assignSchema = z.object({
   materialId: z.string().cuid(),
@@ -10,6 +11,9 @@ const assignSchema = z.object({
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const emp = await db.employee.findUnique({ where: { id: params.id }, select: { storeId: true } });
+  if (!emp) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!(await canAccessStoreRecord(session.user, emp.storeId))) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const trainings = await db.employeeTraining.findMany({
     where: { employeeId: params.id },
@@ -22,6 +26,9 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const emp = await db.employee.findUnique({ where: { id: params.id }, select: { storeId: true } });
+  if (!emp) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!(await canAccessStoreRecord(session.user, emp.storeId))) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const body = await req.json();
   const parsed = assignSchema.safeParse(body);
@@ -38,6 +45,9 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const emp = await db.employee.findUnique({ where: { id: params.id }, select: { storeId: true } });
+  if (!emp) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!(await canAccessStoreRecord(session.user, emp.storeId))) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { materialId, completedAt } = await req.json();
   const training = await db.employeeTraining.update({

@@ -32,15 +32,9 @@ export async function GET() {
     return NextResponse.json(requests);
   }
 
-  // Franchisee — only their store's requests
-  const userStores = await db.userStore.findMany({
-    where: { userId: session.user.id },
-    select: { storeId: true },
-  });
-  const storeIds = userStores.map((s) => s.storeId);
-
+  // Franqueado — apenas as solicitações enviadas por ele (privadas entre ele e a Franqueadora)
   const requests = await db.supplyRequest.findMany({
-    where: { storeId: { in: storeIds } },
+    where: { requesterId: session.user.id },
     include: {
       store: { select: { id: true, name: true, code: true } },
       items: true,

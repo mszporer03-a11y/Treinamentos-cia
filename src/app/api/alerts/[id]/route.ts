@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { z } from "zod";
+import { canAccessStoreRecord } from "@/lib/access";
 
 const updateSchema = z.object({
   status: z.enum(["OPEN", "ACKNOWLEDGED", "RESOLVED"]).optional(),
@@ -15,6 +16,10 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   const body = await req.json();
   const parsed = updateSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+
+  const alert = await db.nonComplianceAlert.findUnique({ where: { id: params.id }, select: { storeId: true } });
+  if (!alert) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!(await canAccessStoreRecord(session.user, alert.storeId))) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const updated = await db.nonComplianceAlert.update({
     where: { id: params.id },

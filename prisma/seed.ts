@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { PORTAL_TABS } from "../src/lib/portal-tabs";
 
 const db = new PrismaClient();
 
@@ -81,6 +82,16 @@ async function main() {
       create: cat,
     });
     console.log(`✅ Categoria: ${cat.name}`);
+  }
+
+  // Categorias das abas do Portal do Franqueado (Comunicados, Registros, ...)
+  for (const tab of PORTAL_TABS) {
+    const existing = await db.category.findFirst({ where: { slug: { in: tab.slugs } } });
+    if (existing) continue;
+    await db.category.create({
+      data: { name: tab.label, slug: tab.slugs[0], description: tab.description, icon: tab.icon },
+    });
+    console.log(`✅ Categoria (aba): ${tab.label}`);
   }
 
   console.log("\n🎉 Seed concluído com sucesso!");

@@ -8,10 +8,16 @@ export const dynamic = "force-dynamic";
 const storeSchema = z.object({
   name: z.string().min(1).max(120),
   code: z.string().min(1).max(40),
-  city: z.string().max(80).optional(),
+  city: z.string().max(80).optional().nullable(),
   active: z.boolean().optional(),
-  lat: z.number().optional().nullable(),
-  lng: z.number().optional().nullable(),
+  lat: z.number().min(-90).max(90).optional().nullable(),
+  lng: z.number().min(-180).max(180).optional().nullable(),
+  address: z.string().max(300).optional().nullable(),
+  contactName: z.string().max(120).optional().nullable(),
+  phone: z.string().max(40).optional().nullable(),
+  whatsapp: z.string().max(40).optional().nullable(),
+  email: z.string().email().max(120).optional().nullable().or(z.literal("")),
+  pinColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional().nullable(),
 });
 
 // GET /api/stores
@@ -33,8 +39,9 @@ export async function GET() {
   const stores = await db.store.findMany({
     include: {
       users: {
-        include: { user: { select: { id: true, name: true, email: true } } },
+        include: { user: { select: { id: true, name: true, email: true, active: true } } },
       },
+      _count: { select: { employees: { where: { active: true } } } },
     },
     orderBy: { name: "asc" },
   });
@@ -52,6 +59,10 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const data = storeSchema.parse(body);
+    if (data.email === "") data.email = null;
+
+    const existing = await db.store.findUnique({ where: { code: data.code } });
+    if (existing) return NextResponse.json({ error: "Já existe uma loja com esse código" }, { status: 400 });
 
     const store = await db.store.create({ data });
     return NextResponse.json(store, { status: 201 });

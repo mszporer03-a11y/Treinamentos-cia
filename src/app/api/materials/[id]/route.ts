@@ -4,12 +4,16 @@ export const dynamic = "force-dynamic";
 import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { materialVisibilityWhere } from "@/lib/access";
 
 const updateSchema = z.object({
   title: z.string().min(1).max(200).optional(),
   description: z.string().optional(),
   published: z.boolean().optional(),
   categoryId: z.string().optional(),
+  coverUrl: z.string().url().nullable().optional(),
+  coverKey: z.string().nullable().optional(),
+  linkedStoreIds: z.array(z.string()).optional(),
 });
 
 export async function GET(
@@ -22,8 +26,8 @@ export async function GET(
   }
 
   try {
-    const material = await db.material.findUnique({
-      where: { id: params.id },
+    const material = await db.material.findFirst({
+      where: { id: params.id, ...(await materialVisibilityWhere(session.user)) },
       include: { category: true },
     });
 
@@ -32,10 +36,6 @@ export async function GET(
         { error: "Material não encontrado" },
         { status: 404 }
       );
-    }
-
-    if (!material.published && session.user.role !== "ADMIN") {
-      return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
     }
 
     return NextResponse.json(material);
@@ -58,10 +58,15 @@ export async function PATCH(
 
   try {
     const body = await req.json();
-    const data = updateSchema.parse(body);
+    const { linkedStoreIds, ...data } = updateSchema.parse(body);
     const material = await db.material.update({
       where: { id: params.id },
-      data,
+      data: {
+        ...data,
+        ...(linkedStoreIds && {
+          linkedStores: { deleteMany: {}, create: linkedStoreIds.map((storeId) => ({ storeId })) },
+        }),
+      },
       include: { category: true },
     });
     return NextResponse.json(material);

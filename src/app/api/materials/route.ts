@@ -5,6 +5,8 @@ import { db } from "@/lib/db";
 import { sendPushToAll } from "@/lib/push";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import type { Prisma } from "@prisma/client";
+import { materialVisibilityWhere } from "@/lib/access";
 
 const materialSchema = z.object({
   title: z.string().min(1).max(200),
@@ -14,6 +16,8 @@ const materialSchema = z.object({
   fileType: z.enum(["VIDEO", "PDF", "IMAGE", "DOCUMENT", "OTHER", "NOTICE"]).optional().default("OTHER"),
   mimeType: z.string().optional(),
   fileSize: z.number().optional(),
+  coverUrl: z.string().url().optional().nullable(),
+  coverKey: z.string().optional().nullable(),
   categoryId: z.string(),
   published: z.boolean().optional().default(true),
   linkedStoreIds: z.array(z.string()).optional().default([]),
@@ -30,27 +34,7 @@ export async function GET(req: Request) {
   const slug = searchParams.get("slug");
 
   try {
-    const where: {
-      published?: boolean;
-      categoryId?: string;
-      category?: { slug: string };
-      OR?: object[];
-    } = {};
-
-    if (session.user.role !== "ADMIN") {
-      where.published = true;
-      // Get the franchisee's store IDs
-      const userStores = await db.userStore.findMany({
-        where: { userId: session.user.id },
-        select: { storeId: true },
-      });
-      const storeIds = userStores.map((us) => us.storeId);
-      // Show materials with no store restriction OR linked to one of the user's stores
-      where.OR = [
-        { linkedStores: { none: {} } },
-        { linkedStores: { some: { storeId: { in: storeIds } } } },
-      ];
-    }
+    const where: Prisma.MaterialWhereInput = await materialVisibilityWhere(session.user);
     if (categoryId) where.categoryId = categoryId;
     if (slug) where.category = { slug };
 
@@ -82,6 +66,13 @@ export async function POST(req: Request) {
     const body = await req.json();
     const data = materialSchema.parse(body);
     const { linkedStoreIds, ...rest } = data;
+    // Post sem arquivo = comunicado em texto (com capa opcional)
+    if (!rest.fileUrl) {
+      rest.fileType = "NOTICE";
+      if (!rest.description?.trim() && !rest.coverUrl) {
+        return NextResponse.json({ error: "Escreva uma descrição ou anexe uma imagem/arquivo" }, { status: 400 });
+      }
+    }
     const material = await db.material.create({
       data: {
         ...rest,

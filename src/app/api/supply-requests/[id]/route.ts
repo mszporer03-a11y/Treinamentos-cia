@@ -21,6 +21,10 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
     },
   });
   if (!request) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  // Solicitações são privadas: só a Franqueadora e quem enviou
+  if (session.user.role !== "ADMIN" && request.requesterId !== session.user.id) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
   return NextResponse.json(request);
 }
 
