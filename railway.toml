@@ -2,7 +2,7 @@
 buildCommand = "npm run build"
 
 [deploy]
-startCommand = "(npx prisma migrate resolve --rolled-back 20260620000001_repair_missing_columns || true) && npm run db:migrate && npm run db:seed && npm start"
+startCommand = "npx prisma migrate resolve --rolled-back 20260620000001_repair_missing_columns || true && npm run db:migrate && npm run db:seed && npm start"
 healthcheckPath = "/api/health"
 healthcheckTimeout = 120
 restartPolicyType = "ON_FAILURE"
