@@ -20,6 +20,7 @@ import {
   GraduationCap,
   MessageSquare,
   Siren,
+  CheckSquare,
 } from "lucide-react";
 import { Support3LMButton } from "./Support3LM";
 
@@ -71,6 +72,7 @@ const sections: { label: string; items: NavItem[] }[] = [
       { href: "/materiais", label: "Treinamentos", icon: BookOpen },
       { href: "/universidade", label: "Universidade", icon: GraduationCap },
       { href: "/cardapios", label: "Cardápios", icon: UtensilsCrossed },
+      { href: "/inauguracao", label: "Inauguração", icon: CheckSquare },
     ],
   },
   {

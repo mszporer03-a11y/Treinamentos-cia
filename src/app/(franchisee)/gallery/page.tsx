@@ -11,7 +11,7 @@ import { MaterialViewer } from "@/components/franchisee/MaterialViewer";
 import { AttachmentMosaic } from "@/components/attachments/AttachmentMosaic";
 import { materialUsesMosaic } from "@/components/attachments/MaterialFeedMedia";
 import { materialAttachments } from "@/lib/attachments";
-import { Play, FileText, Image as ImageIcon, File, ClipboardList, BookOpen, ChevronRight, SlidersHorizontal, Megaphone, Inbox, UtensilsCrossed, Newspaper, GraduationCap, Send, MessageSquare } from "lucide-react";
+import { Play, FileText, Image as ImageIcon, File, ClipboardList, BookOpen, ChevronRight, SlidersHorizontal, Megaphone, Inbox, UtensilsCrossed, Newspaper, GraduationCap, Send, MessageSquare , CheckSquare } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { useBadges, BADGE_KEY } from "@/hooks/useBadges";
 
@@ -131,6 +131,8 @@ type GalleryNavItem = {
   tutorialId: string;
   /** Se definido, o card só aparece para estes papéis */
   roles?: string[];
+  /** Card só aparece quando há uma inauguração de loja em andamento */
+  onlyWithOnboarding?: boolean;
 };
 
 const NAV_ITEMS: GalleryNavItem[] = [
@@ -206,6 +208,15 @@ const NAV_ITEMS: GalleryNavItem[] = [
     bg: "from-violet-600 to-violet-500",
     tutorialId: "nav-universidade",
   },
+  {
+    href: "/inauguracao",
+    icon: CheckSquare,
+    label: "Inauguração",
+    desc: "Acompanhe as etapas de abertura da sua loja",
+    bg: "from-teal-600 to-teal-500",
+    tutorialId: "nav-inauguracao",
+    onlyWithOnboarding: true,
+  },
 ];
 
 export default function GalleryPage() {
@@ -219,8 +230,13 @@ export default function GalleryPage() {
   const [novidades, setNovidades] = useState<ComunicadoItem[]>([]);
   const [viewingNovidade, setViewingNovidade] = useState<ComunicadoItem | null>(null);
   const [loading, setLoading] = useState(true);
+  const [hasOnboarding, setHasOnboarding] = useState(false);
 
   useEffect(() => {
+    fetch("/api/onboarding")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((list) => setHasOnboarding(Array.isArray(list) && list.length > 0))
+      .catch(() => {});
     async function load() {
       const [matRes, catRes] = await Promise.all([
         fetch("/api/materials"),
@@ -276,7 +292,9 @@ export default function GalleryPage() {
       {/* Nav cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
         {NAV_ITEMS.filter(
-          (item) => !item.roles || item.roles.includes(session?.user?.role ?? "FRANCHISEE")
+          (item) =>
+            (!item.roles || item.roles.includes(session?.user?.role ?? "FRANCHISEE")) &&
+            (!item.onlyWithOnboarding || hasOnboarding)
         ).map(({ href, icon: Icon, label, desc, bg, tutorialId }) => {
           const badgeCount = badges[BADGE_KEY[href] ?? ""] ?? 0;
           return (
