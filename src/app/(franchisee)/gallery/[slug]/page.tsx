@@ -1,10 +1,8 @@
-import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
-import { PostGrid } from "@/components/posts/PostGrid";
-import { materialVisibilityWhere } from "@/lib/access";
+import { MaterialCard } from "@/components/franchisee/MaterialCard";
 
 export const dynamic = "force-dynamic";
 
@@ -12,45 +10,62 @@ interface PageProps {
   params: { slug: string };
 }
 
-export default async function CategoryGalleryPage({ params }: PageProps) {
-  const session = await auth();
-  if (!session) redirect("/login");
+async function getCategoryWithMaterials(slug: string) {
+  return db.category.findUnique({
+    where: { slug },
+    include: {
+      materials: {
+        where: { published: true },
+        orderBy: { createdAt: "desc" },
+      },
+    },
+  });
+}
 
-  const category = await db.category.findUnique({ where: { slug: params.slug } });
+export default async function CategoryGalleryPage({ params }: PageProps) {
+  const category = await getCategoryWithMaterials(params.slug);
+
   if (!category) notFound();
 
-  const visibility = await materialVisibilityWhere(session.user);
-  const materials = await db.material.findMany({
-    where: { categoryId: category.id, ...visibility },
-    include: { category: true, createdBy: { select: { name: true } } },
-    orderBy: { createdAt: "desc" },
-  });
-
   return (
-    <div className="p-4 sm:p-6">
-      <Link href="/gallery?aba=categorias" className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-orange-600 transition mb-6">
+    <div>
+      {/* Breadcrumb */}
+      <Link
+        href="/gallery"
+        className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-blue-600 transition mb-6"
+      >
         <ChevronLeft className="h-4 w-4" />
         Voltar às categorias
       </Link>
 
+      {/* Header */}
       <div className="mb-6 sm:mb-8 flex items-center gap-3 sm:gap-4">
         <span className="text-4xl sm:text-5xl">{category.icon}</span>
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{category.name}</h1>
-          {category.description && <p className="text-gray-500 mt-0.5 text-sm sm:text-base">{category.description}</p>}
-          <p className="text-sm text-gray-400 mt-0.5">
-            {materials.length} publicaç{materials.length === 1 ? "ão" : "ões"}
+          {category.description && (
+            <p className="text-gray-500 mt-0.5 sm:mt-1 text-sm sm:text-base">{category.description}</p>
+          )}
+          <p className="text-sm text-gray-400 mt-0.5 sm:mt-1">
+            {category.materials.length} material(is) disponível(is)
           </p>
         </div>
       </div>
 
-      {materials.length === 0 ? (
+      {/* Materials Grid */}
+      {category.materials.length === 0 ? (
         <div className="text-center py-20">
           <span className="text-4xl">📭</span>
-          <p className="text-gray-500 mt-4 font-medium">Nenhuma publicação nesta categoria ainda.</p>
+          <p className="text-gray-500 mt-4 font-medium">
+            Nenhum material publicado nesta categoria ainda.
+          </p>
         </div>
       ) : (
-        <PostGrid materials={JSON.parse(JSON.stringify(materials))} trackViews />
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5">
+          {category.materials.map((material) => (
+            <MaterialCard key={material.id} material={material} />
+          ))}
+        </div>
       )}
     </div>
   );

@@ -3,7 +3,7 @@
 export const dynamic = "force-dynamic";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { MessageSquare, Search, Plus, X } from "lucide-react";
+import { MessageSquare, Search, Plus, X, Download, Phone, Trash2 } from "lucide-react";
 import { ChatWindow } from "@/components/chat/ChatWindow";
 import { useSession } from "next-auth/react";
 
@@ -15,6 +15,8 @@ interface Franchisee {
   id: string;
   name: string;
   email: string;
+  role?: string;
+  phone?: string | null;
   stores: StoreRef[];
 }
 
@@ -31,12 +33,11 @@ interface PendingStore { id: string; name: string; code: string; }
 
 interface ConversationItem {
   id: string;
-  store: { id: string; name: string; code: string } | null;
-  unreadCount: number;
   franchisee: Franchisee;
   lastMessage: LastMessage | null;
   updatedAt: string;
   pendingStores: PendingStore[];
+  isLegacy?: boolean;
 }
 
 export default function AdminChatPage() {
@@ -45,6 +46,7 @@ export default function AdminChatPage() {
   const [selected, setSelected] = useState<ConversationItem | null>(null);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const [deleting, setDeleting] = useState(false);
 
   // New-conversation picker state
   const [showPicker, setShowPicker] = useState(false);
@@ -78,30 +80,6 @@ export default function AdminChatPage() {
     return () => clearInterval(id);
   }, [fetchConversations]);
 
-  // Deep links: ?c=<conversa> (push) ou ?franchiseeId=..&storeId=.. (botão "Chat" da aba Lojas)
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const c = params.get("c");
-    const franchiseeId = params.get("franchiseeId");
-    const storeId = params.get("storeId");
-    if (franchiseeId) {
-      fetch("/api/conversations", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ franchiseeId, storeId: storeId || undefined }),
-      })
-        .then((r) => (r.ok ? r.json() : null))
-        .then((conv: ConversationItem | null) => conv && setSelected(conv));
-    } else if (c) {
-      fetch("/api/conversations")
-        .then((r) => r.json())
-        .then((list: ConversationItem[]) => {
-          const found = Array.isArray(list) ? list.find((x) => x.id === c) : null;
-          if (found) setSelected(found);
-        });
-    }
-  }, []);
-
   async function openPicker() {
     setPickerSearch("");
     setShowPicker(true);
@@ -110,20 +88,21 @@ export default function AdminChatPage() {
       if (res.ok) {
         const users = await res.json();
         setAllFranchisees(
-          users
-            .filter((u: Franchisee & { role: string }) => u.role === "FRANCHISEE")
-            .map((u: Franchisee) => ({ ...u, stores: u.stores ?? [] }))
+          users.filter(
+            (u: Franchisee & { role: string }) =>
+              u.role === "FRANCHISEE" || u.role === "MANAGER"
+          )
         );
       }
     }
   }
 
-  async function startConversation(franchisee: Franchisee, storeId?: string) {
+  async function startConversation(franchisee: Franchisee) {
     setCreating(true);
     const res = await fetch("/api/conversations", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ franchiseeId: franchisee.id, storeId }),
+      body: JSON.stringify({ franchiseeId: franchisee.id }),
     });
     if (res.ok) {
       const conv: ConversationItem = await res.json();
@@ -137,31 +116,55 @@ export default function AdminChatPage() {
     setShowPicker(false);
   }
 
-  // Canais (loja + franqueado) ainda sem conversa
-  const existingKeys = new Set(conversations.map((c) => `${c.franchisee.id}:${c.store?.id ?? ""}`));
-  const q = pickerSearch.toLowerCase();
-  const pickerOptions = allFranchisees
-    .flatMap((f) =>
-      f.stores.length > 0
-        ? f.stores.map((s) => ({ franchisee: f, store: s.store }))
-        : [{ franchisee: f, store: null as StoreRef["store"] | null }]
-    )
-    .filter((o) => !existingKeys.has(`${o.franchisee.id}:${o.store?.id ?? ""}`))
-    .filter(
-      (o) =>
-        o.franchisee.name.toLowerCase().includes(q) ||
-        o.franchisee.email.toLowerCase().includes(q) ||
-        (o.store?.name.toLowerCase().includes(q) ?? false) ||
-        (o.store?.code.toLowerCase().includes(q) ?? false)
-    );
+  async function deleteConversation(conv: ConversationItem) {
+    const who = conv.franchisee?.name ?? "este usuário";
 
-  const sq = search.toLowerCase();
+    // Tripla confirmação — ação irreversível
+    if (!confirm(`Excluir a conversa com ${who}?\n\nTodas as mensagens e solicitações desta conversa serão apagadas.`)) {
+      return;
+    }
+    if (!confirm(`Tem certeza? Esta ação é DEFINITIVA e não pode ser desfeita.\n\nConfirmar exclusão da conversa com ${who}?`)) {
+      return;
+    }
+    const typed = prompt(
+      `Confirmação final.\n\nPara apagar a conversa com ${who}, digite EXCLUIR abaixo:`
+    );
+    if (typed?.trim().toUpperCase() !== "EXCLUIR") {
+      if (typed !== null) alert("Exclusão cancelada — texto de confirmação incorreto.");
+      return;
+    }
+
+    setDeleting(true);
+    const res = await fetch(`/api/conversations/${conv.id}`, { method: "DELETE" });
+    setDeleting(false);
+    if (res.ok) {
+      setConversations((prev) => prev.filter((c) => c.id !== conv.id));
+      setSelected((cur) => (cur?.id === conv.id ? null : cur));
+    } else {
+      const data = await res.json().catch(() => ({}));
+      alert(data.error ?? "Erro ao excluir a conversa");
+    }
+  }
+
+  // Franchisees that don't yet have a conversation with this admin
+  // (legacy/unified conversations don't count)
+  const franchiseesWithConv = new Set(
+    conversations.filter((c) => !c.isLegacy).map((c) => c.franchisee.id)
+  );
+  const pickerFranchisees = allFranchisees.filter(
+    (f) =>
+      !franchiseesWithConv.has(f.id) &&
+      (f.name.toLowerCase().includes(pickerSearch.toLowerCase()) ||
+        f.email.toLowerCase().includes(pickerSearch.toLowerCase()))
+  );
+
   const filtered = conversations.filter(
     (c) =>
-      c.franchisee.name.toLowerCase().includes(sq) ||
-      c.franchisee.email.toLowerCase().includes(sq) ||
-      (c.store?.name.toLowerCase().includes(sq) ?? false) ||
-      (c.store?.code.toLowerCase().includes(sq) ?? false)
+      c.franchisee.name.toLowerCase().includes(search.toLowerCase()) ||
+      c.franchisee.email.toLowerCase().includes(search.toLowerCase()) ||
+      c.franchisee.stores.some((s) =>
+        s.store.name.toLowerCase().includes(search.toLowerCase())
+      )
   );
 
   function getLastMessagePreview(lm: LastMessage | null): string {
@@ -181,21 +184,31 @@ export default function AdminChatPage() {
       >
         <div className="p-4 border-b border-gray-100">
           <div className="flex items-center justify-between mb-3">
-            <h1 className="text-lg font-bold text-gray-900">Chat</h1>
-            <button
-              onClick={openPicker}
-              className="p-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition"
-              title="Nova conversa"
-            >
-              <Plus className="h-4 w-4" />
-            </button>
+            <h1 className="text-lg font-bold text-gray-900">Suporte</h1>
+            <div className="flex items-center gap-1.5">
+              <a
+                href="/api/export/chats"
+                download
+                className="p-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 transition"
+                title="Exportar todo o histórico (CSV)"
+              >
+                <Download className="h-4 w-4" />
+              </a>
+              <button
+                onClick={openPicker}
+                className="p-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition"
+                title="Nova conversa"
+              >
+                <Plus className="h-4 w-4" />
+              </button>
+            </div>
           </div>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar loja ou franqueado..."
+              placeholder="Buscar franqueado ou loja..."
               className="w-full pl-9 pr-3 py-2 bg-gray-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -215,33 +228,36 @@ export default function AdminChatPage() {
                 autoFocus
                 value={pickerSearch}
                 onChange={(e) => setPickerSearch(e.target.value)}
-                placeholder="Buscar loja ou franqueado..."
+                placeholder="Buscar franqueado..."
                 className="w-full px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
             <div className="max-h-52 overflow-y-auto">
-              {pickerOptions.length === 0 ? (
+              {pickerFranchisees.length === 0 ? (
                 <p className="px-4 py-3 text-xs text-gray-400">
-                  {allFranchisees.length === 0 ? "Carregando…" : "Todos os canais já existem"}
+                  {allFranchisees.length === 0 ? "Carregando…" : "Nenhum franqueado sem conversa"}
                 </p>
               ) : (
-                pickerOptions.map((o) => (
+                pickerFranchisees.map((f) => (
                   <button
-                    key={`${o.franchisee.id}:${o.store?.id ?? ""}`}
+                    key={f.id}
                     disabled={creating}
-                    onClick={() => startConversation(o.franchisee, o.store?.id)}
+                    onClick={() => startConversation(f)}
                     className="w-full text-left px-4 py-2.5 hover:bg-blue-50 transition flex items-center gap-3 border-b border-gray-100 last:border-0"
                   >
                     <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 font-semibold text-xs flex items-center justify-center flex-shrink-0">
-                      {(o.store?.name ?? o.franchisee.name)[0]?.toUpperCase()}
+                      {f.name[0]?.toUpperCase()}
                     </div>
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">
-                        {o.store ? `🏪 ${o.store.name}` : o.franchisee.name}
+                      <p className="text-sm font-medium text-gray-900 truncate flex items-center gap-1.5">
+                        {f.name}
+                        {f.role === "MANAGER" && (
+                          <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-700 flex-shrink-0">
+                            Gerente
+                          </span>
+                        )}
                       </p>
-                      <p className="text-xs text-gray-400 truncate">
-                        {o.store ? `${o.franchisee.name} · ${o.franchisee.email}` : `${o.franchisee.email} · canal geral`}
-                      </p>
+                      <p className="text-xs text-gray-400 truncate">{f.email}</p>
                     </div>
                   </button>
                 ))
@@ -260,7 +276,10 @@ export default function AdminChatPage() {
           ) : (
             filtered.map((conv) => {
               const isActive = selected?.id === conv.id;
-              const unread = conv.unreadCount > 0 && selected?.id !== conv.id;
+              const unread =
+                conv.lastMessage &&
+                !conv.lastMessage.readByAdmin &&
+                conv.lastMessage.senderId !== session?.user?.id;
 
               return (
                 <button
@@ -272,12 +291,22 @@ export default function AdminChatPage() {
                 >
                   <div className="flex items-start gap-3">
                     <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-700 font-semibold text-sm flex items-center justify-center flex-shrink-0">
-                      {(conv.store?.name ?? conv.franchisee.name)[0]?.toUpperCase()}
+                      {conv.franchisee.name[0]?.toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
-                        <span className={`text-sm font-medium text-gray-900 truncate ${unread ? "font-bold" : ""}`}>
-                          {conv.store ? `🏪 ${conv.store.name}` : conv.franchisee.name}
+                        <span className={`text-sm font-medium text-gray-900 truncate flex items-center gap-1.5 ${unread ? "font-bold" : ""}`}>
+                          {conv.franchisee.name}
+                          {conv.franchisee.role === "MANAGER" && (
+                            <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-700 flex-shrink-0">
+                              Gerente
+                            </span>
+                          )}
+                          {conv.isLegacy && (
+                            <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 flex-shrink-0">
+                              Histórico
+                            </span>
+                          )}
                         </span>
                         {conv.lastMessage && (
                           <span className="text-[10px] text-gray-400 flex-shrink-0 ml-2">
@@ -288,17 +317,21 @@ export default function AdminChatPage() {
                           </span>
                         )}
                       </div>
-                      <p className="text-[10px] text-gray-400 mb-0.5 truncate">
-                        {conv.store ? `${conv.store.code} · ${conv.franchisee.name}` : "Canal geral"}
-                      </p>
+                      {conv.pendingStores && conv.pendingStores.length > 0 ? (
+                        <p className="text-[10px] text-emerald-600 mb-0.5 flex items-center gap-1 flex-wrap">
+                          🏪 {conv.pendingStores.map((s) => s.name).join(", ")}
+                        </p>
+                      ) : conv.franchisee.stores.length > 0 ? (
+                        <p className="text-[10px] text-gray-400 mb-0.5 truncate">
+                          {conv.franchisee.stores.map((s) => s.store.name).join(", ")}
+                        </p>
+                      ) : null}
                       <p className={`text-xs truncate ${unread ? "text-gray-800 font-medium" : "text-gray-500"}`}>
                         {getLastMessagePreview(conv.lastMessage)}
                       </p>
                     </div>
                     {unread && (
-                      <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-blue-600 text-white text-[10px] font-bold flex items-center justify-center mt-0.5 flex-shrink-0">
-                        {conv.unreadCount}
-                      </span>
+                      <div className="w-2 h-2 rounded-full bg-blue-600 mt-1 flex-shrink-0" />
                     )}
                   </div>
                 </button>
@@ -319,18 +352,47 @@ export default function AdminChatPage() {
             >
               ←
             </button>
+            {/* Export + phone — top right of the chat */}
+            <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5">
+              {selected.franchisee.phone && (
+                <a
+                  href={`tel:${selected.franchisee.phone}`}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white rounded-lg shadow text-xs font-medium text-gray-600 hover:text-emerald-600 transition"
+                  title="Telefone de contato"
+                >
+                  <Phone className="h-3.5 w-3.5" />
+                  {selected.franchisee.phone}
+                </a>
+              )}
+              <a
+                href={`/api/export/chats?conversationId=${selected.id}`}
+                download
+                className="p-1.5 bg-white rounded-lg shadow text-gray-500 hover:text-blue-600 transition"
+                title="Exportar esta conversa (CSV)"
+              >
+                <Download className="h-4 w-4" />
+              </a>
+              <button
+                onClick={() => deleteConversation(selected)}
+                disabled={deleting}
+                className="p-1.5 bg-white rounded-lg shadow text-gray-500 hover:text-red-600 disabled:opacity-50 transition"
+                title="Excluir esta conversa"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
             <ChatWindow
               key={selected.id}
               conversationId={selected.id}
               currentUserId={session?.user?.id ?? ""}
               currentUserRole="ADMIN"
-              recipientName={selected.store ? `${selected.store.name} (${selected.store.code})` : selected.franchisee.name}
-              recipientSubtitle={selected.store ? `Canal exclusivo da loja · ${selected.franchisee.name}` : `Canal geral · ${selected.franchisee.email}`}
-              availableStores={
-                selected.store
-                  ? []
-                  : selected.franchisee.stores.map((s) => ({ id: s.store.id, name: s.store.name, code: s.store.code }))
-              }
+              recipientName={selected.franchisee.name}
+              recipientRole={selected.franchisee.role}
+              availableStores={selected.franchisee.stores.map((s) => ({
+                id: s.store.id,
+                name: s.store.name,
+                code: s.store.code,
+              }))}
             />
           </div>
         ) : (

@@ -2,9 +2,21 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { sendPushToUser } from "@/lib/push";
-import { canAccessConversation, userStoreIds } from "@/lib/access";
+import { attachmentsSchema, attachmentsSummary, legacyFileFields } from "@/lib/attachments";
 
 export const dynamic = "force-dynamic";
+
+// Admin acessa as próprias conversas + legadas (adminId null);
+// franqueado/gerente acessa apenas as suas
+function canAccess(
+  user: { id: string; role: string },
+  conv: { franchiseeId: string; adminId: string | null }
+) {
+  if (user.role === "ADMIN") {
+    return conv.adminId === null || conv.adminId === user.id;
+  }
+  return conv.franchiseeId === user.id;
+}
 
 // GET /api/conversations/[id]/messages
 export async function GET(
@@ -14,10 +26,12 @@ export async function GET(
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
-  // Solicitações são privadas: somente a Franqueadora (admin) ou quem abriu o canal
-  const { conv, allowed } = await canAccessConversation(session.user, params.id);
+  const conv = await db.conversation.findUnique({ where: { id: params.id } });
   if (!conv) return NextResponse.json({ error: "Conversa não encontrada" }, { status: 404 });
-  if (!allowed) return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
+
+  if (!canAccess(session.user, conv)) {
+    return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
+  }
 
   const messages = await db.message.findMany({
     where: { conversationId: params.id },
@@ -52,39 +66,54 @@ export async function POST(
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
-  // Solicitações são privadas: somente a Franqueadora (admin) ou quem abriu o canal
-  const { conv, allowed } = await canAccessConversation(session.user, params.id);
+  const conv = await db.conversation.findUnique({ where: { id: params.id } });
   if (!conv) return NextResponse.json({ error: "Conversa não encontrada" }, { status: 404 });
-  if (!allowed) return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
+
+  if (!canAccess(session.user, conv)) {
+    return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
+  }
+
+  const isAdmin = session.user.role === "ADMIN";
+
+  // Conversa legada é somente leitura para franqueado/gerente —
+  // novas mensagens devem ir para a conversa com um admin específico
+  if (!isAdmin && conv.adminId === null) {
+    return NextResponse.json(
+      { error: "Esta conversa é um histórico. Inicie uma conversa com um administrador." },
+      { status: 403 }
+    );
+  }
 
   const body = await req.json();
   const { content, fileUrl, fileKey, fileType, fileName, category, linkedStoreIds } = body;
 
-  if (!content?.trim() && !fileUrl) {
+  const parsedAttachments = attachmentsSchema.safeParse(body.attachments ?? []);
+  if (!parsedAttachments.success) {
+    return NextResponse.json({ error: "Anexos inválidos" }, { status: 400 });
+  }
+  const attachments = parsedAttachments.data;
+  // Compatibilidade: primeiro anexo também vai nos campos legados
+  const legacy = attachments.length > 0 ? legacyFileFields(attachments) : null;
+  const first = attachments[0];
+
+  if (!content?.trim() && !fileUrl && attachments.length === 0) {
     return NextResponse.json({ error: "Mensagem vazia" }, { status: 400 });
   }
 
-  const isAdmin = session.user.role === "ADMIN";
-  let storeIds: string[] = Array.isArray(linkedStoreIds) ? linkedStoreIds.filter((x: unknown) => typeof x === "string") : [];
-  if (conv.storeId) {
-    // Canal exclusivo de loja: a mensagem fica sempre vinculada a ela
-    storeIds = [conv.storeId];
-  } else if (!isAdmin && storeIds.length > 0) {
-    // Franqueado só pode marcar lojas às quais está vinculado
-    const mine = await userStoreIds(session.user.id);
-    storeIds = storeIds.filter((id) => mine.includes(id));
-  }
+  const storeIds: string[] = Array.isArray(linkedStoreIds) ? linkedStoreIds : [];
 
   const message = await db.message.create({
     data: {
       conversationId: params.id,
       senderId: session.user.id,
       content: content?.trim() || null,
-      fileUrl: fileUrl || null,
-      fileKey: fileKey || null,
-      fileType: fileType || null,
-      fileName: fileName || null,
+      fileUrl: legacy?.fileUrl ?? (fileUrl || null),
+      fileKey: legacy?.fileKey ?? (fileKey || null),
+      fileType: first ? (first.kind === "IMAGE" ? "image" : "document") : fileType || null,
+      fileName: first ? first.name : fileName || null,
+      attachments,
       category: category || null,
+      requestStatus: (!isAdmin && category) ? "PENDING" : null,
       readByAdmin: isAdmin,
       readByFranchisee: !isAdmin,
       linkedStores: storeIds.length > 0
@@ -105,17 +134,28 @@ export async function POST(
 
   // Enviar push para o destinatário
   const senderName = session.user.name ?? "Alguém";
-  const notifBody = content?.trim() ? content.trim() : `📎 ${fileName ?? "Arquivo"}`;
+  const notifBody = content?.trim()
+    ? content.trim()
+    : attachments.length > 0
+      ? attachmentsSummary(attachments)
+      : `📎 ${fileName ?? "Arquivo"}`;
 
   if (isAdmin) {
-    // Notificar o franqueado
+    // Notificar o franqueado/gerente
     await sendPushToUser(conv.franchiseeId, {
       title: `Mensagem de ${senderName}`,
       body: notifBody,
       url: "/chat",
     });
+  } else if (conv.adminId) {
+    // Notificar apenas o admin dono da conversa
+    await sendPushToUser(conv.adminId, {
+      title: `Nova mensagem de ${senderName}`,
+      body: notifBody,
+      url: `/admin/chat/${params.id}`,
+    });
   } else {
-    // Notificar todos os admins
+    // Conversa legada — notificar todos os admins
     const admins = await db.user.findMany({
       where: { role: "ADMIN", active: true },
       select: { id: true },
@@ -125,7 +165,7 @@ export async function POST(
         sendPushToUser(admin.id, {
           title: `Nova mensagem de ${senderName}`,
           body: notifBody,
-          url: `/admin/chat?c=${params.id}`,
+          url: `/admin/chat/${params.id}`,
         })
       )
     );

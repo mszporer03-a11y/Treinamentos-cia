@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth";
 import { ProfileForm } from "@/components/ProfileForm";
+import { PushNotificationSettings } from "@/components/PushNotificationSettings";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,7 @@ export default async function FranchiseePerfilPage() {
         </p>
       </div>
       <ProfileForm user={{ id: session!.user.id, name: session!.user.name, email: session!.user.email }} />
+      <PushNotificationSettings />
     </div>
   );
 }

@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { z } from "zod";
 
 const DEFAULT_STEPS = [
-  { title: "Obras e Reformas", description: "Adequação do espaço físico conforme padrão Cia do Churrasco", phase: "OBRAS" as const, order: 0 },
+  { title: "Obras e Reformas", description: "Adequação do espaço físico conforme padrão Companhia do Churrasco", phase: "OBRAS" as const, order: 0 },
   { title: "Equipamentos", description: "Instalação e vistoria de equipamentos (churrasqueiras, refrigeração, etc.)", phase: "EQUIPAMENTOS" as const, order: 1 },
   { title: "Treinamento da Equipe", description: "Treinamento operacional de toda a equipe", phase: "TREINAMENTO" as const, order: 2 },
   { title: "Aprovação Final", description: "Vistoria final e aprovação para abertura", phase: "APROVACAO" as const, order: 3 },

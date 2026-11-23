@@ -1,32 +1,35 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import {
-  Send,
-  Paperclip,
-  X,
-  FileText,
-  Image as ImageIcon,
-  Download,
-  Loader2,
-  Tag,
-  Store,
-} from "lucide-react";
-import { useUploadThing } from "@/lib/uploadthing-components";
+import { Send, Paperclip, X, Loader2, Tag, Store } from "lucide-react";
+import { type Attachment, messageAttachments } from "@/lib/attachments";
+import { AttachmentMosaic } from "@/components/attachments/AttachmentMosaic";
+import { AttachmentGallery } from "@/components/attachments/AttachmentGallery";
+import { AttachmentPickerList } from "@/components/attachments/AttachmentPicker";
+import { useAttachmentUploader } from "@/components/attachments/useAttachmentUploader";
 import { formatDate } from "@/lib/utils";
 
 const MESSAGE_CATEGORIES = [
-  { value: "Solicitacoes", label: "Solicitações", color: "bg-blue-100 text-blue-700" },
-  { value: "Marketing", label: "Marketing", color: "bg-purple-100 text-purple-700" },
-  { value: "SenhasUsuarios", label: "Senhas e usuários", color: "bg-orange-100 text-orange-700" },
-  { value: "SuporteSistema", label: "Suporte Sistema", color: "bg-red-100 text-red-700" },
+  { value: "solicitacoes",   label: "Solicitações (Geral)", color: "bg-blue-100 text-blue-700" },
+  { value: "marketing",      label: "Mídia",                color: "bg-purple-100 text-purple-700" },
+  { value: "senhas-usuarios",label: "Senhas e usuários",   color: "bg-orange-100 text-orange-700" },
+  { value: "suporte-sistema",label: "Suporte Sistema",     color: "bg-cyan-100 text-cyan-700" },
+  { value: "outros",         label: "Outros",              color: "bg-gray-100 text-gray-600" },
 ] as const;
+
+// Legacy camelCase values (kept for backward compat with older messages)
+const LEGACY_CATEGORY_MAP: Record<string, { label: string; color: string }> = {
+  Solicitacoes:   { label: "Solicitações (Geral)", color: "bg-blue-100 text-blue-700" },
+  Marketing:      { label: "Mídia",             color: "bg-purple-100 text-purple-700" },
+  SenhasUsuarios: { label: "Senhas e usuários", color: "bg-orange-100 text-orange-700" },
+  SuporteSistema: { label: "Suporte Sistema",   color: "bg-cyan-100 text-cyan-700" },
+};
 
 type MessageCategoryValue = typeof MESSAGE_CATEGORIES[number]["value"];
 
 function categoryBadge(value: string | null | undefined) {
   if (!value) return null;
-  const cat = MESSAGE_CATEGORIES.find((c) => c.value === value);
+  const cat = MESSAGE_CATEGORIES.find((c) => c.value === value) ?? LEGACY_CATEGORY_MAP[value];
   if (!cat) return null;
   return (
     <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${cat.color}`}>
@@ -54,6 +57,7 @@ interface Message {
   fileUrl: string | null;
   fileType: string | null;
   fileName: string | null;
+  attachments?: unknown;
   category: string | null;
   createdAt: string;
   sender: Sender;
@@ -63,40 +67,38 @@ interface Message {
 interface ChatWindowProps {
   conversationId: string;
   currentUserId: string;
-  currentUserRole: "ADMIN" | "FRANCHISEE";
+  currentUserRole: "ADMIN" | "FRANCHISEE" | "MANAGER";
   recipientName?: string;
-  recipientSubtitle?: string;
+  recipientRole?: string;
   pollInterval?: number;
   availableStores?: LinkedStore[];
+  readOnly?: boolean;
 }
 
-function FilePreview({ url, type, name }: { url: string; type: string | null; name: string | null }) {
-  const isImage = type === "image" || (name ? /\.(jpg|jpeg|png|gif|webp)$/i.test(name) : false);
+const ROLE_LABEL: Record<string, string> = {
+  ADMIN: "Admin",
+  FRANCHISEE: "Franqueado",
+  MANAGER: "Gerente",
+};
 
-  if (isImage) {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={url}
-        alt={name ?? "imagem"}
-        className="max-w-[240px] max-h-[200px] rounded-lg object-cover cursor-pointer"
-        onClick={() => window.open(url, "_blank")}
-      />
-    );
-  }
+function dayLabel(dateStr: string): string {
+  const d = new Date(dateStr);
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
 
-  return (
-    <a
-      href={url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="flex items-center gap-2 px-3 py-2 bg-white/20 rounded-lg hover:bg-white/30 transition text-sm"
-    >
-      <FileText className="h-4 w-4 flex-shrink-0" />
-      <span className="truncate max-w-[160px]">{name ?? "arquivo"}</span>
-      <Download className="h-3 w-3 flex-shrink-0" />
-    </a>
-  );
+  const sameDay = (a: Date, b: Date) =>
+    a.getDate() === b.getDate() &&
+    a.getMonth() === b.getMonth() &&
+    a.getFullYear() === b.getFullYear();
+
+  if (sameDay(d, today)) return "Hoje";
+  if (sameDay(d, yesterday)) return "Ontem";
+  return d.toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
 }
 
 export function ChatWindow({
@@ -104,9 +106,10 @@ export function ChatWindow({
   currentUserId,
   currentUserRole,
   recipientName = "Admin",
-  recipientSubtitle,
+  recipientRole,
   pollInterval = 4000,
   availableStores = [],
+  readOnly = false,
 }: ChatWindowProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [text, setText] = useState("");
@@ -115,33 +118,12 @@ export function ChatWindow({
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [selectedStoreIds, setSelectedStoreIds] = useState<string[]>([]);
   const [showStorePicker, setShowStorePicker] = useState(false);
-  const [pendingFile, setPendingFile] = useState<{
-    url: string;
-    key: string;
-    type: string;
-    name: string;
-  } | null>(null);
-  const [uploading, setUploading] = useState(false);
+  const uploader = useAttachmentUploader("chatAttachment");
+  const uploading = uploader.busy;
+  const hasAttachments = uploader.attachments.length > 0;
+  const [gallery, setGallery] = useState<Attachment[] | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const { startUpload } = useUploadThing("chatAttachment", {
-    onClientUploadComplete: (res) => {
-      const file = res?.[0];
-      if (file) {
-        const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
-        const isImg = ["jpg", "jpeg", "png", "gif", "webp"].includes(ext);
-        setPendingFile({
-          url: file.url,
-          key: file.key,
-          type: isImg ? "image" : "document",
-          name: file.name,
-        });
-      }
-      setUploading(false);
-    },
-    onUploadError: () => setUploading(false),
-  });
 
   const fetchMessages = useCallback(async () => {
     const res = await fetch(`/api/conversations/${conversationId}/messages`);
@@ -162,7 +144,7 @@ export function ChatWindow({
   }, [messages]);
 
   async function handleSend() {
-    if (!text.trim() && !pendingFile) return;
+    if ((!text.trim() && !hasAttachments) || uploading) return;
     setSending(true);
 
     await fetch(`/api/conversations/${conversationId}/messages`, {
@@ -170,17 +152,14 @@ export function ChatWindow({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         content: text.trim() || null,
-        fileUrl: pendingFile?.url ?? null,
-        fileKey: pendingFile?.key ?? null,
-        fileType: pendingFile?.type ?? null,
-        fileName: pendingFile?.name ?? null,
+        attachments: uploader.attachments,
         category: category || null,
         linkedStoreIds: selectedStoreIds,
       }),
     });
 
     setText("");
-    setPendingFile(null);
+    uploader.reset();
     setCategory("");
     setSelectedStoreIds([]);
     setShowCategoryPicker(false);
@@ -189,11 +168,8 @@ export function ChatWindow({
     await fetchMessages();
   }
 
-  async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    await startUpload([file]);
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    uploader.addFiles(e.target.files);
     e.target.value = "";
   }
 
@@ -211,10 +187,14 @@ export function ChatWindow({
         <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-semibold text-sm flex-shrink-0">
           {recipientName[0]?.toUpperCase()}
         </div>
-        <div className="min-w-0">
-          <p className="font-semibold text-gray-900 text-sm truncate">{recipientName}</p>
+        <div>
+          <p className="font-semibold text-gray-900 text-sm">{recipientName}</p>
           <p className="text-xs text-gray-400">
-            {recipientSubtitle ?? (currentUserRole === "ADMIN" ? "Franqueado" : "Admin")}
+            {recipientRole
+              ? ROLE_LABEL[recipientRole] ?? recipientRole
+              : currentUserRole === "ADMIN"
+              ? "Franqueado"
+              : "Admin"}
           </p>
         </div>
       </div>
@@ -226,11 +206,25 @@ export function ChatWindow({
             Nenhuma mensagem ainda. Diga olá! 👋
           </div>
         )}
-        {messages.map((msg) => {
+        {messages.map((msg, idx) => {
           const isMe = msg.sender.id === currentUserId;
+          const prevMsg = messages[idx - 1];
+          const showDayDivider =
+            !prevMsg ||
+            new Date(prevMsg.createdAt).toDateString() !==
+              new Date(msg.createdAt).toDateString();
           return (
+            <div key={msg.id}>
+              {showDayDivider && (
+                <div className="flex items-center gap-3 my-4">
+                  <div className="flex-1 h-px bg-gray-200" />
+                  <span className="text-[11px] font-medium text-gray-400 bg-gray-100 px-2.5 py-0.5 rounded-full">
+                    {dayLabel(msg.createdAt)}
+                  </span>
+                  <div className="flex-1 h-px bg-gray-200" />
+                </div>
+              )}
             <div
-              key={msg.id}
               className={`flex items-end gap-2 ${isMe ? "flex-row-reverse" : "flex-row"}`}
             >
               {/* Avatar */}
@@ -268,9 +262,13 @@ export function ChatWindow({
                       : "bg-white text-gray-900 shadow-sm rounded-bl-sm"
                   }`}
                 >
-                  {msg.fileUrl && (
-                    <div className="mb-1">
-                      <FilePreview url={msg.fileUrl} type={msg.fileType} name={msg.fileName} />
+                  {messageAttachments(msg).length > 0 && (
+                    <div className="mb-1 w-[220px] sm:w-[260px]">
+                      <AttachmentMosaic
+                        variant="chat"
+                        attachments={messageAttachments(msg)}
+                        onOpen={() => setGallery(messageAttachments(msg))}
+                      />
                     </div>
                   )}
                   {msg.content && <p className="whitespace-pre-wrap">{msg.content}</p>}
@@ -283,27 +281,28 @@ export function ChatWindow({
                 </span>
               </div>
             </div>
+            </div>
           );
         })}
         <div ref={bottomRef} />
       </div>
 
-      {/* Pending file preview */}
-      {pendingFile && (
-        <div className="mx-4 mb-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-xl flex items-center gap-2 text-sm text-blue-700">
-          {pendingFile.type === "image" ? (
-            <ImageIcon className="h-4 w-4 flex-shrink-0" />
-          ) : (
-            <FileText className="h-4 w-4 flex-shrink-0" />
-          )}
-          <span className="truncate flex-1">{pendingFile.name}</span>
-          <button onClick={() => setPendingFile(null)}>
-            <X className="h-4 w-4" />
-          </button>
+      {/* Read-only notice (conversa de histórico) */}
+      {readOnly && (
+        <div className="px-4 py-3 bg-gray-100 border-t border-gray-200 text-center text-xs text-gray-500 flex-shrink-0">
+          Esta conversa é um histórico — para falar com a equipe, inicie uma conversa com um administrador.
+        </div>
+      )}
+
+      {/* Anexos pendentes (vários por mensagem) */}
+      {!readOnly && uploader.items.length > 0 && (
+        <div className="mx-4 mb-2 max-h-48 overflow-y-auto">
+          <AttachmentPickerList uploader={uploader} compact />
         </div>
       )}
 
       {/* Input bar */}
+      {!readOnly && (
       <div className="px-4 py-3 bg-white border-t border-gray-200 flex-shrink-0">
         {/* Store picker */}
         {availableStores.length > 0 && showStorePicker && (
@@ -393,7 +392,7 @@ export function ChatWindow({
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
             className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition flex-shrink-0"
-            title="Anexar arquivo"
+            title="Anexar arquivos"
           >
             {uploading ? (
               <Loader2 className="h-5 w-5 animate-spin" />
@@ -404,7 +403,8 @@ export function ChatWindow({
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/*,.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx"
+            accept="image/*,video/*,.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx"
+            multiple
             className="hidden"
             onChange={handleFileSelect}
           />
@@ -451,13 +451,16 @@ export function ChatWindow({
 
           <button
             onClick={handleSend}
-            disabled={sending || uploading || (!text.trim() && !pendingFile)}
+            disabled={sending || uploading || (!text.trim() && !hasAttachments)}
             className="p-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl transition flex-shrink-0"
           >
             <Send className="h-5 w-5" />
           </button>
         </div>
       </div>
+      )}
+
+      {gallery && <AttachmentGallery attachments={gallery} title="Anexos da mensagem" onClose={() => setGallery(null)} />}
     </div>
   );
 }

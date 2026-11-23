@@ -10,22 +10,25 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: {
-    default: "Portal de Treinamentos",
-    template: "%s | Portal de Treinamentos",
+    default: "Portal Companhia do Churrasco",
+    template: "%s | Portal CdC",
   },
   description: "Portal de materiais e treinamentos para franqueados",
-  applicationName: "Portal de Treinamentos",
+  applicationName: "Portal CdC",
+  manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "default",
-    title: "Treinamentos",
+    statusBarStyle: "black-translucent",
+    title: "CdC Intranet",
+    startupImage: "/icon.png",
   },
   formatDetection: {
     telephone: false,
   },
   icons: {
-    icon: "/icon.svg",
-    apple: "/icon.svg",
+    icon: "/icon.png",
+    apple: "/icon.png",
+    shortcut: "/icon.png",
   },
 };
 

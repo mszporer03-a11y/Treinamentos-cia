@@ -4,9 +4,10 @@ export const dynamic = "force-dynamic";
 
 import { useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Eye, EyeOff, Lock, Mail } from "lucide-react";
+import { Eye, EyeOff, Lock, User } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -29,8 +30,12 @@ export default function LoginPage() {
       });
 
       if (result?.error) {
-        setError("Email ou senha inválidos. Tente novamente.");
+        setError("Login/e-mail ou senha inválidos. Tente novamente.");
       } else {
+        // Exibe a saudação personalizada uma vez após o login
+        try {
+          sessionStorage.setItem("cia:welcome", "1");
+        } catch {}
         router.refresh();
         router.push("/");
       }
@@ -47,7 +52,14 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center mb-6">
-            <Image src="/logo.png" alt="Companhia do Churrasco" width={220} height={78} className="w-48" />
+            <Image
+              src="/logo.png"
+              alt="Companhia do Churrasco — Intranet"
+              width={220}
+              height={78}
+              className="w-48"
+              priority
+            />
           </div>
           <p className="text-gray-500 text-sm">
             Entre com suas credenciais de acesso
@@ -58,16 +70,18 @@ export default function LoginPage() {
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Email
+              E-mail ou login
             </label>
             <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
               <input
-                type="email"
+                type="text"
                 required
+                autoComplete="username"
+                autoCapitalize="none"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="seu@email.com"
+                placeholder="seu@email.com ou joao.franqueado"
                 className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition text-sm"
               />
             </div>
@@ -119,6 +133,11 @@ export default function LoginPage() {
 
         <p className="text-center text-xs text-gray-400 mt-6">
           Problemas com acesso? Fale com o administrador.
+        </p>
+        <p className="text-center text-sm mt-3">
+          <Link href="/instalar" className="text-blue-600 hover:underline font-medium">
+            📱 Instalar o app (Android e iPhone)
+          </Link>
         </p>
       </div>
     </div>

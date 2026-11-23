@@ -1,140 +1,193 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
-import { userHasStore, getOrCreateChannel } from "@/lib/access";
 
 export const dynamic = "force-dynamic";
 
-const storeSelect = { id: true, name: true, code: true } as const;
+const userSelect = {
+  id: true,
+  name: true,
+  email: true,
+  role: true,
+  phone: true,
+  stores: { include: { store: { select: { id: true, name: true, code: true } } } },
+} as const;
 
 // GET /api/conversations
-// Admin      → lista todos os canais (loja + franqueado) com última mensagem e não lidas
-// Franqueado → ?storeId=X abre/cria o canal exclusivo daquela loja;
-//              sem parâmetro lista os canais disponíveis (um por loja vinculada)
-export async function GET(req: Request) {
+// Admin     → suas conversas (adminId = ele) + conversas legadas (adminId null)
+// Não-admin → suas conversas (uma por admin) + legada, se houver
+export async function GET() {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   if (session.user.role === "ADMIN") {
     const conversations = await db.conversation.findMany({
+      where: { OR: [{ adminId: session.user.id }, { adminId: null }] },
       include: {
-        store: { select: storeSelect },
-        franchisee: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            stores: { include: { store: { select: storeSelect } } },
-          },
-        },
+        franchisee: { select: userSelect },
         messages: {
           orderBy: { createdAt: "desc" },
           take: 1,
-          select: { content: true, fileName: true, fileType: true, createdAt: true, senderId: true, readByAdmin: true },
+          select: {
+            content: true,
+            fileName: true,
+            fileType: true,
+            createdAt: true,
+            senderId: true,
+            readByAdmin: true,
+          },
         },
       },
       orderBy: { updatedAt: "desc" },
     });
 
-    const unread = await db.message.groupBy({
-      by: ["conversationId"],
-      where: { readByAdmin: false, sender: { role: { not: "ADMIN" } } },
-      _count: { _all: true },
+    // Find stores linked to unread admin messages, grouped by conversation
+    const convIds = conversations.map((c) => c.id);
+    const unreadMessages = await db.message.findMany({
+      where: {
+        conversationId: { in: convIds },
+        readByFranchisee: false,
+        sender: { role: "ADMIN" },
+        linkedStores: { some: {} },
+      },
+      select: {
+        conversationId: true,
+        linkedStores: { include: { store: { select: { id: true, name: true, code: true } } } },
+      },
     });
-    const unreadMap = new Map(unread.map((u) => [u.conversationId, u._count._all]));
+
+    // Group stores by conversation, deduplicate
+    const pendingStoresByConv = new Map<string, { id: string; name: string; code: string }[]>();
+    for (const msg of unreadMessages) {
+      const existing = pendingStoresByConv.get(msg.conversationId) ?? [];
+      for (const ms of msg.linkedStores) {
+        if (!existing.find((s) => s.id === ms.store.id)) existing.push(ms.store);
+      }
+      pendingStoresByConv.set(msg.conversationId, existing);
+    }
 
     return NextResponse.json(
       conversations.map((c) => ({
         id: c.id,
-        store: c.store,
+        adminId: c.adminId,
+        isLegacy: c.adminId === null,
         franchisee: c.franchisee,
         lastMessage: c.messages[0] ?? null,
-        unreadCount: unreadMap.get(c.id) ?? 0,
-        pendingStores: [],
+        unreadCount: 0,
+        pendingStores: pendingStoresByConv.get(c.id) ?? [],
         updatedAt: c.updatedAt,
       }))
     );
   }
 
-  const { searchParams } = new URL(req.url);
-  const storeId = searchParams.get("storeId");
-
-  if (storeId) {
-    if (storeId !== "geral" && !(await userHasStore(session.user.id, storeId))) {
-      return NextResponse.json({ error: "Loja não vinculada ao seu usuário" }, { status: 403 });
-    }
-    const conv = await getOrCreateChannel(session.user.id, storeId === "geral" ? null : storeId);
-    return NextResponse.json({ id: conv.id, store: conv.store });
-  }
-
-  // Lista de canais: um por loja vinculada + canal geral (se não houver loja ou se já tiver histórico)
-  const [links, convs] = await Promise.all([
-    db.userStore.findMany({
-      where: { userId: session.user.id, store: { active: true } },
-      include: { store: { select: storeSelect } },
-      orderBy: { store: { name: "asc" } },
-    }),
-    db.conversation.findMany({
-      where: { franchiseeId: session.user.id },
-      select: {
-        id: true,
-        storeId: true,
-        _count: { select: { messages: { where: { readByFranchisee: false } } } },
-        messages: { take: 1, select: { id: true } },
+  // Franqueado / gerente — lista das suas conversas (uma por admin)
+  const conversations = await db.conversation.findMany({
+    where: { franchiseeId: session.user.id },
+    include: {
+      admin: { select: { id: true, name: true, email: true } },
+      messages: {
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        select: {
+          content: true,
+          fileName: true,
+          createdAt: true,
+          senderId: true,
+          readByFranchisee: true,
+        },
       },
-    }),
-  ]);
-
-  const byStore = new Map(convs.map((c) => [c.storeId ?? "geral", c]));
-  const channels = links.map((l) => {
-    const c = byStore.get(l.storeId);
-    return { key: l.storeId, conversationId: c?.id ?? null, store: l.store, unread: c?._count.messages ?? 0 };
+    },
+    orderBy: { updatedAt: "desc" },
   });
-  const general = byStore.get("geral");
-  if (channels.length === 0 || (general && general.messages.length > 0)) {
-    channels.push({ key: "geral", conversationId: general?.id ?? null, store: null as never, unread: general?._count.messages ?? 0 });
-  }
 
-  return NextResponse.json({ channels });
+  return NextResponse.json(
+    conversations.map((c) => ({
+      id: c.id,
+      admin: c.admin,
+      isLegacy: c.adminId === null,
+      lastMessage: c.messages[0] ?? null,
+      updatedAt: c.updatedAt,
+    }))
+  );
 }
 
-// POST /api/conversations — Admin abre o canal de uma loja com um franqueado
+// POST /api/conversations
+// Admin     → { franchiseeId } inicia conversa própria com franqueado/gerente
+// Não-admin → { adminId } inicia conversa com um admin
 export async function POST(req: Request) {
   const session = await auth();
-  if (!session || session.user.role !== "ADMIN") {
+  if (!session?.user) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   }
 
-  const { franchiseeId, storeId } = await req.json();
-  if (!franchiseeId) {
-    return NextResponse.json({ error: "franchiseeId obrigatório" }, { status: 400 });
+  const body = await req.json();
+
+  if (session.user.role === "ADMIN") {
+    const { franchiseeId } = body;
+    if (!franchiseeId) {
+      return NextResponse.json({ error: "franchiseeId obrigatório" }, { status: 400 });
+    }
+
+    const franchisee = await db.user.findFirst({
+      where: { id: franchiseeId, role: { in: ["FRANCHISEE", "MANAGER"] } },
+      select: userSelect,
+    });
+    if (!franchisee) {
+      return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
+    }
+
+    const existing = await db.conversation.findFirst({
+      where: { franchiseeId, adminId: session.user.id },
+      select: { id: true, updatedAt: true },
+    });
+    const conv =
+      existing ??
+      (await db.conversation.create({
+        data: { franchiseeId, adminId: session.user.id },
+        select: { id: true, updatedAt: true },
+      }));
+
+    return NextResponse.json({
+      id: conv.id,
+      adminId: session.user.id,
+      isLegacy: false,
+      franchisee,
+      lastMessage: null,
+      pendingStores: [],
+      updatedAt: conv.updatedAt,
+    });
   }
 
-  const franchisee = await db.user.findUnique({
-    where: { id: franchiseeId, role: "FRANCHISEE" },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      stores: { include: { store: { select: storeSelect } } },
-    },
+  // Franqueado / gerente
+  const { adminId } = body;
+  if (!adminId) {
+    return NextResponse.json({ error: "adminId obrigatório" }, { status: 400 });
+  }
+
+  const admin = await db.user.findFirst({
+    where: { id: adminId, role: "ADMIN", active: true },
+    select: { id: true, name: true, email: true },
   });
-  if (!franchisee) {
-    return NextResponse.json({ error: "Franqueado não encontrado" }, { status: 404 });
-  }
-  if (storeId && !franchisee.stores.some((s) => s.store.id === storeId)) {
-    return NextResponse.json({ error: "Franqueado não pertence a essa loja" }, { status: 400 });
+  if (!admin) {
+    return NextResponse.json({ error: "Admin não encontrado" }, { status: 404 });
   }
 
-  const conv = await getOrCreateChannel(franchiseeId, storeId ?? null);
+  const existing = await db.conversation.findFirst({
+    where: { franchiseeId: session.user.id, adminId },
+    select: { id: true, updatedAt: true },
+  });
+  const conv =
+    existing ??
+    (await db.conversation.create({
+      data: { franchiseeId: session.user.id, adminId },
+      select: { id: true, updatedAt: true },
+    }));
 
   return NextResponse.json({
     id: conv.id,
-    store: conv.store,
-    franchisee,
+    admin,
+    isLegacy: false,
     lastMessage: null,
-    unreadCount: 0,
-    pendingStores: [],
     updatedAt: conv.updatedAt,
   });
 }

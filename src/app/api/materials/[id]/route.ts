@@ -4,15 +4,16 @@ export const dynamic = "force-dynamic";
 import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { materialVisibilityWhere } from "@/lib/access";
+import { attachmentsSchema, attachmentsSummary, legacyFileFields, materialAttachments } from "@/lib/attachments";
+import { notifyMaterialPublished } from "@/lib/notify";
 
 const updateSchema = z.object({
   title: z.string().min(1).max(200).optional(),
   description: z.string().optional(),
   published: z.boolean().optional(),
+  color: z.enum(["amber", "blue"]).optional(),
   categoryId: z.string().optional(),
-  coverUrl: z.string().url().nullable().optional(),
-  coverKey: z.string().nullable().optional(),
+  attachments: attachmentsSchema.optional(),
   linkedStoreIds: z.array(z.string()).optional(),
 });
 
@@ -26,8 +27,8 @@ export async function GET(
   }
 
   try {
-    const material = await db.material.findFirst({
-      where: { id: params.id, ...(await materialVisibilityWhere(session.user)) },
+    const material = await db.material.findUnique({
+      where: { id: params.id },
       include: { category: true },
     });
 
@@ -36,6 +37,10 @@ export async function GET(
         { error: "Material não encontrado" },
         { status: 404 }
       );
+    }
+
+    if (!material.published && session.user.role !== "ADMIN") {
+      return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
     }
 
     return NextResponse.json(material);
@@ -58,17 +63,54 @@ export async function PATCH(
 
   try {
     const body = await req.json();
-    const { linkedStoreIds, ...data } = updateSchema.parse(body);
+    const { attachments, linkedStoreIds, ...data } = updateSchema.parse(body);
+
+    const before = await db.material.findUnique({
+      where: { id: params.id },
+      select: { published: true, fileType: true },
+    });
+    if (!before) {
+      return NextResponse.json({ error: "Material não encontrado" }, { status: 404 });
+    }
+
+    let attachmentData = {};
+    if (attachments) {
+      if (before.fileType !== "NOTICE" && attachments.length === 0) {
+        return NextResponse.json({ error: "Anexe pelo menos um arquivo" }, { status: 400 });
+      }
+      attachmentData = {
+        attachments,
+        ...legacyFileFields(attachments),
+        ...(before.fileType !== "NOTICE" ? { fileType: attachments[0].kind } : {}),
+      };
+    }
+
     const material = await db.material.update({
       where: { id: params.id },
       data: {
         ...data,
-        ...(linkedStoreIds && {
-          linkedStores: { deleteMany: {}, create: linkedStoreIds.map((storeId) => ({ storeId })) },
-        }),
+        ...attachmentData,
+        ...(linkedStoreIds
+          ? { linkedStores: { deleteMany: {}, create: linkedStoreIds.map((storeId) => ({ storeId })) } }
+          : {}),
       },
-      include: { category: true },
+      include: {
+        category: true,
+        linkedStores: { include: { store: { select: { id: true, name: true, code: true } } } },
+      },
     });
+
+    // Rascunho → publicado: dispara push + e-mail
+    if (!before.published && material.published) {
+      const list = materialAttachments(material);
+      notifyMaterialPublished({
+        id: material.id,
+        title: material.title,
+        fileType: material.fileType,
+        summary: list.length > 0 ? attachmentsSummary(list) : undefined,
+      }).catch((err) => console.error("[notify] material", err));
+    }
+
     return NextResponse.json(material);
   } catch (e) {
     if (e instanceof z.ZodError) {

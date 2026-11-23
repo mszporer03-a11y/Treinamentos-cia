@@ -2,11 +2,10 @@ import { auth } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 import { db } from "@/lib/db";
-import { sendPushToAll } from "@/lib/push";
+import { notifyMaterialPublished } from "@/lib/notify";
+import { attachmentsSchema, attachmentsSummary, legacyFileFields } from "@/lib/attachments";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import type { Prisma } from "@prisma/client";
-import { materialVisibilityWhere } from "@/lib/access";
 
 const materialSchema = z.object({
   title: z.string().min(1).max(200),
@@ -16,11 +15,11 @@ const materialSchema = z.object({
   fileType: z.enum(["VIDEO", "PDF", "IMAGE", "DOCUMENT", "OTHER", "NOTICE"]).optional().default("OTHER"),
   mimeType: z.string().optional(),
   fileSize: z.number().optional(),
-  coverUrl: z.string().url().optional().nullable(),
-  coverKey: z.string().optional().nullable(),
   categoryId: z.string(),
   published: z.boolean().optional().default(true),
+  color: z.enum(["amber", "blue"]).optional(),
   linkedStoreIds: z.array(z.string()).optional().default([]),
+  attachments: attachmentsSchema.optional(),
 });
 
 export async function GET(req: Request) {
@@ -34,7 +33,27 @@ export async function GET(req: Request) {
   const slug = searchParams.get("slug");
 
   try {
-    const where: Prisma.MaterialWhereInput = await materialVisibilityWhere(session.user);
+    const where: {
+      published?: boolean;
+      categoryId?: string;
+      category?: { slug: string };
+      OR?: object[];
+    } = {};
+
+    if (session.user.role !== "ADMIN") {
+      where.published = true;
+      // Get the franchisee's store IDs
+      const userStores = await db.userStore.findMany({
+        where: { userId: session.user.id },
+        select: { storeId: true },
+      });
+      const storeIds = userStores.map((us) => us.storeId);
+      // Show materials with no store restriction OR linked to one of the user's stores
+      where.OR = [
+        { linkedStores: { none: {} } },
+        { linkedStores: { some: { storeId: { in: storeIds } } } },
+      ];
+    }
     if (categoryId) where.categoryId = categoryId;
     if (slug) where.category = { slug };
 
@@ -65,17 +84,25 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const data = materialSchema.parse(body);
-    const { linkedStoreIds, ...rest } = data;
-    // Post sem arquivo = comunicado em texto (com capa opcional)
-    if (!rest.fileUrl) {
-      rest.fileType = "NOTICE";
-      if (!rest.description?.trim() && !rest.coverUrl) {
-        return NextResponse.json({ error: "Escreva uma descrição ou anexe uma imagem/arquivo" }, { status: 400 });
-      }
+    const { linkedStoreIds, attachments: rawAttachments, ...rest } = data;
+
+    // Vários anexos por post: os campos legados (fileUrl…) espelham o primeiro anexo
+    const attachments =
+      rawAttachments ??
+      (rest.fileUrl
+        ? [{ url: rest.fileUrl, key: rest.fileKey, name: rest.title, kind: rest.fileType === "NOTICE" ? ("OTHER" as const) : rest.fileType, mimeType: rest.mimeType, size: rest.fileSize }]
+        : []);
+    if (rest.fileType !== "NOTICE" && attachments.length === 0) {
+      return NextResponse.json({ error: "Anexe pelo menos um arquivo" }, { status: 400 });
     }
+    const fileType = rest.fileType === "NOTICE" ? "NOTICE" : attachments[0].kind;
+
     const material = await db.material.create({
       data: {
         ...rest,
+        ...legacyFileFields(attachments),
+        fileType,
+        attachments,
         createdById: session.user.id,
         linkedStores: linkedStoreIds.length > 0
           ? { create: linkedStoreIds.map((storeId) => ({ storeId })) }
@@ -88,15 +115,13 @@ export async function POST(req: Request) {
     });
 
     if (data.published) {
-      const isNotice = data.fileType === "NOTICE";
-      await sendPushToAll(
-        {
-          title: isNotice ? "Novo aviso!" : "Novo material disponivel!",
-          body: data.title,
-          url: "/gallery",
-        },
-        "FRANCHISEE"
-      );
+      // Push + e-mail só para quem tem acesso (lojas selecionadas), sem bloquear a resposta
+      notifyMaterialPublished({
+        id: material.id,
+        title: material.title,
+        fileType: material.fileType,
+        summary: attachments.length > 0 ? attachmentsSummary(attachments) : undefined,
+      }).catch((err) => console.error("[notify] material", err));
     }
 
     return NextResponse.json(material, { status: 201 });
