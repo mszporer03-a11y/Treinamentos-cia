@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { getScopedStoreIds } from "@/lib/active-store";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -7,8 +8,8 @@ export const dynamic = "force-dynamic";
 /**
  * GET /api/badges
  * Returns unread/new counts per section for the current user.
- * Franchisee/Manager: { chat, solicitacoes, comunicados, registros, cianews, materiais, cardapios, universidade }
- * Admin:              { chat, solicitacoes }
+ * Franchisee/Manager: { solicitacoes, comunicados, registros, cianews, materiais, cardapios, universidade }
+ * Admin:              { solicitacoes }
  */
 export async function GET() {
   const session = await auth();
@@ -24,32 +25,20 @@ export async function GET() {
     // Cada admin vê apenas suas conversas + legadas (adminId null)
     const myConvFilter = { OR: [{ adminId: userId }, { adminId: null }] };
 
-    const [chat, solicitacoes] = await Promise.all([
-      // Conversas com mensagens não-admin ainda não lidas pelo admin
-      db.conversation.count({
-        where: {
-          ...myConvFilter,
-          messages: {
-            some: { readByAdmin: false, sender: { role: { not: "ADMIN" } } },
-          },
-        },
-      }),
-      db.message.count({
-        where: {
-          category: { not: null },
-          requestStatus: "PENDING",
-          conversation: myConvFilter,
-        },
-      }),
-    ]);
+    const solicitacoes = await db.message.count({
+      where: {
+        category: { not: null },
+        requestStatus: "PENDING",
+        conversation: myConvFilter,
+      },
+    });
 
-    return NextResponse.json({ chat, solicitacoes });
+    return NextResponse.json({ solicitacoes });
   }
 
   // ── FRANCHISEE / MANAGER ──────────────────────────────────────────────
-  const userStoreIds = await db.userStore
-    .findMany({ where: { userId }, select: { storeId: true } })
-    .then((rows) => rows.map((r) => r.storeId));
+  // Registros contam apenas a loja ativa, quando escolhida
+  const userStoreIds = await getScopedStoreIds(userId);
 
   const isCiaCardUni = {
     OR: [
@@ -62,17 +51,8 @@ export async function GET() {
     ],
   };
 
-  const [chat, solicitacoes, comunicados, registros, cianews, materiais, cardapios, universidade] =
+  const [solicitacoes, comunicados, registros, cianews, materiais, cardapios, universidade] =
     await Promise.all([
-      // Mensagens de chat (sem categoria) do admin ainda não lidas
-      db.message.count({
-        where: {
-          conversation: { franchiseeId: userId },
-          category: null,
-          readByFranchisee: false,
-          sender: { role: "ADMIN" },
-        },
-      }),
 
       // Solicitações com atualização de status ainda não vista pelo franqueado
       db.message.count({
@@ -151,7 +131,6 @@ export async function GET() {
     ]);
 
   return NextResponse.json({
-    chat,
     solicitacoes,
     comunicados,
     registros,

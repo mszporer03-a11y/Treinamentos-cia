@@ -83,6 +83,13 @@ export default function SupporteCategoryPage() {
       .then((data) => {
         if (Array.isArray(data)) setStores(data);
       });
+    // A solicitação já vem vinculada à loja ativa (pode ser alterada)
+    fetch("/api/active-store")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.activeStoreId) setSelectedStoreIds([data.activeStoreId]);
+      })
+      .catch(() => {});
     fetch("/api/admins")
       .then((r) => r.json())
       .then((data) => {

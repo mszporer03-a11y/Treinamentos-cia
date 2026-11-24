@@ -4,7 +4,7 @@ import React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { signOut } from "next-auth/react";
+import { signOutAndClearStore } from "@/lib/sign-out";
 import { useBadges, BADGE_KEY } from "@/hooks/useBadges";
 import {
   BookOpen,
@@ -18,7 +18,6 @@ import {
   UtensilsCrossed,
   Newspaper,
   GraduationCap,
-  MessageSquare,
   Siren,
   CheckSquare,
 } from "lucide-react";
@@ -31,6 +30,8 @@ interface FranchiseeSidebarProps {
     role?: string;
   };
   onOpenTutorial?: () => void;
+  /** Seletor de loja ativa (franqueados com mais de uma loja) */
+  storeSwitcher?: React.ReactNode;
 }
 
 type NavItem = {
@@ -52,7 +53,6 @@ const sections: { label: string; items: NavItem[] }[] = [
   {
     label: "Solicitações",
     items: [
-      { href: "/chat", label: "Chat com a equipe", icon: MessageSquare },
       { href: "/emergencia", label: "Chat Emergencial", icon: Siren },
       { href: "/solicitacoes", label: "Acompanhamento", icon: Inbox },
       { href: "/solicitar", label: "Nova solicitação", icon: Send },
@@ -83,7 +83,7 @@ const sections: { label: string; items: NavItem[] }[] = [
   },
 ];
 
-export function FranchiseeSidebar({ user, onOpenTutorial }: FranchiseeSidebarProps) {
+export function FranchiseeSidebar({ user, onOpenTutorial, storeSwitcher }: FranchiseeSidebarProps) {
   const pathname = usePathname();
   const badges = useBadges();
   const role = user.role ?? "FRANCHISEE";
@@ -103,6 +103,7 @@ export function FranchiseeSidebar({ user, onOpenTutorial }: FranchiseeSidebarPro
 
       {/* Navigation */}
       <nav className="flex-1 p-3 space-y-5 overflow-y-auto">
+        {storeSwitcher}
         <Support3LMButton variant="sidebar" />
         {sections
           .map((section) => ({
@@ -162,7 +163,7 @@ export function FranchiseeSidebar({ user, onOpenTutorial }: FranchiseeSidebarPro
           </button>
         )}
         <button
-          onClick={() => signOut({ callbackUrl: "/login" })}
+          onClick={signOutAndClearStore}
           className="flex items-center gap-2.5 px-3 py-2 w-full text-sm text-gray-400 hover:bg-white/5 hover:text-white rounded-lg transition"
         >
           <LogOut className="h-4 w-4 flex-shrink-0" />

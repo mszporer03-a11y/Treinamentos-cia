@@ -3,13 +3,14 @@
 import { usePathname } from "next/navigation";
 import { useState, useCallback } from "react";
 import Link from "next/link";
-import { signOut } from "next-auth/react";
+import { signOutAndClearStore } from "@/lib/sign-out";
 import { FranchiseeSidebar } from "./FranchiseeSidebar";
 import { TutorialOverlay, PORTAL_TUTORIAL_STEPS } from "./TutorialOverlay";
 import { PwaInstallPrompt } from "@/components/PwaInstallPrompt";
 import { WelcomeModal } from "./WelcomeModal";
 import { Support3LMButton } from "./Support3LM";
 import { EmergencyAlertBanner } from "@/components/emergency/EmergencyAlertBanner";
+import { StoreSwitcher, type StoreOption } from "./StoreSwitcher";
 import { useBadges, BADGE_KEY } from "@/hooks/useBadges";
 import {
   BookOpen,
@@ -24,6 +25,8 @@ import {
 interface FranchiseeShellProps {
   user: { name?: string | null; email?: string | null; role?: string };
   storeNames?: string[];
+  stores?: StoreOption[];
+  activeStoreId?: string | null;
   children: React.ReactNode;
 }
 
@@ -35,7 +38,13 @@ const mobileNavItems = [
   { href: "/perfil", label: "Perfil", icon: UserCircle2, exact: true },
 ];
 
-export function FranchiseeShell({ user, storeNames = [], children }: FranchiseeShellProps) {
+export function FranchiseeShell({
+  user,
+  storeNames = [],
+  stores = [],
+  activeStoreId = null,
+  children,
+}: FranchiseeShellProps) {
   const pathname = usePathname();
   const badges = useBadges();
   const [showTutorial, setShowTutorial] = useState(false);
@@ -66,22 +75,30 @@ export function FranchiseeShell({ user, storeNames = [], children }: FranchiseeS
     <div className="flex h-screen bg-gray-100 overflow-hidden">
       {/* Desktop sidebar — hidden on mobile */}
       <div className="hidden md:flex flex-shrink-0">
-        <FranchiseeSidebar user={user} onOpenTutorial={openTutorial} />
+        <FranchiseeSidebar
+          user={user}
+          onOpenTutorial={openTutorial}
+          storeSwitcher={<StoreSwitcher stores={stores} activeStoreId={activeStoreId} variant="sidebar" />}
+        />
       </div>
 
       {/* Main area */}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* Mobile top bar */}
         <header className="md:hidden bg-white border-b border-gray-200 px-4 h-14 flex items-center justify-between flex-shrink-0 sticky top-0 z-30">
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2 min-w-0">
             <div className="w-8 h-8 bg-orange-600 rounded-lg flex items-center justify-center flex-shrink-0">
               <BookOpen className="h-4 w-4 text-white" />
             </div>
-            <span className="font-bold text-gray-900 text-sm">
-              {user.role === "MANAGER" ? "Portal Gerente" : "Portal Franqueado"}
-            </span>
+            {stores.length > 0 ? (
+              <StoreSwitcher stores={stores} activeStoreId={activeStoreId} variant="header" />
+            ) : (
+              <span className="font-bold text-gray-900 text-sm">
+                {user.role === "MANAGER" ? "Portal Gerente" : "Portal Franqueado"}
+              </span>
+            )}
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 flex-shrink-0">
             <Support3LMButton variant="icon" />
             {/* Help / Tutorial button */}
             <button
@@ -93,11 +110,11 @@ export function FranchiseeShell({ user, storeNames = [], children }: FranchiseeS
               <HelpCircle className="h-5 w-5" />
             </button>
             <button
-              onClick={() => signOut({ callbackUrl: "/login" })}
+              onClick={signOutAndClearStore}
               className="flex items-center gap-1.5 px-3 py-2 text-sm text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
             >
               <LogOut className="h-4 w-4" />
-              <span className="text-xs font-medium">Sair</span>
+              <span className="text-xs font-medium hidden min-[380px]:inline">Sair</span>
             </button>
           </div>
         </header>

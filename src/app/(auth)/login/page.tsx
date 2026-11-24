@@ -23,6 +23,9 @@ export default function LoginPage() {
     setError("");
 
     try {
+      // Esquece a loja escolhida no acesso anterior deste aparelho
+      await fetch("/api/active-store", { method: "DELETE" }).catch(() => {});
+
       const result = await signIn("credentials", {
         email,
         password,
@@ -36,8 +39,12 @@ export default function LoginPage() {
         try {
           sessionStorage.setItem("cia:welcome", "1");
         } catch {}
+        // Franqueado com várias lojas escolhe em qual loja vai entrar
+        const info = await fetch("/api/active-store")
+          .then((r) => (r.ok ? r.json() : null))
+          .catch(() => null);
         router.refresh();
-        router.push("/");
+        router.push(info?.needsSelection ? "/selecionar-loja" : "/");
       }
     } catch {
       setError("Ocorreu um erro inesperado. Tente novamente.");

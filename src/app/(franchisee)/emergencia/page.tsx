@@ -49,8 +49,8 @@ export default function FranchiseeEmergencyPage() {
             Este canal é aberto somente pela Franquia em situações de emergência. Quando houver um contato, você será
             notificado e poderá responder aqui.
           </p>
-          <Link href="/chat" className="mt-4 text-sm text-orange-600 font-medium hover:underline">
-            Precisa falar com a Franquia? Use o Suporte →
+          <Link href="/solicitar" className="mt-4 text-sm text-orange-600 font-medium hover:underline">
+            Precisa falar com a Franquia? Abra uma solicitação →
           </Link>
         </div>
       ) : (

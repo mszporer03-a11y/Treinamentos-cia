@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { getActiveStoreIdFor } from "@/lib/active-store";
 import { NextResponse } from "next/server";
 import { sendPushToUser } from "@/lib/push";
 import { appUrl, brandedEmail, escapeHtml, sendEmail } from "@/lib/email";
@@ -66,12 +67,18 @@ export async function GET(req: Request) {
   const category = searchParams.get("category") || undefined;
   const storeId = searchParams.get("storeId") || undefined;
 
+  // Sem filtro explícito, mostra as solicitações da loja ativa (e as sem loja vinculada)
+  const activeStoreId = storeId ? null : await getActiveStoreIdFor(session.user.id);
+
   const messages = await db.message.findMany({
     where: {
       conversation: { franchiseeId: session.user.id },
       senderId: session.user.id,
       category: category ? { equals: category } : { not: null },
       ...(storeId ? { linkedStores: { some: { storeId } } } : {}),
+      ...(activeStoreId
+        ? { OR: [{ linkedStores: { none: {} } }, { linkedStores: { some: { storeId: activeStoreId } } }] }
+        : {}),
     },
     include: {
       linkedStores: {

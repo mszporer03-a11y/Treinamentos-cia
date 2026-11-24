@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { getScopedStoreIds } from "@/lib/active-store";
 import { sendPushToUser } from "@/lib/push";
 import { z } from "zod";
 import { attachmentsSchema, attachmentsSummary, legacyNamedFileFields } from "@/lib/attachments";
@@ -26,11 +27,8 @@ export async function GET(req: Request) {
   const where: Record<string, unknown> = {};
 
   if (session.user.role !== "ADMIN") {
-    const userStores = await db.userStore.findMany({
-      where: { userId: session.user.id },
-      select: { storeId: true },
-    });
-    const ids = userStores.map((s) => s.storeId);
+    // Apenas a loja ativa, quando escolhida; senão todas as lojas do usuário
+    const ids = await getScopedStoreIds(session.user.id);
     where.storeId = { in: ids };
   } else if (storeId) {
     where.storeId = storeId;

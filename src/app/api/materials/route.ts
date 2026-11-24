@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 import { db } from "@/lib/db";
+import { getScopedStoreIds } from "@/lib/active-store";
 import { notifyMaterialPublished } from "@/lib/notify";
 import { attachmentsSchema, attachmentsSummary, legacyFileFields } from "@/lib/attachments";
 import { NextResponse } from "next/server";
@@ -42,13 +43,9 @@ export async function GET(req: Request) {
 
     if (session.user.role !== "ADMIN") {
       where.published = true;
-      // Get the franchisee's store IDs
-      const userStores = await db.userStore.findMany({
-        where: { userId: session.user.id },
-        select: { storeId: true },
-      });
-      const storeIds = userStores.map((us) => us.storeId);
-      // Show materials with no store restriction OR linked to one of the user's stores
+      // Lojas do usuário — apenas a loja ativa, quando escolhida
+      const storeIds = await getScopedStoreIds(session.user.id);
+      // Show materials with no store restriction OR linked to the user's (active) store
       where.OR = [
         { linkedStores: { none: {} } },
         { linkedStores: { some: { storeId: { in: storeIds } } } },
